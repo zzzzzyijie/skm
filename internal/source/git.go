@@ -1,0 +1,276 @@
+package source
+
+import (
+	"fmt"
+	"io/fs"
+	"net/url"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"regexp"
+	"sort"
+	"strings"
+	"time"
+
+	"github.com/zzzzzyijie/skm/internal/catalog"
+	"github.com/zzzzzyijie/skm/internal/domain"
+	"github.com/zzzzzyijie/skm/internal/fsx"
+	"github.com/zzzzzyijie/skm/internal/skill"
+	"github.com/zzzzzyijie/skm/internal/store"
+	"github.com/zzzzzyijie/skm/internal/tags"
+)
+
+var validSourceName = regexp.MustCompile(`^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$`)
+
+type GitManager struct {
+	Store   *store.Store
+	Catalog *catalog.Manager
+	GitPath string
+	Now     func() time.Time
+}
+
+func NewGitManager(storage *store.Store, catalogManager *catalog.Manager) *GitManager {
+	return &GitManager{Store: storage, Catalog: catalogManager, GitPath: "git", Now: time.Now}
+}
+
+func (m *GitManager) Add(value domain.Source) (domain.Source, []domain.Skill, error) {
+	value.Name = strings.ToLower(strings.TrimSpace(value.Name))
+	if !validSourceName.MatchString(value.Name) {
+		return domain.Source{}, nil, fmt.Errorf("invalid source name %q", value.Name)
+	}
+	if strings.TrimSpace(value.URL) == "" {
+		return domain.Source{}, nil, fmt.Errorf("source URL is required")
+	}
+	if parsed, err := url.Parse(value.URL); err == nil && parsed.User != nil {
+		return domain.Source{}, nil, fmt.Errorf("source URL must not contain credentials; use Git credential storage or SSH")
+	}
+	if value.Scope == "" {
+		value.Scope = domain.ScopeGlobal
+	}
+	if value.Scope != domain.ScopeGlobal && value.Scope != domain.ScopePersonal {
+		return domain.Source{}, nil, fmt.Errorf("Git source scope must be global or personal")
+	}
+	config, err := m.Store.LoadConfig()
+	if err != nil {
+		return domain.Source{}, nil, err
+	}
+	value.Tags, err = tags.Normalize(value.Tags, config.Defaults.Tags)
+	if err != nil {
+		return domain.Source{}, nil, err
+	}
+	sources, err := m.Store.LoadSources()
+	if err != nil {
+		return domain.Source{}, nil, err
+	}
+	for _, existing := range sources.Sources {
+		if existing.Name == value.Name {
+			return domain.Source{}, nil, fmt.Errorf("source %q already exists", value.Name)
+		}
+	}
+	updated, imported, err := m.syncOne(value)
+	if err != nil {
+		return domain.Source{}, nil, err
+	}
+	sources.Sources = append(sources.Sources, updated)
+	if err := m.Store.SaveSources(sources); err != nil {
+		return domain.Source{}, nil, err
+	}
+	return updated, imported, nil
+}
+
+func (m *GitManager) Update(names []string) ([]domain.Source, []domain.Skill, error) {
+	sources, err := m.Store.LoadSources()
+	if err != nil {
+		return nil, nil, err
+	}
+	selected := make(map[string]struct{}, len(names))
+	for _, name := range names {
+		selected[name] = struct{}{}
+	}
+	if len(sources.Sources) == 0 {
+		return nil, nil, fmt.Errorf("no Git sources configured")
+	}
+	var updatedSources []domain.Source
+	var imported []domain.Skill
+	matched := 0
+	for i, value := range sources.Sources {
+		if len(selected) > 0 {
+			if _, ok := selected[value.Name]; !ok {
+				continue
+			}
+		}
+		matched++
+		updated, skills, err := m.syncOne(value)
+		if err != nil {
+			return updatedSources, imported, fmt.Errorf("update source %s: %w", value.Name, err)
+		}
+		sources.Sources[i] = updated
+		updatedSources = append(updatedSources, updated)
+		imported = append(imported, skills...)
+	}
+	if matched == 0 {
+		return nil, nil, fmt.Errorf("none of the requested sources were found")
+	}
+	if err := m.Store.SaveSources(sources); err != nil {
+		return nil, nil, err
+	}
+	return updatedSources, imported, nil
+}
+
+func (m *GitManager) Remove(name string) (domain.Source, error) {
+	sources, err := m.Store.LoadSources()
+	if err != nil {
+		return domain.Source{}, err
+	}
+	var removed domain.Source
+	result := sources.Sources[:0]
+	for _, value := range sources.Sources {
+		if value.Name == name {
+			removed = value
+			continue
+		}
+		result = append(result, value)
+	}
+	if removed.Name == "" {
+		return domain.Source{}, fmt.Errorf("source %q not found", name)
+	}
+	sources.Sources = result
+	if err := m.Store.SaveSources(sources); err != nil {
+		return domain.Source{}, err
+	}
+	return removed, nil
+}
+
+func (m *GitManager) syncOne(value domain.Source) (domain.Source, []domain.Skill, error) {
+	if _, err := exec.LookPath(m.GitPath); err != nil {
+		return domain.Source{}, nil, fmt.Errorf("git executable not found")
+	}
+	parent := filepath.Join(m.Store.Paths.Home, "sources")
+	if err := os.MkdirAll(parent, 0o755); err != nil {
+		return domain.Source{}, nil, err
+	}
+	tempRoot, err := os.MkdirTemp(parent, ".skm-source-")
+	if err != nil {
+		return domain.Source{}, nil, err
+	}
+	defer os.RemoveAll(tempRoot)
+	checkout := filepath.Join(tempRoot, "repo")
+	if err := m.runGit(value.URL, "clone", "--no-recurse-submodules", "--", value.URL, checkout); err != nil {
+		return domain.Source{}, nil, err
+	}
+	if value.Ref != "" {
+		if err := m.runGit(value.URL, "-C", checkout, "checkout", "--detach", value.Ref); err != nil {
+			return domain.Source{}, nil, fmt.Errorf("checkout ref %q: %w", value.Ref, err)
+		}
+	}
+	revisionBytes, err := exec.Command(m.GitPath, "-C", checkout, "rev-parse", "HEAD").Output()
+	if err != nil {
+		return domain.Source{}, nil, fmt.Errorf("resolve Git revision: %w", err)
+	}
+	revision := strings.TrimSpace(string(revisionBytes))
+	directories, err := discoverSkills(checkout, value.Paths)
+	if err != nil {
+		return domain.Source{}, nil, err
+	}
+	documents := make([]skill.Document, 0, len(directories))
+	for _, directory := range directories {
+		document, err := skill.Validate(directory)
+		if err != nil {
+			return domain.Source{}, nil, fmt.Errorf("validate %s: %w", directory, err)
+		}
+		documents = append(documents, document)
+	}
+	existingSkills, err := m.Store.LoadAllSkills()
+	if err != nil {
+		return domain.Source{}, nil, err
+	}
+	existingTags := make(map[string][]string)
+	for _, existing := range existingSkills {
+		if existing.Source == value.Name {
+			existingTags[existing.ID] = existing.Tags
+		}
+	}
+	var imported []domain.Skill
+	for _, document := range documents {
+		tagValues := value.Tags
+		if preserved := existingTags[value.Name+"/"+document.Name]; len(preserved) > 0 {
+			tagValues = preserved
+		}
+		importedSkill, err := m.Catalog.Import(document, value.Name, value.Scope, revision, tagValues)
+		if err != nil {
+			return domain.Source{}, imported, err
+		}
+		imported = append(imported, importedSkill)
+	}
+	if err := fsx.ReplacePath(checkout, m.Store.SourcePath(value.Name)); err != nil {
+		return domain.Source{}, imported, err
+	}
+	value.Revision = revision
+	value.UpdatedAt = m.Now().UTC()
+	return value, imported, nil
+}
+
+func (m *GitManager) runGit(secret string, args ...string) error {
+	command := exec.Command(m.GitPath, args...)
+	output, err := command.CombinedOutput()
+	if err == nil {
+		return nil
+	}
+	message := strings.TrimSpace(string(output))
+	if secret != "" {
+		message = strings.ReplaceAll(message, secret, "<redacted-url>")
+	}
+	if message == "" {
+		message = err.Error()
+	}
+	return fmt.Errorf("git command failed: %s", message)
+}
+
+func discoverSkills(root string, boundPaths []string) ([]string, error) {
+	if len(boundPaths) > 0 {
+		result := make([]string, 0, len(boundPaths))
+		seen := make(map[string]struct{})
+		for _, value := range boundPaths {
+			if filepath.IsAbs(value) {
+				return nil, fmt.Errorf("source skill path must be relative: %s", value)
+			}
+			path := filepath.Clean(filepath.Join(root, value))
+			if !fsx.Within(root, path) {
+				return nil, fmt.Errorf("source skill path escapes repository: %s", value)
+			}
+			if filepath.Base(path) == "SKILL.md" {
+				path = filepath.Dir(path)
+			}
+			if _, err := os.Stat(filepath.Join(path, "SKILL.md")); err != nil {
+				return nil, fmt.Errorf("bound skill path %s: %w", value, err)
+			}
+			if _, ok := seen[path]; !ok {
+				seen[path] = struct{}{}
+				result = append(result, path)
+			}
+		}
+		sort.Strings(result)
+		return result, nil
+	}
+	var result []string
+	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if entry.IsDir() && entry.Name() == ".git" {
+			return filepath.SkipDir
+		}
+		if !entry.IsDir() && entry.Name() == "SKILL.md" {
+			result = append(result, filepath.Dir(path))
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	if len(result) == 0 {
+		return nil, fmt.Errorf("no SKILL.md files found in source")
+	}
+	sort.Strings(result)
+	return result, nil
+}
