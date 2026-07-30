@@ -19,6 +19,23 @@ HOMEBREW_TAP_GITHUB_TOKEN
 ```
 
 不能使用默认 `GITHUB_TOKEN` 更新另一个仓库；跨仓库发布需要单独 Token。
+将仓库改为公开只解决匿名下载，不会赋予 Actions 跨仓库写权限。fine-grained Token
+必须满足以下配置：
+
+- Resource owner 是 `zzzzzyijie`；
+- Repository access 包含 `homebrew-tap`；
+- Repository permissions 的 Contents 是 Read and write；
+- `skm` 中的 Secret 名称严格为 `HOMEBREW_TAP_GITHUB_TOKEN`。
+
+如果 Release 产物已成功，但工作流在 Homebrew 步骤失败，更新 Secret 后可在下一个 Tag
+验证。也可以根据该 Release 的 `checksums.txt` 手动生成并提交 Formula：
+
+```bash
+sh scripts/generate_homebrew_formula.sh \
+  v0.2.1 \
+  ./checksums.txt \
+  ../homebrew-tap/Formula/skm.rb
+```
 
 ## 2. 发布版本
 
