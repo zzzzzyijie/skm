@@ -137,6 +137,17 @@ func TestCLIInitWithProjectWritesProjectState(t *testing.T) {
 	}
 }
 
+func TestCLIVersionUsesInjectedReleaseVersion(t *testing.T) {
+	previous := Version
+	Version = "v1.2.3"
+	t.Cleanup(func() { Version = previous })
+
+	out := runCLI(t, "version")
+	if string(out) != "1.2.3\n" {
+		t.Fatalf("version output = %q", out)
+	}
+}
+
 func TestCLIEnableRejectsSameNameBeforeChangingState(t *testing.T) {
 	root, userHome, project, skmHome := cliPaths(t)
 	firstPath := filepath.Join(root, "first")

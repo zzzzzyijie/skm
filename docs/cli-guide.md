@@ -20,20 +20,63 @@ Project     项目 require 依赖或 vendor 副本
 
 ## 2. 环境与安装
 
-要求：macOS、Go 1.25+、常见 Shell。Git 是可选依赖，仅 Git Source 和项目 Git
-依赖恢复需要。
+Git 是可选依赖，仅 Git Source 和项目 Git 依赖恢复需要。Homebrew 和 curl 使用
+预编译文件，不需要 Go。
+
+### 2.1 Homebrew
+
+```bash
+brew install --cask zzzzzyijie/tap/skm
+skm version
+```
+
+Homebrew 会把 `skm` 安装到其已配置的可执行目录，安装完成后可以直接使用。
+
+### 2.2 curl
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/zzzzzyijie/skm/main/scripts/install.sh | sh
+skm version
+```
+
+安装器自动识别 macOS/Linux 和 amd64/arm64，下载 Release 压缩包并使用
+`checksums.txt` 验证 SHA-256。它优先选择当前 `PATH` 中可写的目录，因此通常安装后
+可以直接执行。系统没有可写 PATH 目录时，会回退到 `~/.local/bin` 并打印配置提示。
+
+指定版本：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/zzzzzyijie/skm/main/scripts/install.sh | \
+  sh -s -- --version v0.2.0
+```
+
+指定安装目录：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/zzzzzyijie/skm/main/scripts/install.sh | \
+  sh -s -- --install-dir "$HOME/.local/bin"
+```
+
+出于安全考虑，也可以先下载并检查脚本，再执行：
+
+```bash
+curl -fsSLO https://raw.githubusercontent.com/zzzzzyijie/skm/main/scripts/install.sh
+less install.sh
+sh install.sh
+```
+
+### 2.3 从源码构建
+
+开发项目时要求 Go 1.25+：
 
 ```bash
 go version
-git --version
 
-mkdir -p ~/.local/bin
-go build -trimpath -o ~/.local/bin/skm ./cmd/skm
-export PATH="$HOME/.local/bin:$PATH"
-rehash
+go build -trimpath -o ./bin/skm ./cmd/skm
+./bin/skm version
 ```
 
-初始化个人 Library：
+### 2.4 首次初始化
 
 ```bash
 skm init
@@ -254,7 +297,87 @@ skm source add "$HOME/src/my-skills" --name local-git
 
 但本地路径不能作为团队可恢复的 `project require` 来源；需要 vendor 或发布到远程。
 
-### 7.2 更新和移除绑定
+### 7.2 将个人 Library Skill 绑定到远程 Git
+
+skm 的 Library 保存内容快照，`~/.skm/objects/` 不是 Skill 源码工作目录。要长期维护
+和同步个人 Skill，应准备一个独立的 Git 工作目录，再将远程仓库作为 Source 导入。
+
+已有 `local/code-review` 时，优先把原始 Skill 目录放入新的 Git 工作目录。如果原始
+目录已经不存在，可运行 `skm show local/code-review` 查看当前快照的 `Path`，将该
+目录复制到 Git 工作目录后再维护；不要直接编辑 `~/.skm/objects/` 中的快照。
+
+假设源码布局如下：
+
+```text
+~/my-skills/
+└── skills/
+    └── code-review/
+        └── SKILL.md
+```
+
+对于新建的空远程仓库，先发布本地源码：
+
+```bash
+cd "$HOME/my-skills"
+git init -b main
+git remote add origin git@github.com:your-name/my-skills.git
+git add .
+git commit -m "add personal skills"
+git push -u origin main
+```
+
+如果远程仓库已经有内容，应先 `git clone`，再把 Skill 放入 clone 得到的工作目录中
+提交，避免覆盖已有历史。
+
+然后绑定远程并导入个人 Library：
+
+```bash
+skm source add git@github.com:your-name/my-skills.git \
+  --name personal \
+  --ref main \
+  --path skills/code-review \
+  --tag personal
+
+skm source list
+skm show personal/code-review
+```
+
+这里的 `personal` 是 Source 名，导入后的完整 ID 是 `personal/code-review`。
+`source add` 不会把原有的 `local/code-review` 原地改名或绑定；两个条目会暂时同时
+保留。若原来的本地版本已经启用，应显式切换，避免同一 Agent 出现同名冲突：
+
+```bash
+skm disable local/code-review
+skm enable personal/code-review --agent claude,codex
+
+# 确认 Git 版本工作正常后，可选择移除旧快照
+skm remove local/code-review
+```
+
+后续始终在 `$HOME/my-skills` 工作目录修改、提交并推送，然后更新 skm：
+
+```bash
+cd "$HOME/my-skills"
+git add skills/code-review
+git commit -m "update code-review skill"
+git push
+
+skm sync --source personal
+```
+
+`sync` 会拉取新快照并刷新已启用的 Git 版本。只想更新 Library、暂不调整部署时使用：
+
+```bash
+skm sync --source personal --no-apply
+```
+
+当需要在团队项目中锁定这个远程 Skill 时，可以运行：
+
+```bash
+skm project require personal/code-review --agent claude,codex
+```
+
+### 7.3 更新和移除绑定
 
 ```bash
 skm source list

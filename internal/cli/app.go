@@ -5,13 +5,15 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"runtime/debug"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/zzzzzyijie/skm/internal/apperr"
 	"github.com/zzzzzyijie/skm/internal/store"
 )
 
-const Version = "0.2.0"
+var Version = "dev"
 
 type App struct {
 	Out       io.Writer
@@ -80,14 +82,25 @@ func (a *App) RootCommand() *cobra.Command {
 			Use:   "version",
 			Short: "Print the skm version",
 			RunE: func(cmd *cobra.Command, args []string) error {
-				return a.emit("version", map[string]string{"version": Version}, func() error {
-					_, err := fmt.Fprintln(a.Out, Version)
+				version := currentVersion()
+				return a.emit("version", map[string]string{"version": version}, func() error {
+					_, err := fmt.Fprintln(a.Out, version)
 					return err
 				})
 			},
 		},
 	)
 	return root
+}
+
+func currentVersion() string {
+	if Version != "" && Version != "dev" {
+		return strings.TrimPrefix(Version, "v")
+	}
+	if info, ok := debug.ReadBuildInfo(); ok && info.Main.Version != "" && info.Main.Version != "(devel)" {
+		return strings.TrimPrefix(info.Main.Version, "v")
+	}
+	return "dev"
 }
 
 func (a *App) openStore() (*store.Store, error) {

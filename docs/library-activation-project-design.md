@@ -143,6 +143,11 @@ Git 是可选的协作与恢复能力，不是个人 Library 的前置条件。s
 因此，个人使用不需要先建立本地 Git；只有要版本化个人 Skill 库时，用户才自行给
 该目录初始化 Git。项目已经使用 Git 时，vendor 内容自然跟随项目仓库维护。
 
+个人 Skill 的 Git 工作目录应独立于 `~/.skm/objects/`：后者是 skm 管理的不可变
+快照，不是源码工作树。个人 Skill 发布到远程后，通过 `source add` 重新导入为
+`<source>/<name>`；已有 `local/<name>` 不会被原地转换，切换 Activation 和删除旧
+条目必须由用户显式执行。
+
 ## 6. 冲突规则
 
 1. 完整 Skill ID 使用 `<source>/<name>`。

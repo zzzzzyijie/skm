@@ -1,0 +1,70 @@
+version: 2
+
+project_name: skm
+
+builds:
+  - id: skm
+    main: ./cmd/skm
+    binary: skm
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    flags:
+      - -trimpath
+    ldflags:
+      - >-
+        -s -w
+        -X github.com/zzzzzyijie/skm/internal/cli.Version={{ .Version }}
+
+archives:
+  - id: skm
+    ids:
+      - skm
+    formats:
+      - tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - LICENSE
+      - README.md
+
+checksum:
+  name_template: checksums.txt
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+
+homebrew_casks:
+  - name: skm
+    ids:
+      - skm
+    binaries:
+      - skm
+    homepage: https://github.com/zzzzzyijie/skm
+    description: Manage and deploy AI Agent Skills
+    license: MIT
+    directory: Casks
+    skip_upload: auto
+    repository:
+      owner: zzzzzyijie
+      name: homebrew-tap
+      branch: main
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    commit_author:
+      name: skm release bot
+      email: actions@github.com
+
+release:
+  prerelease: auto
