@@ -23,16 +23,11 @@ func (a *App) newSourceAddCommand() *cobra.Command {
 	var ref string
 	var paths []string
 	var tagValues []string
-	var scopeValue string
 	command := &cobra.Command{
 		Use:   "add <git-url>",
 		Short: "Bind and import a custom Git Skill source",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			scope := domain.Scope(scopeValue)
-			if !scope.Valid() {
-				return fmt.Errorf("invalid scope %q", scopeValue)
-			}
 			storage, err := a.openStore()
 			if err != nil {
 				return err
@@ -42,7 +37,7 @@ func (a *App) newSourceAddCommand() *cobra.Command {
 			err = withLock(storage, func() error {
 				manager := catalog.New(storage)
 				value, imported, err = gitSource.NewGitManager(storage, manager).Add(domain.Source{
-					Name: name, URL: args[0], Ref: ref, Paths: paths, Tags: tagValues, Scope: scope,
+					Name: name, URL: args[0], Ref: ref, Paths: paths, Tags: tagValues,
 				})
 				return err
 			})
@@ -60,7 +55,6 @@ func (a *App) newSourceAddCommand() *cobra.Command {
 	command.Flags().StringVar(&ref, "ref", "", "branch, tag, or commit to bind")
 	command.Flags().StringArrayVar(&paths, "path", nil, "relative Skill directory to bind (repeatable; default scans repository)")
 	command.Flags().StringArrayVar(&tagValues, "tag", nil, "default tag for imported Skills (repeatable)")
-	command.Flags().StringVar(&scopeValue, "scope", string(domain.ScopeGlobal), "catalog scope: global or personal")
 	_ = command.MarkFlagRequired("name")
 	return command
 }
@@ -81,9 +75,9 @@ func (a *App) newSourceListCommand() *cobra.Command {
 			}
 			return a.emit("source list", values.Sources, func() error {
 				writer := tabwriter.NewWriter(a.Out, 0, 4, 2, ' ', 0)
-				_, _ = fmt.Fprintln(writer, "NAME\tSCOPE\tREF\tREVISION\tPATHS\tURL")
+				_, _ = fmt.Fprintln(writer, "NAME\tREF\tREVISION\tPATHS\tURL")
 				for _, value := range values.Sources {
-					_, _ = fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\t%s\n", value.Name, value.Scope, value.Ref, shortRevision(value.Revision), strings.Join(value.Paths, ","), value.URL)
+					_, _ = fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\n", value.Name, value.Ref, shortRevision(value.Revision), strings.Join(value.Paths, ","), value.URL)
 				}
 				return writer.Flush()
 			})
@@ -182,9 +176,6 @@ func (a *App) newSyncCommand() *cobra.Command {
 				}
 				if err := engine.Apply(plan, &state); err != nil {
 					return err
-				}
-				if storage.HasProjectState(state) {
-					return storage.SyncProjectLock(state, skills)
 				}
 				return nil
 			})

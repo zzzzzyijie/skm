@@ -2,12 +2,12 @@ package domain
 
 import "testing"
 
-func TestScopePriorityAndValidation(t *testing.T) {
-	if !ScopeGlobal.Valid() || !ScopePersonal.Valid() || !ScopeProject.Valid() || Scope("bad").Valid() {
-		t.Fatal("scope validation is incorrect")
+func TestLocationAndPlacementValidation(t *testing.T) {
+	if !LocationLibrary.Valid() || !LocationProject.Valid() || SkillLocation("bad").Valid() {
+		t.Fatal("location validation is incorrect")
 	}
-	if !(ScopeProject.Priority() > ScopePersonal.Priority() && ScopePersonal.Priority() > ScopeGlobal.Priority()) {
-		t.Fatal("scope priority is incorrect")
+	if !PlacementUser.Valid() || !PlacementProject.Valid() || Placement("bad").Valid() {
+		t.Fatal("placement validation is incorrect")
 	}
 }
 

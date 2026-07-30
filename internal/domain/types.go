@@ -2,31 +2,28 @@ package domain
 
 import "time"
 
-const SchemaVersion = 1
+const SchemaVersion = 2
 
-type Scope string
+type SkillLocation string
 
 const (
-	ScopeGlobal   Scope = "global"
-	ScopePersonal Scope = "personal"
-	ScopeProject  Scope = "project"
+	LocationLibrary SkillLocation = "library"
+	LocationProject SkillLocation = "project"
 )
 
-func (s Scope) Valid() bool {
-	return s == ScopeGlobal || s == ScopePersonal || s == ScopeProject
+func (l SkillLocation) Valid() bool {
+	return l == LocationLibrary || l == LocationProject
 }
 
-func (s Scope) Priority() int {
-	switch s {
-	case ScopeProject:
-		return 3
-	case ScopePersonal:
-		return 2
-	case ScopeGlobal:
-		return 1
-	default:
-		return 0
-	}
+type Placement string
+
+const (
+	PlacementUser    Placement = "user"
+	PlacementProject Placement = "project"
+)
+
+func (p Placement) Valid() bool {
+	return p == PlacementUser || p == PlacementProject
 }
 
 type Agent string
@@ -74,13 +71,19 @@ type Skill struct {
 	Description string         `yaml:"description" json:"description"`
 	Tags        []string       `yaml:"tags" json:"tags"`
 	Source      string         `yaml:"source" json:"source"`
-	Scope       Scope          `yaml:"scope" json:"scope"`
+	Location    SkillLocation  `yaml:"location" json:"location"`
 	Revision    string         `yaml:"revision,omitempty" json:"revision,omitempty"`
 	Hash        string         `yaml:"hash" json:"hash"`
 	Path        string         `yaml:"path" json:"path"`
+	SourcePath  string         `yaml:"sourcePath,omitempty" json:"sourcePath,omitempty"`
 	ProjectRoot string         `yaml:"projectRoot,omitempty" json:"projectRoot,omitempty"`
+	ForkedFrom  string         `yaml:"forkedFrom,omitempty" json:"forkedFrom,omitempty"`
+	ForkedAt    string         `yaml:"forkedRevision,omitempty" json:"forkedRevision,omitempty"`
+	Agents      []Agent        `yaml:"agents,omitempty" json:"agents,omitempty"`
+	Mode        LinkMode       `yaml:"mode,omitempty" json:"mode,omitempty"`
 	Metadata    map[string]any `yaml:"metadata,omitempty" json:"metadata,omitempty"`
 	AddedAt     time.Time      `yaml:"addedAt" json:"addedAt"`
+	LegacyScope string         `yaml:"scope,omitempty" json:"-"`
 }
 
 type Catalog struct {
@@ -90,14 +93,22 @@ type Catalog struct {
 }
 
 type ProjectDependency struct {
-	ID     string   `yaml:"id" json:"id"`
-	Tags   []string `yaml:"tags" json:"tags"`
-	Agents []Agent  `yaml:"agents" json:"agents"`
-	Mode   LinkMode `yaml:"mode" json:"mode"`
+	ID         string   `yaml:"id" json:"id"`
+	Name       string   `yaml:"name" json:"name"`
+	Source     string   `yaml:"source" json:"source"`
+	URL        string   `yaml:"url" json:"url"`
+	Ref        string   `yaml:"ref,omitempty" json:"ref,omitempty"`
+	SourcePath string   `yaml:"sourcePath,omitempty" json:"sourcePath,omitempty"`
+	Revision   string   `yaml:"revision" json:"revision"`
+	Hash       string   `yaml:"hash" json:"hash"`
+	Tags       []string `yaml:"tags" json:"tags"`
+	Agents     []Agent  `yaml:"agents" json:"agents"`
+	Mode       LinkMode `yaml:"mode" json:"mode"`
 }
 
 type LockedSkill struct {
 	ID       string   `yaml:"id" json:"id"`
+	Name     string   `yaml:"name" json:"name"`
 	Source   string   `yaml:"source" json:"source"`
 	Revision string   `yaml:"revision,omitempty" json:"revision,omitempty"`
 	Hash     string   `yaml:"hash" json:"hash"`
@@ -110,14 +121,14 @@ type LockFile struct {
 }
 
 type Source struct {
-	Name      string    `yaml:"name" json:"name"`
-	URL       string    `yaml:"url" json:"url"`
-	Ref       string    `yaml:"ref,omitempty" json:"ref,omitempty"`
-	Paths     []string  `yaml:"paths,omitempty" json:"paths,omitempty"`
-	Tags      []string  `yaml:"tags" json:"tags"`
-	Scope     Scope     `yaml:"scope" json:"scope"`
-	Revision  string    `yaml:"revision,omitempty" json:"revision,omitempty"`
-	UpdatedAt time.Time `yaml:"updatedAt,omitempty" json:"updatedAt,omitempty"`
+	Name        string    `yaml:"name" json:"name"`
+	URL         string    `yaml:"url" json:"url"`
+	Ref         string    `yaml:"ref,omitempty" json:"ref,omitempty"`
+	Paths       []string  `yaml:"paths,omitempty" json:"paths,omitempty"`
+	Tags        []string  `yaml:"tags" json:"tags"`
+	Revision    string    `yaml:"revision,omitempty" json:"revision,omitempty"`
+	UpdatedAt   time.Time `yaml:"updatedAt,omitempty" json:"updatedAt,omitempty"`
+	LegacyScope string    `yaml:"scope,omitempty" json:"-"`
 }
 
 type Sources struct {
@@ -125,33 +136,47 @@ type Sources struct {
 	Sources []Source `yaml:"sources" json:"sources"`
 }
 
-type Installation struct {
+type Activation struct {
 	SkillID     string    `yaml:"skillId" json:"skillId"`
 	Name        string    `yaml:"name" json:"name"`
-	Scope       Scope     `yaml:"scope" json:"scope"`
+	Placement   Placement `yaml:"placement" json:"placement"`
 	ProjectRoot string    `yaml:"projectRoot,omitempty" json:"projectRoot,omitempty"`
 	Agents      []Agent   `yaml:"agents" json:"agents"`
 	Mode        LinkMode  `yaml:"mode" json:"mode"`
+	PinnedHash  string    `yaml:"pinnedHash,omitempty" json:"pinnedHash,omitempty"`
+	PinnedPath  string    `yaml:"pinnedPath,omitempty" json:"pinnedPath,omitempty"`
 	UpdatedAt   time.Time `yaml:"updatedAt" json:"updatedAt"`
+}
+
+type LegacyInstallation struct {
+	SkillID     string    `yaml:"skillId"`
+	Name        string    `yaml:"name"`
+	Scope       string    `yaml:"scope"`
+	ProjectRoot string    `yaml:"projectRoot,omitempty"`
+	Agents      []Agent   `yaml:"agents"`
+	Mode        LinkMode  `yaml:"mode"`
+	UpdatedAt   time.Time `yaml:"updatedAt"`
 }
 
 type Deployment struct {
 	SkillID     string    `yaml:"skillId" json:"skillId"`
 	Name        string    `yaml:"name" json:"name"`
 	Agent       Agent     `yaml:"agent" json:"agent"`
-	Scope       Scope     `yaml:"scope" json:"scope"`
+	Placement   Placement `yaml:"placement" json:"placement"`
 	ProjectRoot string    `yaml:"projectRoot,omitempty" json:"projectRoot,omitempty"`
 	Target      string    `yaml:"target" json:"target"`
 	SourcePath  string    `yaml:"sourcePath" json:"sourcePath"`
 	Mode        LinkMode  `yaml:"mode" json:"mode"`
 	Hash        string    `yaml:"hash" json:"hash"`
 	UpdatedAt   time.Time `yaml:"updatedAt" json:"updatedAt"`
+	LegacyScope string    `yaml:"scope,omitempty" json:"-"`
 }
 
 type State struct {
-	Version       int            `yaml:"version" json:"version"`
-	Installations []Installation `yaml:"installations" json:"installations"`
-	Deployments   []Deployment   `yaml:"deployments" json:"deployments"`
+	Version             int                  `yaml:"version" json:"version"`
+	Activations         []Activation         `yaml:"activations,omitempty" json:"activations"`
+	Deployments         []Deployment         `yaml:"deployments,omitempty" json:"deployments"`
+	LegacyInstallations []LegacyInstallation `yaml:"installations,omitempty" json:"-"`
 }
 
 type OperationStatus string
@@ -169,7 +194,7 @@ type Operation struct {
 	SkillID     string          `json:"skillId"`
 	Name        string          `json:"name"`
 	Agent       Agent           `json:"agent"`
-	Scope       Scope           `json:"scope"`
+	Placement   Placement       `json:"placement"`
 	ProjectRoot string          `json:"projectRoot,omitempty"`
 	Target      string          `json:"target"`
 	SourcePath  string          `json:"sourcePath"`

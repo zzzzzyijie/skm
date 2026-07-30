@@ -94,9 +94,7 @@ func (s *Store) Ensure() error {
 	}
 	configPath := filepath.Join(s.Paths.Home, "config.yaml")
 	if !exists(configPath) {
-		if err := s.SaveConfig(domain.DefaultConfig()); err != nil {
-			return err
-		}
+		return s.SaveConfig(domain.DefaultConfig())
 	}
 	return nil
 }
@@ -143,11 +141,18 @@ func (s *Store) LoadCatalog() (domain.Catalog, error) {
 	if err := loadYAML(filepath.Join(s.Paths.Home, "catalog.yaml"), &catalog); err != nil {
 		return domain.Catalog{}, err
 	}
+	for i := range catalog.Skills {
+		normalizeSkill(&catalog.Skills[i], domain.LocationLibrary)
+	}
 	return catalog, nil
 }
 
 func (s *Store) SaveCatalog(catalog domain.Catalog) error {
 	catalog.Version = domain.SchemaVersion
+	for i := range catalog.Skills {
+		catalog.Skills[i].Location = domain.LocationLibrary
+		catalog.Skills[i].LegacyScope = ""
+	}
 	sort.Slice(catalog.Skills, func(i, j int) bool { return catalog.Skills[i].ID < catalog.Skills[j].ID })
 	return saveYAML(filepath.Join(s.Paths.Home, "catalog.yaml"), catalog)
 }
@@ -158,6 +163,7 @@ func (s *Store) LoadProjectCatalog() (domain.Catalog, error) {
 		return domain.Catalog{}, err
 	}
 	for i := range catalog.Skills {
+		normalizeSkill(&catalog.Skills[i], domain.LocationProject)
 		if !filepath.IsAbs(catalog.Skills[i].Path) {
 			catalog.Skills[i].Path = filepath.Join(s.Paths.ProjectRoot, catalog.Skills[i].Path)
 		}
@@ -167,12 +173,17 @@ func (s *Store) LoadProjectCatalog() (domain.Catalog, error) {
 }
 
 func (s *Store) SaveProjectCatalog(catalog domain.Catalog) error {
+	if err := s.EnsureProject(); err != nil {
+		return err
+	}
 	catalog.Version = domain.SchemaVersion
 	sort.Slice(catalog.Skills, func(i, j int) bool { return catalog.Skills[i].ID < catalog.Skills[j].ID })
 	sort.Slice(catalog.Dependencies, func(i, j int) bool { return catalog.Dependencies[i].ID < catalog.Dependencies[j].ID })
 	portable := catalog
 	portable.Skills = append([]domain.Skill(nil), catalog.Skills...)
 	for i := range portable.Skills {
+		portable.Skills[i].Location = domain.LocationProject
+		portable.Skills[i].LegacyScope = ""
 		if fsx.Within(s.Paths.ProjectRoot, portable.Skills[i].Path) {
 			if relative, err := filepath.Rel(s.Paths.ProjectRoot, portable.Skills[i].Path); err == nil {
 				portable.Skills[i].Path = filepath.ToSlash(relative)
@@ -183,45 +194,25 @@ func (s *Store) SaveProjectCatalog(catalog domain.Catalog) error {
 	return saveYAML(filepath.Join(s.Paths.ProjectRoot, ".skm", "project.yaml"), portable)
 }
 
-func (s *Store) SyncProjectLock(state domain.State, skills []domain.Skill) error {
-	catalog, err := s.LoadProjectCatalog()
-	if err != nil {
-		return err
-	}
-	byID := make(map[string]domain.Skill, len(skills))
-	for _, value := range skills {
-		byID[value.ID] = value
-	}
-	catalog.Dependencies = nil
+func (s *Store) SaveProjectLock(catalog domain.Catalog) error {
 	lockFile := domain.LockFile{Version: domain.SchemaVersion}
-	for _, installation := range state.Installations {
-		if installation.Scope != domain.ScopeProject || installation.ProjectRoot != s.Paths.ProjectRoot {
-			continue
-		}
-		value, ok := byID[installation.SkillID]
-		if !ok {
-			return fmt.Errorf("cannot lock missing Skill %s", installation.SkillID)
-		}
-		catalog.Dependencies = append(catalog.Dependencies, domain.ProjectDependency{
-			ID: value.ID, Tags: append([]string(nil), value.Tags...), Agents: append([]domain.Agent(nil), installation.Agents...), Mode: installation.Mode,
-		})
+	for _, dependency := range catalog.Dependencies {
 		lockFile.Skills = append(lockFile.Skills, domain.LockedSkill{
-			ID: value.ID, Source: value.Source, Revision: value.Revision, Hash: value.Hash, Tags: append([]string(nil), value.Tags...),
+			ID: dependency.ID, Name: dependency.Name, Source: dependency.Source,
+			Revision: dependency.Revision, Hash: dependency.Hash, Tags: append([]string(nil), dependency.Tags...),
 		})
 	}
-	if err := s.SaveProjectCatalog(catalog); err != nil {
-		return err
+	for _, value := range catalog.Skills {
+		lockFile.Skills = append(lockFile.Skills, domain.LockedSkill{
+			ID: value.ID, Name: value.Name, Source: value.Source,
+			Revision: value.Revision, Hash: value.Hash, Tags: append([]string(nil), value.Tags...),
+		})
 	}
 	sort.Slice(lockFile.Skills, func(i, j int) bool { return lockFile.Skills[i].ID < lockFile.Skills[j].ID })
 	return saveYAML(filepath.Join(s.Paths.ProjectRoot, ".skm", "lock.yaml"), lockFile)
 }
 
-func (s *Store) HasProjectState(state domain.State) bool {
-	for _, installation := range state.Installations {
-		if installation.Scope == domain.ScopeProject && installation.ProjectRoot == s.Paths.ProjectRoot {
-			return true
-		}
-	}
+func (s *Store) HasProjectState() bool {
 	return exists(filepath.Join(s.Paths.ProjectRoot, ".skm", "project.yaml"))
 }
 
@@ -238,7 +229,7 @@ func (s *Store) LoadAllSkills() ([]domain.Skill, error) {
 }
 
 func (s *Store) UpsertSkill(value domain.Skill) error {
-	if value.Scope == domain.ScopeProject {
+	if value.Location == domain.LocationProject {
 		catalog, err := s.LoadProjectCatalog()
 		if err != nil {
 			return err
@@ -246,6 +237,7 @@ func (s *Store) UpsertSkill(value domain.Skill) error {
 		catalog.Skills = upsertSkill(catalog.Skills, value)
 		return s.SaveProjectCatalog(catalog)
 	}
+	value.Location = domain.LocationLibrary
 	catalog, err := s.LoadCatalog()
 	if err != nil {
 		return err
@@ -254,8 +246,8 @@ func (s *Store) UpsertSkill(value domain.Skill) error {
 	return s.SaveCatalog(catalog)
 }
 
-func (s *Store) RemoveSkill(id string, scope domain.Scope) error {
-	if scope == domain.ScopeProject {
+func (s *Store) RemoveSkill(id string, location domain.SkillLocation) error {
+	if location == domain.LocationProject {
 		catalog, err := s.LoadProjectCatalog()
 		if err != nil {
 			return err
@@ -276,11 +268,17 @@ func (s *Store) LoadSources() (domain.Sources, error) {
 	if err := loadYAML(filepath.Join(s.Paths.Home, "sources.yaml"), &sources); err != nil {
 		return domain.Sources{}, err
 	}
+	for i := range sources.Sources {
+		sources.Sources[i].LegacyScope = ""
+	}
 	return sources, nil
 }
 
 func (s *Store) SaveSources(sources domain.Sources) error {
 	sources.Version = domain.SchemaVersion
+	for i := range sources.Sources {
+		sources.Sources[i].LegacyScope = ""
+	}
 	sort.Slice(sources.Sources, func(i, j int) bool { return sources.Sources[i].Name < sources.Sources[j].Name })
 	return saveYAML(filepath.Join(s.Paths.Home, "sources.yaml"), sources)
 }
@@ -290,11 +288,41 @@ func (s *Store) LoadState() (domain.State, error) {
 	if err := loadYAML(filepath.Join(s.Paths.Home, "state", "state.yaml"), &state); err != nil {
 		return domain.State{}, err
 	}
+	for _, legacy := range state.LegacyInstallations {
+		placement := domain.PlacementUser
+		if legacy.Scope == "project" {
+			placement = domain.PlacementProject
+		}
+		state.Activations = append(state.Activations, domain.Activation{
+			SkillID: legacy.SkillID, Name: legacy.Name, Placement: placement,
+			ProjectRoot: legacy.ProjectRoot, Agents: legacy.Agents, Mode: legacy.Mode, UpdatedAt: legacy.UpdatedAt,
+		})
+	}
+	state.LegacyInstallations = nil
+	for i := range state.Deployments {
+		if !state.Deployments[i].Placement.Valid() {
+			state.Deployments[i].Placement = domain.PlacementUser
+			if state.Deployments[i].LegacyScope == "project" {
+				state.Deployments[i].Placement = domain.PlacementProject
+			}
+		}
+		state.Deployments[i].LegacyScope = ""
+	}
+	state.Version = domain.SchemaVersion
 	return state, nil
 }
 
 func (s *Store) SaveState(state domain.State) error {
 	state.Version = domain.SchemaVersion
+	state.LegacyInstallations = nil
+	for i := range state.Deployments {
+		state.Deployments[i].LegacyScope = ""
+	}
+	sort.Slice(state.Activations, func(i, j int) bool {
+		left := string(state.Activations[i].Placement) + state.Activations[i].ProjectRoot + state.Activations[i].SkillID
+		right := string(state.Activations[j].Placement) + state.Activations[j].ProjectRoot + state.Activations[j].SkillID
+		return left < right
+	})
 	return saveYAML(filepath.Join(s.Paths.Home, "state", "state.yaml"), state)
 }
 
@@ -304,6 +332,16 @@ func (s *Store) ObjectPath(hash, name string) string {
 
 func (s *Store) SourcePath(name string) string {
 	return filepath.Join(s.Paths.Home, "sources", name)
+}
+
+func normalizeSkill(value *domain.Skill, fallback domain.SkillLocation) {
+	if !value.Location.Valid() {
+		value.Location = fallback
+		if value.LegacyScope == "project" {
+			value.Location = domain.LocationProject
+		}
+	}
+	value.LegacyScope = ""
 }
 
 func loadYAML(path string, target any) error {

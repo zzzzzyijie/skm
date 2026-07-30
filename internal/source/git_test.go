@@ -1,9 +1,11 @@
 package source
 
 import (
+	"bytes"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"testing"
 
 	"github.com/zzzzzyijie/skm/internal/catalog"
@@ -24,13 +26,16 @@ func TestGitSourceCustomPathAndUpdate(t *testing.T) {
 	storage := sourceStore(t)
 	manager := NewGitManager(storage, catalog.New(storage))
 	bound, imported, err := manager.Add(domain.Source{
-		Name: "team", URL: repository, Paths: []string{"skills/one"}, Tags: []string{"backend"}, Scope: domain.ScopeGlobal,
+		Name: "team", URL: repository, Paths: []string{"skills/one"}, Tags: []string{"backend"},
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if bound.Revision == "" || len(imported) != 1 || imported[0].ID != "team/one" {
 		t.Fatalf("unexpected import: source=%#v skills=%#v", bound, imported)
+	}
+	if imported[0].SourcePath != "skills/one" {
+		t.Fatalf("source path = %q", imported[0].SourcePath)
 	}
 	if _, err := catalog.New(storage).Resolve("team/two"); err == nil {
 		t.Fatal("unbound Skill was imported")
@@ -57,10 +62,67 @@ func TestGitSourceCustomPathAndUpdate(t *testing.T) {
 func TestGitSourceRejectsCredentialURL(t *testing.T) {
 	storage := sourceStore(t)
 	_, _, err := NewGitManager(storage, catalog.New(storage)).Add(domain.Source{
-		Name: "secret", URL: "https://token@example.com/repo.git", Scope: domain.ScopeGlobal,
+		Name: "secret", URL: "https://token@example.com/repo.git",
 	})
 	if err == nil {
 		t.Fatal("expected credential URL to be rejected")
+	}
+}
+
+func TestFetchPinnedDoesNotChangeLibraryOrSourceBinding(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git is not installed")
+	}
+	repository := t.TempDir()
+	run(t, repository, "git", "init", "-b", "main")
+	writeRepoSkill(t, repository, "skills/one", "one", "version one")
+	commitAll(t, repository, "initial")
+
+	storage := sourceStore(t)
+	manager := NewGitManager(storage, catalog.New(storage))
+	sourceValue, _, err := manager.Add(domain.Source{
+		Name: "team", URL: repository, Ref: "main", Paths: []string{"skills/one"}, Tags: []string{"backend"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	beforeCatalog, err := storage.LoadCatalog()
+	if err != nil {
+		t.Fatal(err)
+	}
+	beforeSources, err := storage.LoadSources()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	writeRepoSkill(t, repository, "skills/one", "one", "version two")
+	commitAll(t, repository, "update")
+	updatedRevision := gitOutput(t, repository, "rev-parse", "HEAD")
+	fetched, err := manager.FetchPinned(domain.Source{
+		Name: "team", URL: repository, Ref: updatedRevision, Paths: []string{"skills/one"}, Tags: []string{"project"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(fetched) != 1 || fetched[0].Revision != updatedRevision || fetched[0].Hash == beforeCatalog.Skills[0].Hash {
+		t.Fatalf("unexpected pinned snapshot: %#v", fetched)
+	}
+	afterCatalog, err := storage.LoadCatalog()
+	if err != nil {
+		t.Fatal(err)
+	}
+	afterSources, err := storage.LoadSources()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(afterCatalog, beforeCatalog) {
+		t.Fatalf("FetchPinned changed Library catalog:\nbefore=%#v\nafter=%#v", beforeCatalog, afterCatalog)
+	}
+	if !reflect.DeepEqual(afterSources, beforeSources) {
+		t.Fatalf("FetchPinned changed source binding:\nbefore=%#v\nafter=%#v", beforeSources, afterSources)
+	}
+	if sourceValue.Revision != beforeSources.Sources[0].Revision {
+		t.Fatalf("unexpected initial source revision: %#v %#v", sourceValue, beforeSources.Sources[0])
 	}
 }
 
@@ -106,4 +168,15 @@ func run(t *testing.T, directory, name string, args ...string) {
 	if output, err := command.CombinedOutput(); err != nil {
 		t.Fatalf("%s %v failed: %v\n%s", name, args, err, output)
 	}
+}
+
+func gitOutput(t *testing.T, directory string, args ...string) string {
+	t.Helper()
+	command := exec.Command("git", args...)
+	command.Dir = directory
+	output, err := command.Output()
+	if err != nil {
+		t.Fatalf("git %v failed: %v", args, err)
+	}
+	return string(bytes.TrimSpace(output))
 }

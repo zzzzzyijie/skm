@@ -4,24 +4,14 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/zzzzzyijie/skm/internal/domain"
 )
 
 func TestEnsureAndYAMLRoundTrips(t *testing.T) {
-	root := t.TempDir()
-	storage, err := New(Paths{
-		Home:        filepath.Join(root, "user", ".skm"),
-		UserHome:    filepath.Join(root, "user"),
-		ProjectRoot: filepath.Join(root, "project"),
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := storage.Ensure(); err != nil {
-		t.Fatal(err)
-	}
+	storage := testStore(t)
 	config, err := storage.LoadConfig()
 	if err != nil {
 		t.Fatal(err)
@@ -29,51 +19,37 @@ func TestEnsureAndYAMLRoundTrips(t *testing.T) {
 	if !reflect.DeepEqual(config.Defaults.Tags, []string{"general"}) {
 		t.Fatalf("default config = %#v", config)
 	}
-
-	central := domain.Catalog{Skills: []domain.Skill{{ID: "local/one", Name: "one", Scope: domain.ScopePersonal}}}
-	if err := storage.SaveCatalog(central); err != nil {
+	if err := storage.SaveCatalog(domain.Catalog{Skills: []domain.Skill{{ID: "local/one", Name: "one", Location: domain.LocationLibrary}}}); err != nil {
 		t.Fatal(err)
 	}
-	project := domain.Catalog{Skills: []domain.Skill{{ID: "project/two", Name: "two", Scope: domain.ScopeProject}}}
-	if err := storage.SaveProjectCatalog(project); err != nil {
+	if err := storage.SaveProjectCatalog(domain.Catalog{Skills: []domain.Skill{{ID: "project/two", Name: "two", Location: domain.LocationProject, Path: filepath.Join(storage.Paths.ProjectRoot, ".skm", "skills", "two")}}}); err != nil {
 		t.Fatal(err)
 	}
 	all, err := storage.LoadAllSkills()
-	if err != nil {
-		t.Fatal(err)
+	if err != nil || len(all) != 2 {
+		t.Fatalf("all skills = %#v, err=%v", all, err)
 	}
-	if len(all) != 2 {
-		t.Fatalf("all skills = %#v", all)
-	}
-
-	sources := domain.Sources{Sources: []domain.Source{{Name: "team", URL: "git@example.invalid:team.git", Scope: domain.ScopeGlobal}}}
+	sources := domain.Sources{Sources: []domain.Source{{Name: "team", URL: "git@example.invalid:team.git"}}}
 	if err := storage.SaveSources(sources); err != nil {
 		t.Fatal(err)
 	}
 	loadedSources, err := storage.LoadSources()
-	if err != nil {
-		t.Fatal(err)
+	if err != nil || len(loadedSources.Sources) != 1 {
+		t.Fatalf("sources = %#v, err=%v", loadedSources, err)
 	}
-	if len(loadedSources.Sources) != 1 || loadedSources.Sources[0].Name != "team" {
-		t.Fatalf("sources = %#v", loadedSources)
-	}
-
-	state := domain.State{Installations: []domain.Installation{{SkillID: "local/one", Scope: domain.ScopePersonal}}}
+	state := domain.State{Activations: []domain.Activation{{SkillID: "local/one", Placement: domain.PlacementUser}}}
 	if err := storage.SaveState(state); err != nil {
 		t.Fatal(err)
 	}
 	loadedState, err := storage.LoadState()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(loadedState.Installations) != 1 || loadedState.Installations[0].SkillID != "local/one" {
-		t.Fatalf("state = %#v", loadedState)
+	if err != nil || len(loadedState.Activations) != 1 || loadedState.Activations[0].SkillID != "local/one" {
+		t.Fatalf("state = %#v, err=%v", loadedState, err)
 	}
 }
 
 func TestUpsertAndRemoveSkill(t *testing.T) {
 	storage := testStore(t)
-	value := domain.Skill{ID: "local/one", Name: "one", Scope: domain.ScopePersonal, Description: "first"}
+	value := domain.Skill{ID: "local/one", Name: "one", Location: domain.LocationLibrary, Description: "first"}
 	if err := storage.UpsertSkill(value); err != nil {
 		t.Fatal(err)
 	}
@@ -82,21 +58,45 @@ func TestUpsertAndRemoveSkill(t *testing.T) {
 		t.Fatal(err)
 	}
 	catalog, err := storage.LoadCatalog()
-	if err != nil {
+	if err != nil || len(catalog.Skills) != 1 || catalog.Skills[0].Description != "updated" {
+		t.Fatalf("catalog = %#v, err=%v", catalog, err)
+	}
+	if err := storage.RemoveSkill(value.ID, value.Location); err != nil {
 		t.Fatal(err)
 	}
-	if len(catalog.Skills) != 1 || catalog.Skills[0].Description != "updated" {
-		t.Fatalf("catalog = %#v", catalog)
-	}
-	if err := storage.RemoveSkill(value.ID, value.Scope); err != nil {
-		t.Fatal(err)
-	}
-	catalog, err = storage.LoadCatalog()
-	if err != nil {
-		t.Fatal(err)
-	}
+	catalog, _ = storage.LoadCatalog()
 	if len(catalog.Skills) != 0 {
 		t.Fatalf("skill was not removed: %#v", catalog)
+	}
+}
+
+func TestSchemaV1StateAndCatalogAreMigrated(t *testing.T) {
+	storage := testStore(t)
+	oldCatalog := "version: 1\nskills:\n  - id: local/one\n    name: one\n    scope: personal\n"
+	if err := os.WriteFile(filepath.Join(storage.Paths.Home, "catalog.yaml"), []byte(oldCatalog), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	oldState := "version: 1\ninstallations:\n  - skillId: local/one\n    name: one\n    scope: personal\n    agents: [codex]\n    mode: symlink\n"
+	if err := os.WriteFile(filepath.Join(storage.Paths.Home, "state", "state.yaml"), []byte(oldState), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	catalog, err := storage.LoadCatalog()
+	if err != nil || catalog.Skills[0].Location != domain.LocationLibrary {
+		t.Fatalf("catalog migration = %#v, err=%v", catalog, err)
+	}
+	state, err := storage.LoadState()
+	if err != nil || len(state.Activations) != 1 || state.Activations[0].Placement != domain.PlacementUser {
+		t.Fatalf("state migration = %#v, err=%v", state, err)
+	}
+	if err := storage.SaveState(state); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(filepath.Join(storage.Paths.Home, "state", "state.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(raw), "installations:") || !strings.Contains(string(raw), "activations:") {
+		t.Fatalf("state was not written as v2:\n%s", raw)
 	}
 }
 
@@ -133,31 +133,20 @@ func TestLockCanBeAcquiredAndReleased(t *testing.T) {
 	}
 }
 
-func TestSyncProjectLock(t *testing.T) {
+func TestSaveProjectLockIncludesRequirementsAndVendoredSkills(t *testing.T) {
 	storage := testStore(t)
-	value := domain.Skill{
-		ID: "team/review", Name: "review", Source: "team", Scope: domain.ScopeGlobal,
-		Revision: "abc123", Hash: "deadbeef", Tags: []string{"review"}, Path: filepath.Join(storage.Paths.Home, "objects", "deadbeef", "review"),
+	project := domain.Catalog{
+		Dependencies: []domain.ProjectDependency{{ID: "team/review", Name: "review", Source: "team", Revision: "abc123", Hash: "deadbeef", Tags: []string{"review"}}},
+		Skills:       []domain.Skill{{ID: "project/release", Name: "release", Source: "project", Hash: "cafe", Tags: []string{"release"}}},
 	}
-	state := domain.State{Installations: []domain.Installation{{
-		SkillID: value.ID, Name: value.Name, Scope: domain.ScopeProject, ProjectRoot: storage.Paths.ProjectRoot,
-		Agents: []domain.Agent{domain.AgentClaude, domain.AgentCodex}, Mode: domain.ModeSymlink,
-	}}}
-	if err := storage.SyncProjectLock(state, []domain.Skill{value}); err != nil {
+	if err := storage.SaveProjectLock(project); err != nil {
 		t.Fatal(err)
-	}
-	project, err := storage.LoadProjectCatalog()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(project.Dependencies) != 1 || project.Dependencies[0].ID != value.ID {
-		t.Fatalf("dependencies = %#v", project.Dependencies)
 	}
 	var lock domain.LockFile
 	if err := loadYAML(filepath.Join(storage.Paths.ProjectRoot, ".skm", "lock.yaml"), &lock); err != nil {
 		t.Fatal(err)
 	}
-	if len(lock.Skills) != 1 || lock.Skills[0].Revision != "abc123" || lock.Skills[0].Hash != "deadbeef" {
+	if len(lock.Skills) != 2 || lock.Skills[1].ID != "team/review" {
 		t.Fatalf("lock = %#v", lock)
 	}
 }

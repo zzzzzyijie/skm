@@ -34,21 +34,8 @@ func NewGitManager(storage *store.Store, catalogManager *catalog.Manager) *GitMa
 }
 
 func (m *GitManager) Add(value domain.Source) (domain.Source, []domain.Skill, error) {
-	value.Name = strings.ToLower(strings.TrimSpace(value.Name))
-	if !validSourceName.MatchString(value.Name) {
-		return domain.Source{}, nil, fmt.Errorf("invalid source name %q", value.Name)
-	}
-	if strings.TrimSpace(value.URL) == "" {
-		return domain.Source{}, nil, fmt.Errorf("source URL is required")
-	}
-	if parsed, err := url.Parse(value.URL); err == nil && parsed.User != nil {
-		return domain.Source{}, nil, fmt.Errorf("source URL must not contain credentials; use Git credential storage or SSH")
-	}
-	if value.Scope == "" {
-		value.Scope = domain.ScopeGlobal
-	}
-	if value.Scope != domain.ScopeGlobal && value.Scope != domain.ScopePersonal {
-		return domain.Source{}, nil, fmt.Errorf("Git source scope must be global or personal")
+	if err := validateSource(&value); err != nil {
+		return domain.Source{}, nil, err
 	}
 	config, err := m.Store.LoadConfig()
 	if err != nil {
@@ -76,6 +63,16 @@ func (m *GitManager) Add(value domain.Source) (domain.Source, []domain.Skill, er
 		return domain.Source{}, nil, err
 	}
 	return updated, imported, nil
+}
+
+// FetchPinned stores immutable snapshots for a project dependency without
+// changing the user's source binding or current Library entries.
+func (m *GitManager) FetchPinned(value domain.Source) ([]domain.Skill, error) {
+	if err := validateSource(&value); err != nil {
+		return nil, err
+	}
+	_, imported, err := m.fetch(value, false)
+	return imported, err
 }
 
 func (m *GitManager) Update(names []string) ([]domain.Source, []domain.Skill, error) {
@@ -142,6 +139,10 @@ func (m *GitManager) Remove(name string) (domain.Source, error) {
 }
 
 func (m *GitManager) syncOne(value domain.Source) (domain.Source, []domain.Skill, error) {
+	return m.fetch(value, true)
+}
+
+func (m *GitManager) fetch(value domain.Source, persist bool) (domain.Source, []domain.Skill, error) {
 	if _, err := exec.LookPath(m.GitPath); err != nil {
 		return domain.Source{}, nil, fmt.Errorf("git executable not found")
 	}
@@ -180,12 +181,12 @@ func (m *GitManager) syncOne(value domain.Source) (domain.Source, []domain.Skill
 		}
 		documents = append(documents, document)
 	}
-	existingSkills, err := m.Store.LoadAllSkills()
+	existingCatalog, err := m.Store.LoadCatalog()
 	if err != nil {
 		return domain.Source{}, nil, err
 	}
 	existingTags := make(map[string][]string)
-	for _, existing := range existingSkills {
+	for _, existing := range existingCatalog.Skills {
 		if existing.Source == value.Name {
 			existingTags[existing.ID] = existing.Tags
 		}
@@ -196,18 +197,49 @@ func (m *GitManager) syncOne(value domain.Source) (domain.Source, []domain.Skill
 		if preserved := existingTags[value.Name+"/"+document.Name]; len(preserved) > 0 {
 			tagValues = preserved
 		}
-		importedSkill, err := m.Catalog.Import(document, value.Name, value.Scope, revision, tagValues)
+		var importedSkill domain.Skill
+		if persist {
+			importedSkill, err = m.Catalog.Import(document, value.Name, revision, tagValues)
+		} else {
+			importedSkill, err = m.Catalog.Snapshot(document, value.Name, revision, tagValues)
+		}
 		if err != nil {
 			return domain.Source{}, imported, err
 		}
+		relative, relErr := filepath.Rel(checkout, document.Path)
+		if relErr != nil {
+			return domain.Source{}, imported, relErr
+		}
+		importedSkill.SourcePath = filepath.ToSlash(relative)
+		if persist {
+			if err := m.Store.UpsertSkill(importedSkill); err != nil {
+				return domain.Source{}, imported, err
+			}
+		}
 		imported = append(imported, importedSkill)
 	}
-	if err := fsx.ReplacePath(checkout, m.Store.SourcePath(value.Name)); err != nil {
-		return domain.Source{}, imported, err
+	if persist {
+		if err := fsx.ReplacePath(checkout, m.Store.SourcePath(value.Name)); err != nil {
+			return domain.Source{}, imported, err
+		}
 	}
 	value.Revision = revision
 	value.UpdatedAt = m.Now().UTC()
 	return value, imported, nil
+}
+
+func validateSource(value *domain.Source) error {
+	value.Name = strings.ToLower(strings.TrimSpace(value.Name))
+	if !validSourceName.MatchString(value.Name) {
+		return fmt.Errorf("invalid source name %q", value.Name)
+	}
+	if strings.TrimSpace(value.URL) == "" {
+		return fmt.Errorf("source URL is required")
+	}
+	if parsed, err := url.Parse(value.URL); err == nil && parsed.User != nil {
+		return fmt.Errorf("source URL must not contain credentials; use Git credential storage or SSH")
+	}
+	return nil
 }
 
 func (m *GitManager) runGit(secret string, args ...string) error {

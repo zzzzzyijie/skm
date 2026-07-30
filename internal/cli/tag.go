@@ -18,7 +18,7 @@ type tagCount struct {
 }
 
 func (a *App) newTagCommand() *cobra.Command {
-	command := &cobra.Command{Use: "tag", Short: "Manage scenario tags"}
+	command := &cobra.Command{Use: "tag", Short: "Manage personal Library tags"}
 	command.AddCommand(a.newTagListCommand(), a.newTagAddCommand(), a.newTagRemoveCommand(), a.newTagRenameCommand())
 	return command
 }
@@ -26,18 +26,18 @@ func (a *App) newTagCommand() *cobra.Command {
 func (a *App) newTagListCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "list",
-		Short: "List tags and Skill counts",
+		Short: "List personal Library tags and Skill counts",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			storage, err := a.openStore()
 			if err != nil {
 				return err
 			}
-			values, err := storage.LoadAllSkills()
+			library, err := storage.LoadCatalog()
 			if err != nil {
 				return err
 			}
-			counts := aggregateTags(values)
+			counts := aggregateTags(library.Skills)
 			result := make([]tagCount, 0, len(counts))
 			for name, count := range counts {
 				result = append(result, tagCount{Name: name, Count: count})
@@ -58,7 +58,7 @@ func (a *App) newTagListCommand() *cobra.Command {
 func (a *App) newTagAddCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "add <skill> <tag...>",
-		Short: "Add one or more tags to a Skill",
+		Short: "Add one or more tags to a personal Library Skill",
 		Args:  cobra.MinimumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			storage, err := a.openStore()
@@ -124,7 +124,7 @@ func (a *App) newTagRemoveCommand() *cobra.Command {
 func (a *App) newTagRenameCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "rename <old> <new>",
-		Short: "Rename a tag in the current catalog",
+		Short: "Rename a tag in the personal Library",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			validated, err := tags.Normalize([]string{args[1]}, nil)
@@ -139,11 +139,11 @@ func (a *App) newTagRenameCommand() *cobra.Command {
 			}
 			changed := 0
 			err = withLock(storage, func() error {
-				values, err := storage.LoadAllSkills()
+				library, err := storage.LoadCatalog()
 				if err != nil {
 					return err
 				}
-				for _, value := range values {
+				for _, value := range library.Skills {
 					found := false
 					for i, tag := range value.Tags {
 						if tag == oldName {

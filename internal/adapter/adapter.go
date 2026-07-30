@@ -7,15 +7,15 @@ import (
 	"github.com/zzzzzyijie/skm/internal/domain"
 )
 
-func Target(agent domain.Agent, scope domain.Scope, userHome, projectRoot, skillName string) (string, error) {
+func Target(agent domain.Agent, placement domain.Placement, userHome, projectRoot, skillName string) (string, error) {
 	if !agent.Valid() {
 		return "", fmt.Errorf("unsupported agent %q", agent)
 	}
-	if !scope.Valid() {
-		return "", fmt.Errorf("invalid scope %q", scope)
+	if !placement.Valid() {
+		return "", fmt.Errorf("invalid placement %q", placement)
 	}
 	var base string
-	if scope == domain.ScopeProject {
+	if placement == domain.PlacementProject {
 		if projectRoot == "" {
 			return "", fmt.Errorf("project root is required for project deployment")
 		}

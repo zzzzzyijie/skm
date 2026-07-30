@@ -27,39 +27,18 @@ func New(storage *store.Store) *Manager {
 	return &Manager{Store: storage, Now: time.Now}
 }
 
-func (m *Manager) AddLocal(path, sourceName string, scope domain.Scope, tagValues []string) (domain.Skill, error) {
-	if !scope.Valid() {
-		return domain.Skill{}, fmt.Errorf("invalid scope %q", scope)
-	}
+func (m *Manager) AddLocal(path, sourceName string, tagValues []string) (domain.Skill, error) {
 	if sourceName == "" {
-		if scope == domain.ScopeProject {
-			sourceName = "project"
-		} else {
-			sourceName = "local"
-		}
-	}
-	if !validSource.MatchString(sourceName) {
-		return domain.Skill{}, fmt.Errorf("invalid source name %q", sourceName)
-	}
-	config, err := m.Store.LoadConfig()
-	if err != nil {
-		return domain.Skill{}, err
-	}
-	normalizedTags, err := tags.Normalize(tagValues, config.Defaults.Tags)
-	if err != nil {
-		return domain.Skill{}, err
+		sourceName = "local"
 	}
 	document, err := skill.Validate(path)
 	if err != nil {
 		return domain.Skill{}, err
 	}
-	return m.Import(document, sourceName, scope, "", normalizedTags)
+	return m.Import(document, sourceName, "", tagValues)
 }
 
-func (m *Manager) Import(document skill.Document, sourceName string, scope domain.Scope, revision string, tagValues []string) (domain.Skill, error) {
-	if !scope.Valid() {
-		return domain.Skill{}, fmt.Errorf("invalid scope %q", scope)
-	}
+func (m *Manager) Snapshot(document skill.Document, sourceName, revision string, tagValues []string) (domain.Skill, error) {
 	if !validSource.MatchString(sourceName) {
 		return domain.Skill{}, fmt.Errorf("invalid source name %q", sourceName)
 	}
@@ -72,17 +51,8 @@ func (m *Manager) Import(document skill.Document, sourceName string, scope domai
 		return domain.Skill{}, err
 	}
 	destination := m.Store.ObjectPath(document.Hash, document.Name)
-	projectRoot := ""
-	if scope == domain.ScopeProject {
-		if err := m.Store.EnsureProject(); err != nil {
-			return domain.Skill{}, err
-		}
-		destination = filepath.Join(m.Store.Paths.ProjectRoot, ".skm", "skills", document.Name)
-		projectRoot = m.Store.Paths.ProjectRoot
-	}
-	samePath := sameFilePath(document.Path, destination)
-	if !samePath {
-		if _, err := os.Stat(destination); os.IsNotExist(err) || scope == domain.ScopeProject {
+	if !sameFilePath(document.Path, destination) {
+		if _, err := os.Stat(destination); os.IsNotExist(err) {
 			if err := fsx.CopyDirAtomic(document.Path, destination); err != nil {
 				return domain.Skill{}, err
 			}
@@ -90,19 +60,25 @@ func (m *Manager) Import(document skill.Document, sourceName string, scope domai
 			return domain.Skill{}, err
 		}
 	}
-	value := domain.Skill{
+	return domain.Skill{
 		ID:          sourceName + "/" + document.Name,
 		Name:        document.Name,
 		Description: document.Description,
 		Tags:        normalizedTags,
 		Source:      sourceName,
-		Scope:       scope,
+		Location:    domain.LocationLibrary,
 		Revision:    revision,
 		Hash:        document.Hash,
 		Path:        destination,
-		ProjectRoot: projectRoot,
 		Metadata:    document.Metadata,
 		AddedAt:     m.Now().UTC(),
+	}, nil
+}
+
+func (m *Manager) Import(document skill.Document, sourceName, revision string, tagValues []string) (domain.Skill, error) {
+	value, err := m.Snapshot(document, sourceName, revision, tagValues)
+	if err != nil {
+		return domain.Skill{}, err
 	}
 	if err := m.Store.UpsertSkill(value); err != nil {
 		return domain.Skill{}, err
@@ -110,7 +86,58 @@ func (m *Manager) Import(document skill.Document, sourceName string, scope domai
 	return value, nil
 }
 
-func (m *Manager) List(scope domain.Scope, tagValues []string) ([]domain.Skill, error) {
+func (m *Manager) Vendor(value domain.Skill, agents []domain.Agent, mode domain.LinkMode, tagValues []string) (domain.Skill, error) {
+	if value.Location != domain.LocationLibrary {
+		return domain.Skill{}, fmt.Errorf("only Library Skills can be vendored")
+	}
+	normalizedTags, err := tags.Normalize(tagValues, value.Tags)
+	if err != nil {
+		return domain.Skill{}, err
+	}
+	if err := m.Store.EnsureProject(); err != nil {
+		return domain.Skill{}, err
+	}
+	destination := filepath.Join(m.Store.Paths.ProjectRoot, ".skm", "skills", value.Name)
+	if _, err := os.Lstat(destination); err == nil {
+		return domain.Skill{}, fmt.Errorf("project Skill %q already exists", value.Name)
+	} else if !os.IsNotExist(err) {
+		return domain.Skill{}, err
+	}
+	if err := fsx.CopyDirAtomic(value.Path, destination); err != nil {
+		return domain.Skill{}, err
+	}
+	document, err := skill.Validate(destination)
+	if err != nil {
+		return domain.Skill{}, err
+	}
+	forkedAt := value.Revision
+	if forkedAt == "" {
+		forkedAt = value.Hash
+	}
+	vendored := domain.Skill{
+		ID:          "project/" + document.Name,
+		Name:        document.Name,
+		Description: document.Description,
+		Tags:        normalizedTags,
+		Source:      "project",
+		Location:    domain.LocationProject,
+		Hash:        document.Hash,
+		Path:        destination,
+		ProjectRoot: m.Store.Paths.ProjectRoot,
+		ForkedFrom:  value.ID,
+		ForkedAt:    forkedAt,
+		Agents:      append([]domain.Agent(nil), agents...),
+		Mode:        mode,
+		Metadata:    document.Metadata,
+		AddedAt:     m.Now().UTC(),
+	}
+	if err := m.Store.UpsertSkill(vendored); err != nil {
+		return domain.Skill{}, err
+	}
+	return vendored, nil
+}
+
+func (m *Manager) List(location domain.SkillLocation, tagValues []string) ([]domain.Skill, error) {
 	values, err := m.Store.LoadAllSkills()
 	if err != nil {
 		return nil, err
@@ -123,7 +150,7 @@ func (m *Manager) List(scope domain.Scope, tagValues []string) ([]domain.Skill, 
 	}
 	result := make([]domain.Skill, 0, len(values))
 	for _, value := range values {
-		if scope != "" && value.Scope != scope {
+		if location != "" && value.Location != location {
 			continue
 		}
 		if !tags.MatchAll(value.Tags, tagValues) {
@@ -133,10 +160,7 @@ func (m *Manager) List(scope domain.Scope, tagValues []string) ([]domain.Skill, 
 	}
 	sort.Slice(result, func(i, j int) bool {
 		if result[i].Name == result[j].Name {
-			if result[i].Scope.Priority() == result[j].Scope.Priority() {
-				return result[i].ID < result[j].ID
-			}
-			return result[i].Scope.Priority() > result[j].Scope.Priority()
+			return result[i].ID < result[j].ID
 		}
 		return result[i].Name < result[j].Name
 	})
@@ -149,6 +173,14 @@ func (m *Manager) Resolve(query string) (domain.Skill, error) {
 		return domain.Skill{}, err
 	}
 	return Resolve(values, query)
+}
+
+func (m *Manager) ResolveLibrary(query string) (domain.Skill, error) {
+	catalog, err := m.Store.LoadCatalog()
+	if err != nil {
+		return domain.Skill{}, err
+	}
+	return Resolve(catalog.Skills, query)
 }
 
 func Resolve(values []domain.Skill, query string) (domain.Skill, error) {
@@ -173,29 +205,19 @@ func Resolve(values []domain.Skill, query string) (domain.Skill, error) {
 	if len(matches) == 0 {
 		return domain.Skill{}, fmt.Errorf("skill %q not found", query)
 	}
-	sort.Slice(matches, func(i, j int) bool {
-		return matches[i].Scope.Priority() > matches[j].Scope.Priority()
-	})
-	highest := matches[0].Scope.Priority()
-	var top []domain.Skill
-	for _, value := range matches {
-		if value.Scope.Priority() == highest {
-			top = append(top, value)
-		}
-	}
-	if len(top) > 1 {
-		ids := make([]string, 0, len(top))
-		for _, value := range top {
+	if len(matches) > 1 {
+		ids := make([]string, 0, len(matches))
+		for _, value := range matches {
 			ids = append(ids, value.ID)
 		}
 		sort.Strings(ids)
 		return domain.Skill{}, fmt.Errorf("skill %q is ambiguous; use one of: %s", query, strings.Join(ids, ", "))
 	}
-	return top[0], nil
+	return matches[0], nil
 }
 
 func (m *Manager) UpdateTags(query string, mutate func([]string) []string) (domain.Skill, error) {
-	value, err := m.Resolve(query)
+	value, err := m.ResolveLibrary(query)
 	if err != nil {
 		return domain.Skill{}, err
 	}
@@ -218,11 +240,11 @@ func (m *Manager) UpdateTags(query string, mutate func([]string) []string) (doma
 }
 
 func (m *Manager) Remove(query string) (domain.Skill, error) {
-	value, err := m.Resolve(query)
+	value, err := m.ResolveLibrary(query)
 	if err != nil {
 		return domain.Skill{}, err
 	}
-	if err := m.Store.RemoveSkill(value.ID, value.Scope); err != nil {
+	if err := m.Store.RemoveSkill(value.ID, domain.LocationLibrary); err != nil {
 		return domain.Skill{}, err
 	}
 	return value, nil

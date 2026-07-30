@@ -11,7 +11,7 @@ import (
 	"github.com/zzzzzyijie/skm/internal/store"
 )
 
-const Version = "0.1.0"
+const Version = "0.2.0"
 
 type App struct {
 	Out       io.Writer
@@ -65,14 +65,15 @@ func (a *App) RootCommand() *cobra.Command {
 		a.newShowCommand(),
 		a.newValidateCommand(),
 		a.newRemoveCommand(),
-		a.newLinkCommand(),
-		a.newUnlinkCommand(),
+		a.newEnableCommand(),
+		a.newDisableCommand(),
 		a.newPlanCommand(),
 		a.newApplyCommand(),
 		a.newStatusCommand(),
 		a.newDoctorCommand(),
 		a.newSourceCommand(),
 		a.newTagCommand(),
+		a.newProjectCommand(),
 		a.newSyncCommand(),
 		a.newCompletionCommand(root),
 		&cobra.Command{

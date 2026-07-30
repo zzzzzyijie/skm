@@ -1,137 +1,195 @@
-# 🚀 skm (AI Skill Manager)
+# skm (AI Skill Manager)
 
-**skm** 是一款专为开发者打造的 AI Agent 技能 (Skills) 管理工具。通过统一的作用域隔离与软链接引擎，轻松搞定个人偏好、项目规范与全局技能在 Claude Code、Codex 之间的同步与管理。
+`skm` 管理个人 AI Agent Skill Library，并将选中的 Skill 安全启用到 Claude Code、
+Codex 或具体项目。它将三个概念明确分开：
 
----
+```text
+Library     用户拥有和管理哪些 Skill
+Activation  哪些 Skill 对哪些 Agent 启用
+Project     项目引用或独立维护哪些 Skill
+```
 
-## ✨ Features
+## 功能
 
-- 🎯 **三层作用域管理**：清晰划分 `Global`（全局）、`Personal`（个人私有）与 `Project`（项目专属）。
-- 🏷 **场景标签**：支持默认标签与自定义多标签，用于分类、筛选和批量管理不同场景的 Skills。
-- 🔗 **安全部署引擎**：一次编写，通过软链接或受控复制映射至各 Agent 的 Skill 目录。
-- 🖥 **macOS 原生体验**：终端极速 CLI。
-- 🔄 **Git 同步**：支持个人与团队 Skill 库的远程 Git 拉取与更新。
+- 个人 Library：添加、移除、查看和验证本地 Skill。
+- Library 标签：分类、组合筛选和批量启用。
+- Git Source：导入和更新个人或团队 Skill 仓库。
+- Agent Activation：用受控软链接启用到 Claude Code 和 Codex。
+- Project Require：记录 Git 来源、revision 和 hash，可在其他机器恢复。
+- Project Vendor：复制成项目独立版本，个人原版继续保留。
+- 安全部署：不覆盖未知目标，检测被修改的链接或副本。
+- 可审计状态：YAML Manifest、Lock 和版本化 JSON 输出。
 
----
+完整设计见 [Library、Activation 与 Project 设计](docs/library-activation-project-design.md)，
+完整命令说明见 [CLI 使用指南](docs/cli-guide.md)。
 
-## 📦 Quick Start (CLI)
+## 安装
+
+要求：
+
+- macOS
+- Go 1.25 或更高版本
+- 常见 Shell
+- Git，仅在使用 Git Source 或恢复 `project require` 依赖时需要
 
 ```bash
-# 构建并安装到 ~/.local/bin
 mkdir -p ~/.local/bin
 go build -trimpath -o ~/.local/bin/skm ./cmd/skm
-
-# 如果尚未配置，在 ~/.zshrc 中加入：
-# export PATH="$HOME/.local/bin:$PATH"
 export PATH="$HOME/.local/bin:$PATH"
-rehash
-
-# 初始化
 skm version
 skm init
+```
 
-# 添加本地 Skill：参数是包含 SKILL.md 的目录，不是网络 URL
+## 快速开始
+
+### 建立个人 Library
+
+```bash
 skm add "$HOME/my-skills/code-review" \
-  --scope personal \
-  --tag development
+  --tag development \
+  --tag review
 
-# 进入目标项目并部署；project 是固定作用域值，不是路径
-cd "$HOME/Projects/shop-api"
-skm link local/code-review \
-  --scope project \
-  --agent claude,codex
-
-# 检查部署状态；重复 apply 是幂等的
-skm status
-skm apply
+skm list --tag development
+skm show local/code-review
 ```
 
-`skm add` 只添加本地目录；Git 仓库使用 `skm source add <git-url> --name <name>`。如需在其他目录操作项目，使用全局参数 `--project /path/to/project`：
+`add` 只加入 Library，不自动启用。
+
+### 对 Agent 启用或禁用
 
 ```bash
-skm --project "$HOME/Projects/shop-api" \
-  link local/code-review --scope project --agent claude,codex
+skm enable local/code-review --agent claude,codex
+
+# 也可以按个人 Library 标签批量启用
+skm enable --tag development --agent codex
+
+skm disable local/code-review --agent claude
 ```
 
-项目级部署会更新可提交的 `.skm/project.yaml` 和 `.skm/lock.yaml`，记录依赖、Git revision 与内容 hash。
+默认使用软链接：
 
-从安装、Skill 编写到 Git 同步和故障排查的完整说明见 [CLI 完整教程](docs/cli-guide.md)。
+```text
+~/.claude/skills/code-review -> ~/.skm/objects/<hash>/code-review
+~/.agents/skills/code-review -> ~/.skm/objects/<hash>/code-review
+```
 
----
+禁用不会删除 Library 内容。
 
-## 🔗 Git Sources
-
-通过自定义名称绑定任意 Git Skill 仓库。可以锁定 branch、tag 或 commit，并通过 `--path` 只导入指定子目录：
+### 添加 Git Skill 库
 
 ```bash
-# 扫描仓库内所有 SKILL.md
 skm source add git@github.com:example/team-skills.git \
   --name team \
   --ref main \
+  --path skills/code-review \
   --tag team
 
-# 只绑定指定 Skill 目录，可重复传入 --path
-skm source add https://github.com/example/skills.git \
-  --name review-pack \
-  --path skills/code-review \
-  --scope global
-
-# 拉取新快照并更新已部署 Skill
+skm source update team
 skm sync
 ```
 
-Git 凭证由系统 Git、SSH Agent 或 Credential Helper 管理；`skm` 不接受或保存 URL 内嵌凭证。
+Git 凭证由系统 Git、SSH Agent 或 Credential Helper 管理。不要把 Token 写入 URL。
+skm 不会自动执行 `git init`、提交或配置远程；纯本地 Library 不需要 Git。
 
----
+## 项目使用
 
-## 🏷 Tags
+无需提前运行 `skm project init`。个人 Skill 经 `enable` 后可供所有项目使用；
+`project require`、`project vendor` 和 `project apply` 会在需要时自动创建 `.skm/`
+项目状态。
+
+### Require：项目引用团队 Skill
+
+适用于团队消费一个 Git-backed Skill，但不在当前仓库修改它：
 
 ```bash
-skm list --tag development --tag testing
-skm link --tag development --scope project --agent codex
-skm tag add local/code-review backend code-review
-skm tag remove local/code-review backend
-skm tag rename code-review review
+cd "$HOME/Projects/shop-api"
+skm project require team/code-review --agent claude,codex
 ```
 
-多个 `--tag` 使用 AND 语义。显式标签替代默认的 `general` 标签。
-
----
-
-## 🧰 Commands
+这会提交可移植的：
 
 ```text
-init, add, list, show, validate, remove
-link, unlink, plan, apply, status, doctor
-source add|list|update|remove, sync
-tag list|add|remove|rename
-completion, version
+.skm/project.yaml
+.skm/lock.yaml
 ```
 
-所有查询和主要操作均支持 `--json`，输出带有 `schemaVersion` 的稳定 envelope，可供后续 macOS App 调用。使用 `--home` 或 `SKM_HOME` 可以覆盖默认的 `~/.skm` 数据目录。
-
----
-
-## ✅ Tests
+其他成员 clone 项目后执行：
 
 ```bash
-go test ./...
-go test -race ./...
-go vet ./...
+skm project apply
 ```
 
-测试使用临时 HOME、临时项目和本地 Git 仓库，不访问真实 Agent 配置目录。
+如果相同 `ID + hash` 已由用户 Activation 提供，项目不会创建重复链接，
+状态显示为 `satisfied-by-user`。本地-only Skill 没有团队可恢复来源，不能 require；
+应先发布到 Git Source，或改用 vendor。
 
----
+### Vendor：项目独立维护 Skill
 
-## 🛠 Tech Stack
+适用于项目需要修改并随仓库维护 Skill：
 
-- **CLI Engine**: Go / Cobra
-- **Format**: `SKILL.md` (YAML Frontmatter + Markdown)
-- **macOS App**: Swift / SwiftUI / AppKit
+```bash
+skm project vendor local/release-check --agent claude,codex
+```
 
----
+内容复制到：
 
-## 📄 License
+```text
+<project>/.skm/skills/release-check/
+```
+
+个人 Library 中的 `local/release-check` 保留不变。项目副本成为
+`project/release-check`，之后独立演化，不进行隐式双向同步。
+
+项目 Agent 目录里的链接是本机生成状态，不应提交 Git；应提交 `.skm/` 中的
+Manifest、Lock 和 vendored Skill 内容。
+
+## 标签
+
+标签属于个人 Library Skill：
+
+```bash
+skm tag list
+skm tag add local/code-review backend security
+skm tag remove local/code-review security
+skm tag rename backend server
+
+skm list --tag development --tag review
+skm enable --tag development --tag review --agent claude
+```
+
+多个 `--tag` 使用 AND 语义。未指定标签时使用默认的 `general`。
+
+## 主要命令
+
+```text
+Library:
+  init, add, list, show, validate, remove
+  source add|list|update|remove, sync
+  tag list|add|remove|rename
+
+Activation:
+  enable, disable, plan, apply, status, doctor
+
+Project:
+  project list|require|vendor|remove|apply
+
+Optional:
+  project init  # 仅用于标记没有 .git 的项目根
+```
+
+`link` 和 `unlink` 暂时作为 `enable` 和 `disable` 的兼容别名，但不再支持旧的
+`--scope` 参数。
+
+## 开发与验证
+
+```bash
+GOCACHE=/tmp/skm-go-cache go test ./...
+GOCACHE=/tmp/skm-go-cache go test -race ./...
+GOCACHE=/tmp/skm-go-cache go vet ./...
+```
+
+测试使用临时 HOME、项目目录和本地 Git 仓库，不访问真实 Agent 配置目录。
+
+## License
 
 [MIT License](LICENSE)

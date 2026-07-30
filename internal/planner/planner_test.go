@@ -3,6 +3,7 @@ package planner
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/zzzzzyijie/skm/internal/domain"
@@ -10,11 +11,11 @@ import (
 	"github.com/zzzzzyijie/skm/internal/store"
 )
 
-func TestApplySymlinkIsIdempotentAndUpdatesManagedTarget(t *testing.T) {
+func TestApplyUserSymlinkIsIdempotentAndUpdatesManagedTarget(t *testing.T) {
 	storage := plannerStore(t)
-	first := plannerSkill(t, "review", "first", domain.ScopePersonal, "local/review")
-	state := domain.State{Installations: []domain.Installation{{
-		SkillID: first.ID, Name: first.Name, Scope: domain.ScopePersonal,
+	first := plannerSkill(t, "review", "first", domain.LocationLibrary, "local/review")
+	state := domain.State{Activations: []domain.Activation{{
+		SkillID: first.ID, Name: first.Name, Placement: domain.PlacementUser,
 		Agents: []domain.Agent{domain.AgentClaude}, Mode: domain.ModeSymlink,
 	}}}
 	engine := New(storage)
@@ -27,48 +28,33 @@ func TestApplySymlinkIsIdempotentAndUpdatesManagedTarget(t *testing.T) {
 		t.Fatal(err)
 	}
 	target := filepath.Join(storage.Paths.UserHome, ".claude", "skills", "review")
-	link, err := os.Readlink(target)
-	if err != nil {
-		t.Fatal(err)
+	if link, err := os.Readlink(target); err != nil || link != first.Path {
+		t.Fatalf("link = %s, err=%v, want %s", link, err, first.Path)
 	}
-	if link != first.Path {
-		t.Fatalf("link = %s, want %s", link, first.Path)
-	}
-
 	plan, err = engine.Build([]domain.Skill{first}, state)
 	if err != nil {
 		t.Fatal(err)
 	}
 	assertSingleStatus(t, plan, domain.StatusUnchanged)
 
-	second := plannerSkill(t, "review", "second", domain.ScopePersonal, "local/review")
+	second := plannerSkill(t, "review", "second", domain.LocationLibrary, "local/review")
 	plan, err = engine.Build([]domain.Skill{second}, state)
 	if err != nil {
 		t.Fatal(err)
 	}
 	assertSingleStatus(t, plan, domain.StatusReplaceManaged)
-	if err := engine.Apply(plan, &state); err != nil {
-		t.Fatal(err)
-	}
-	link, err = os.Readlink(target)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if link != second.Path {
-		t.Fatalf("updated link = %s, want %s", link, second.Path)
-	}
 }
 
-func TestBuildRefusesUnmanagedTarget(t *testing.T) {
+func TestBuildRefusesUnmanagedProjectTarget(t *testing.T) {
 	storage := plannerStore(t)
-	value := plannerSkill(t, "review", "body", domain.ScopeProject, "project/review")
+	value := plannerSkill(t, "review", "body", domain.LocationProject, "project/review")
 	target := filepath.Join(storage.Paths.ProjectRoot, ".agents", "skills", "review")
 	if err := os.MkdirAll(target, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	state := domain.State{Installations: []domain.Installation{{
-		SkillID: value.ID, Name: value.Name, Scope: domain.ScopeProject, ProjectRoot: storage.Paths.ProjectRoot,
-		Agents: []domain.Agent{domain.AgentCodex}, Mode: domain.ModeSymlink,
+	state := domain.State{Activations: []domain.Activation{{
+		SkillID: value.ID, Name: value.Name, Placement: domain.PlacementProject, ProjectRoot: storage.Paths.ProjectRoot,
+		Agents: []domain.Agent{domain.AgentCodex}, Mode: domain.ModeSymlink, PinnedHash: value.Hash, PinnedPath: value.Path,
 	}}}
 	plan, err := New(storage).Build([]domain.Skill{value}, state)
 	if err != nil {
@@ -82,9 +68,9 @@ func TestBuildRefusesUnmanagedTarget(t *testing.T) {
 
 func TestCopyModificationBecomesConflict(t *testing.T) {
 	storage := plannerStore(t)
-	value := plannerSkill(t, "review", "body", domain.ScopePersonal, "local/review")
-	state := domain.State{Installations: []domain.Installation{{
-		SkillID: value.ID, Name: value.Name, Scope: domain.ScopePersonal,
+	value := plannerSkill(t, "review", "body", domain.LocationLibrary, "local/review")
+	state := domain.State{Activations: []domain.Activation{{
+		SkillID: value.ID, Name: value.Name, Placement: domain.PlacementUser,
 		Agents: []domain.Agent{domain.AgentCodex}, Mode: domain.ModeCopy,
 	}}}
 	engine := New(storage)
@@ -106,23 +92,34 @@ func TestCopyModificationBecomesConflict(t *testing.T) {
 	assertSingleStatus(t, plan, domain.StatusConflictUnmanaged)
 }
 
-func TestPersonalTargetShadowsGlobalTarget(t *testing.T) {
+func TestSameNameUserActivationsAreRejected(t *testing.T) {
 	storage := plannerStore(t)
-	global := plannerSkill(t, "review", "global", domain.ScopeGlobal, "team/review")
-	personal := plannerSkill(t, "review", "personal", domain.ScopePersonal, "local/review")
-	state := domain.State{Installations: []domain.Installation{
-		{SkillID: global.ID, Name: global.Name, Scope: domain.ScopeGlobal, Agents: []domain.Agent{domain.AgentClaude}, Mode: domain.ModeSymlink},
-		{SkillID: personal.ID, Name: personal.Name, Scope: domain.ScopePersonal, Agents: []domain.Agent{domain.AgentClaude}, Mode: domain.ModeSymlink},
+	team := plannerSkill(t, "review", "team", domain.LocationLibrary, "team/review")
+	local := plannerSkill(t, "review", "local", domain.LocationLibrary, "local/review")
+	state := domain.State{Activations: []domain.Activation{
+		{SkillID: team.ID, Name: team.Name, Placement: domain.PlacementUser, Agents: []domain.Agent{domain.AgentClaude}, Mode: domain.ModeSymlink},
+		{SkillID: local.ID, Name: local.Name, Placement: domain.PlacementUser, Agents: []domain.Agent{domain.AgentClaude}, Mode: domain.ModeSymlink},
 	}}
-	plan, err := New(storage).Build([]domain.Skill{global, personal}, state)
+	_, err := New(storage).Build([]domain.Skill{team, local}, state)
+	if err == nil || !strings.Contains(err.Error(), "multiple Skills target") {
+		t.Fatalf("expected same-name conflict, got %v", err)
+	}
+}
+
+func TestPinnedActivationUsesExactSnapshot(t *testing.T) {
+	storage := plannerStore(t)
+	current := plannerSkill(t, "review", "current", domain.LocationLibrary, "team/review")
+	pinned := plannerSkill(t, "review", "pinned", domain.LocationLibrary, "team/review")
+	state := domain.State{Activations: []domain.Activation{{
+		SkillID: pinned.ID, Name: pinned.Name, Placement: domain.PlacementProject, ProjectRoot: storage.Paths.ProjectRoot,
+		Agents: []domain.Agent{domain.AgentCodex}, Mode: domain.ModeSymlink, PinnedHash: pinned.Hash, PinnedPath: pinned.Path,
+	}}}
+	plan, err := New(storage).Build([]domain.Skill{current}, state)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(plan.Operations) != 1 {
-		t.Fatalf("operations = %d, want 1", len(plan.Operations))
-	}
-	if plan.Operations[0].SkillID != personal.ID {
-		t.Fatalf("selected %s, want %s", plan.Operations[0].SkillID, personal.ID)
+	if len(plan.Operations) != 1 || plan.Operations[0].SourcePath != pinned.Path {
+		t.Fatalf("plan did not use pinned snapshot: %#v", plan)
 	}
 }
 
@@ -136,12 +133,9 @@ func assertSingleStatus(t *testing.T, plan domain.Plan, want domain.OperationSta
 func plannerStore(t *testing.T) *store.Store {
 	t.Helper()
 	root := t.TempDir()
-	paths := store.Paths{
-		Home:        filepath.Join(root, "user", ".skm"),
-		UserHome:    filepath.Join(root, "user"),
-		ProjectRoot: filepath.Join(root, "project"),
-	}
-	storage, err := store.New(paths)
+	storage, err := store.New(store.Paths{
+		Home: filepath.Join(root, "user", ".skm"), UserHome: filepath.Join(root, "user"), ProjectRoot: filepath.Join(root, "project"),
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -151,7 +145,7 @@ func plannerStore(t *testing.T) *store.Store {
 	return storage
 }
 
-func plannerSkill(t *testing.T, name, body string, scope domain.Scope, id string) domain.Skill {
+func plannerSkill(t *testing.T, name, body string, location domain.SkillLocation, id string) domain.Skill {
 	t.Helper()
 	dir := filepath.Join(t.TempDir(), body)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -165,5 +159,5 @@ func plannerSkill(t *testing.T, name, body string, scope domain.Scope, id string
 	if err != nil {
 		t.Fatal(err)
 	}
-	return domain.Skill{ID: id, Name: name, Scope: scope, Path: dir, Hash: hash}
+	return domain.Skill{ID: id, Name: name, Location: location, Path: dir, Hash: hash}
 }

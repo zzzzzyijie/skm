@@ -35,27 +35,21 @@ func (e *Engine) Build(skills []domain.Skill, state domain.State) (domain.Plan, 
 		deployments[deployment.Target] = deployment
 	}
 	var operations []domain.Operation
-	for _, installation := range state.Installations {
-		value, ok := byID[installation.SkillID]
-		if !ok {
-			return domain.Plan{}, fmt.Errorf("installed skill %q is missing from catalog", installation.SkillID)
+	for _, activation := range state.Activations {
+		value, err := e.resolveActivation(activation, byID)
+		if err != nil {
+			return domain.Plan{}, err
 		}
-		for _, agentName := range installation.Agents {
-			target, err := adapter.Target(agentName, installation.Scope, e.Store.Paths.UserHome, installation.ProjectRoot, value.Name)
+		for _, agentName := range activation.Agents {
+			target, err := adapter.Target(agentName, activation.Placement, e.Store.Paths.UserHome, activation.ProjectRoot, value.Name)
 			if err != nil {
 				return domain.Plan{}, err
 			}
-			mode := installation.Mode.Effective()
+			mode := activation.Mode.Effective()
 			operation := domain.Operation{
-				SkillID:     value.ID,
-				Name:        value.Name,
-				Agent:       agentName,
-				Scope:       installation.Scope,
-				ProjectRoot: installation.ProjectRoot,
-				Target:      target,
-				SourcePath:  value.Path,
-				Mode:        mode,
-				Hash:        value.Hash,
+				SkillID: value.ID, Name: value.Name, Agent: agentName,
+				Placement: activation.Placement, ProjectRoot: activation.ProjectRoot,
+				Target: target, SourcePath: value.Path, Mode: mode, Hash: value.Hash,
 			}
 			actual, err := os.Lstat(target)
 			if os.IsNotExist(err) {
@@ -96,14 +90,10 @@ func (e *Engine) Build(skills []domain.Skill, state domain.State) (domain.Plan, 
 	}
 	collapsed := make(map[string]domain.Operation, len(operations))
 	for _, operation := range operations {
-		existing, ok := collapsed[operation.Target]
-		if !ok || operation.Scope.Priority() > existing.Scope.Priority() {
-			collapsed[operation.Target] = operation
-			continue
+		if existing, ok := collapsed[operation.Target]; ok && existing.SkillID != operation.SkillID {
+			return domain.Plan{}, fmt.Errorf("multiple Skills target %s: %s and %s", operation.Target, existing.SkillID, operation.SkillID)
 		}
-		if operation.Scope.Priority() == existing.Scope.Priority() && operation.SkillID != existing.SkillID {
-			return domain.Plan{}, fmt.Errorf("multiple Skills target %s at the same scope: %s and %s", operation.Target, existing.SkillID, operation.SkillID)
-		}
+		collapsed[operation.Target] = operation
 	}
 	operations = operations[:0]
 	for _, operation := range collapsed {
@@ -113,6 +103,28 @@ func (e *Engine) Build(skills []domain.Skill, state domain.State) (domain.Plan, 
 	data, _ := json.Marshal(operations)
 	digest := sha256.Sum256(data)
 	return domain.Plan{Digest: hex.EncodeToString(digest[:]), Operations: operations}, nil
+}
+
+func (e *Engine) resolveActivation(activation domain.Activation, byID map[string]domain.Skill) (domain.Skill, error) {
+	if activation.PinnedHash == "" {
+		value, ok := byID[activation.SkillID]
+		if !ok {
+			return domain.Skill{}, fmt.Errorf("enabled skill %q is missing from Library", activation.SkillID)
+		}
+		return value, nil
+	}
+	path := activation.PinnedPath
+	if path == "" {
+		path = e.Store.ObjectPath(activation.PinnedHash, activation.Name)
+	}
+	hash, err := fsx.HashDir(path)
+	if err != nil {
+		return domain.Skill{}, fmt.Errorf("read pinned Skill %s: %w", activation.SkillID, err)
+	}
+	if hash != activation.PinnedHash {
+		return domain.Skill{}, fmt.Errorf("pinned Skill %s hash mismatch: got %s, want %s", activation.SkillID, hash, activation.PinnedHash)
+	}
+	return domain.Skill{ID: activation.SkillID, Name: activation.Name, Hash: hash, Path: path}, nil
 }
 
 func (e *Engine) Apply(plan domain.Plan, state *domain.State) error {
@@ -130,47 +142,75 @@ func (e *Engine) Apply(plan domain.Plan, state *domain.State) error {
 				return fmt.Errorf("deploy %s: %w", operation.SkillID, err)
 			}
 			state.Deployments = upsertDeployment(state.Deployments, domain.Deployment{
-				SkillID:     operation.SkillID,
-				Name:        operation.Name,
-				Agent:       operation.Agent,
-				Scope:       operation.Scope,
-				ProjectRoot: operation.ProjectRoot,
-				Target:      operation.Target,
-				SourcePath:  operation.SourcePath,
-				Mode:        operation.Mode,
-				Hash:        operation.Hash,
-				UpdatedAt:   e.Now().UTC(),
+				SkillID: operation.SkillID, Name: operation.Name, Agent: operation.Agent,
+				Placement: operation.Placement, ProjectRoot: operation.ProjectRoot,
+				Target: operation.Target, SourcePath: operation.SourcePath,
+				Mode: operation.Mode, Hash: operation.Hash, UpdatedAt: e.Now().UTC(),
 			})
 		}
 	}
 	return e.Store.SaveState(*state)
 }
 
-func (e *Engine) AddInstallations(state *domain.State, skills []domain.Skill, scope domain.Scope, projectRoot string, agents []domain.Agent, mode domain.LinkMode) {
+func (e *Engine) AddActivations(state *domain.State, skills []domain.Skill, placement domain.Placement, projectRoot string, agents []domain.Agent, mode domain.LinkMode) {
 	for _, value := range skills {
-		installation := domain.Installation{
-			SkillID:   value.ID,
-			Name:      value.Name,
-			Scope:     scope,
-			Agents:    uniqueAgents(agents),
-			Mode:      mode,
-			UpdatedAt: e.Now().UTC(),
+		activation := domain.Activation{
+			SkillID: value.ID, Name: value.Name, Placement: placement,
+			Agents: uniqueAgents(agents), Mode: mode, UpdatedAt: e.Now().UTC(),
 		}
-		if scope == domain.ScopeProject {
-			installation.ProjectRoot = projectRoot
+		if placement == domain.PlacementProject {
+			activation.ProjectRoot = projectRoot
+			activation.PinnedHash = value.Hash
+			activation.PinnedPath = value.Path
 		}
-		state.Installations = upsertInstallation(state.Installations, installation)
+		state.Activations = upsertActivation(state.Activations, activation)
 	}
 }
 
-func (e *Engine) Unlink(state *domain.State, skillIDs map[string]struct{}, scope domain.Scope, projectRoot string, agents map[domain.Agent]struct{}, force bool) error {
+func (e *Engine) SetProjectActivations(state *domain.State, projectRoot string, desired []domain.Activation, force bool) error {
+	desiredTargets := make(map[string]struct{})
+	for _, activation := range desired {
+		for _, agentName := range activation.Agents {
+			target, err := adapter.Target(agentName, domain.PlacementProject, e.Store.Paths.UserHome, projectRoot, activation.Name)
+			if err != nil {
+				return err
+			}
+			desiredTargets[target] = struct{}{}
+		}
+	}
 	keptDeployments := state.Deployments[:0]
 	for _, deployment := range state.Deployments {
-		if !matchesSelection(deployment.SkillID, deployment.Scope, deployment.ProjectRoot, deployment.Agent, skillIDs, scope, projectRoot, agents) {
+		if deployment.Placement != domain.PlacementProject || deployment.ProjectRoot != projectRoot {
 			keptDeployments = append(keptDeployments, deployment)
 			continue
 		}
-		expected, err := adapter.Target(deployment.Agent, deployment.Scope, e.Store.Paths.UserHome, deployment.ProjectRoot, deployment.Name)
+		if _, keep := desiredTargets[deployment.Target]; keep {
+			keptDeployments = append(keptDeployments, deployment)
+			continue
+		}
+		if err := removeManaged(deployment, force); err != nil {
+			return err
+		}
+	}
+	state.Deployments = keptDeployments
+	keptActivations := state.Activations[:0]
+	for _, activation := range state.Activations {
+		if activation.Placement != domain.PlacementProject || activation.ProjectRoot != projectRoot {
+			keptActivations = append(keptActivations, activation)
+		}
+	}
+	state.Activations = append(keptActivations, desired...)
+	return e.Store.SaveState(*state)
+}
+
+func (e *Engine) Disable(state *domain.State, skillIDs map[string]struct{}, placement domain.Placement, projectRoot string, agents map[domain.Agent]struct{}, force bool) error {
+	keptDeployments := state.Deployments[:0]
+	for _, deployment := range state.Deployments {
+		if !matchesSelection(deployment.SkillID, deployment.Placement, deployment.ProjectRoot, deployment.Agent, skillIDs, placement, projectRoot, agents) {
+			keptDeployments = append(keptDeployments, deployment)
+			continue
+		}
+		expected, err := adapter.Target(deployment.Agent, deployment.Placement, e.Store.Paths.UserHome, deployment.ProjectRoot, deployment.Name)
 		if err != nil || filepath.Clean(expected) != filepath.Clean(deployment.Target) {
 			return fmt.Errorf("deployment target failed safety check: %s", deployment.Target)
 		}
@@ -179,27 +219,27 @@ func (e *Engine) Unlink(state *domain.State, skillIDs map[string]struct{}, scope
 		}
 	}
 	state.Deployments = keptDeployments
-	keptInstallations := state.Installations[:0]
-	for _, installation := range state.Installations {
-		if _, selected := skillIDs[installation.SkillID]; !selected || installation.Scope != scope || (scope == domain.ScopeProject && installation.ProjectRoot != projectRoot) {
-			keptInstallations = append(keptInstallations, installation)
+	keptActivations := state.Activations[:0]
+	for _, activation := range state.Activations {
+		if _, selected := skillIDs[activation.SkillID]; !selected || activation.Placement != placement || (placement == domain.PlacementProject && activation.ProjectRoot != projectRoot) {
+			keptActivations = append(keptActivations, activation)
 			continue
 		}
 		if len(agents) == 0 {
 			continue
 		}
-		remaining := installation.Agents[:0]
-		for _, agentName := range installation.Agents {
+		remaining := activation.Agents[:0]
+		for _, agentName := range activation.Agents {
 			if _, selected := agents[agentName]; !selected {
 				remaining = append(remaining, agentName)
 			}
 		}
 		if len(remaining) > 0 {
-			installation.Agents = remaining
-			keptInstallations = append(keptInstallations, installation)
+			activation.Agents = remaining
+			keptActivations = append(keptActivations, activation)
 		}
 	}
-	state.Installations = keptInstallations
+	state.Activations = keptActivations
 	return e.Store.SaveState(*state)
 }
 
@@ -274,9 +314,9 @@ func removeManaged(deployment domain.Deployment, force bool) error {
 	return os.RemoveAll(deployment.Target)
 }
 
-func upsertInstallation(values []domain.Installation, value domain.Installation) []domain.Installation {
+func upsertActivation(values []domain.Activation, value domain.Activation) []domain.Activation {
 	for i := range values {
-		if values[i].SkillID == value.SkillID && values[i].Scope == value.Scope && values[i].ProjectRoot == value.ProjectRoot {
+		if values[i].SkillID == value.SkillID && values[i].Placement == value.Placement && values[i].ProjectRoot == value.ProjectRoot {
 			value.Agents = uniqueAgents(append(values[i].Agents, value.Agents...))
 			values[i] = value
 			return values
@@ -308,11 +348,11 @@ func uniqueAgents(values []domain.Agent) []domain.Agent {
 	return result
 }
 
-func matchesSelection(skillID string, deploymentScope domain.Scope, deploymentProject string, agentName domain.Agent, ids map[string]struct{}, scope domain.Scope, projectRoot string, agents map[domain.Agent]struct{}) bool {
-	if _, ok := ids[skillID]; !ok || deploymentScope != scope {
+func matchesSelection(skillID string, deploymentPlacement domain.Placement, deploymentProject string, agentName domain.Agent, ids map[string]struct{}, placement domain.Placement, projectRoot string, agents map[domain.Agent]struct{}) bool {
+	if _, ok := ids[skillID]; !ok || deploymentPlacement != placement {
 		return false
 	}
-	if scope == domain.ScopeProject && deploymentProject != projectRoot {
+	if placement == domain.PlacementProject && deploymentProject != projectRoot {
 		return false
 	}
 	if len(agents) == 0 {

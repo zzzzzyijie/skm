@@ -18,20 +18,16 @@ import (
 	"github.com/zzzzzyijie/skm/internal/tags"
 )
 
-func (a *App) newLinkCommand() *cobra.Command {
-	var scopeValue string
+func (a *App) newEnableCommand() *cobra.Command {
 	var agentValues []string
 	var tagValues []string
 	var modeValue string
 	var dryRun bool
 	command := &cobra.Command{
-		Use:   "link [skill...]",
-		Short: "Select Skills and deploy them to Claude Code or Codex",
+		Use:     "enable [skill...]",
+		Aliases: []string{"link"},
+		Short:   "Enable personal Library Skills for Claude Code or Codex",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			scope := domain.Scope(scopeValue)
-			if !scope.Valid() {
-				return fmt.Errorf("invalid scope %q", scopeValue)
-			}
 			mode := domain.LinkMode(modeValue)
 			if !mode.Valid() {
 				return fmt.Errorf("invalid mode %q", modeValue)
@@ -50,8 +46,7 @@ func (a *App) newLinkCommand() *cobra.Command {
 				if err != nil {
 					return err
 				}
-				manager := catalog.New(storage)
-				selected, err := selectSkills(manager, args, tagValues)
+				selected, err := selectLibrarySkills(catalog.New(storage), args, tagValues)
 				if err != nil {
 					return err
 				}
@@ -60,70 +55,64 @@ func (a *App) newLinkCommand() *cobra.Command {
 					return err
 				}
 				engine := planner.New(storage)
-				engine.AddInstallations(&state, selected, scope, storage.Paths.ProjectRoot, agents, mode)
+				engine.AddActivations(&state, selected, domain.PlacementUser, "", agents, mode)
+				skills, err := storage.LoadAllSkills()
+				if err != nil {
+					return err
+				}
+				// Validate the complete desired state so a targeted enable cannot
+				// leave conflicting same-name Activations behind.
+				if _, err := engine.Build(skills, state); err != nil {
+					return err
+				}
 				selectedIDs := make(map[string]struct{}, len(selected))
 				for _, value := range selected {
 					selectedIDs[value.ID] = struct{}{}
 				}
 				planState := domain.State{Version: state.Version, Deployments: state.Deployments}
-				for _, installation := range state.Installations {
-					if _, ok := selectedIDs[installation.SkillID]; ok && installation.Scope == scope && (scope != domain.ScopeProject || installation.ProjectRoot == storage.Paths.ProjectRoot) {
-						planState.Installations = append(planState.Installations, installation)
+				for _, activation := range state.Activations {
+					if _, ok := selectedIDs[activation.SkillID]; ok && activation.Placement == domain.PlacementUser {
+						planState.Activations = append(planState.Activations, activation)
 					}
 				}
-				allSkills, err := storage.LoadAllSkills()
-				if err != nil {
-					return err
-				}
-				plan, err = engine.Build(allSkills, planState)
+				plan, err = engine.Build(skills, planState)
 				if err != nil {
 					return err
 				}
 				if dryRun {
 					return nil
 				}
-				if err := engine.Apply(plan, &state); err != nil {
-					return err
-				}
-				if scope == domain.ScopeProject {
-					return storage.SyncProjectLock(state, allSkills)
-				}
-				return nil
+				return engine.Apply(plan, &state)
 			})
 			if err != nil {
 				return err
 			}
-			return a.emit("link", plan, func() error { return printPlan(a.Out, plan) })
+			return a.emit("enable", plan, func() error { return printPlan(a.Out, plan) })
 		},
 	}
-	command.Flags().StringVar(&scopeValue, "scope", string(domain.ScopeProject), "deployment scope: global, personal, or project")
 	command.Flags().StringSliceVar(&agentValues, "agent", nil, "target agent: claude,codex (defaults to both)")
-	command.Flags().StringArrayVar(&tagValues, "tag", nil, "select Skills containing this tag (repeatable, AND semantics)")
+	command.Flags().StringArrayVar(&tagValues, "tag", nil, "select personal Library Skills by tag (repeatable, AND semantics)")
 	command.Flags().StringVar(&modeValue, "mode", string(domain.ModeAuto), "deployment mode: auto, symlink, or copy")
 	command.Flags().BoolVar(&dryRun, "dry-run", false, "show the plan without changing files or state")
 	return command
 }
 
-func (a *App) newUnlinkCommand() *cobra.Command {
-	var scopeValue string
+func (a *App) newDisableCommand() *cobra.Command {
 	var agentValues []string
 	var tagValues []string
 	var force bool
 	command := &cobra.Command{
-		Use:   "unlink [skill...]",
-		Short: "Safely remove managed Skill deployments",
+		Use:     "disable [skill...]",
+		Aliases: []string{"unlink"},
+		Short:   "Disable personal Library Skills without removing them",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			scope := domain.Scope(scopeValue)
-			if !scope.Valid() {
-				return fmt.Errorf("invalid scope %q", scopeValue)
-			}
 			storage, err := a.openStore()
 			if err != nil {
 				return err
 			}
 			var selected []domain.Skill
 			err = withLock(storage, func() error {
-				selected, err = selectSkills(catalog.New(storage), args, tagValues)
+				selected, err = selectLibrarySkills(catalog.New(storage), args, tagValues)
 				if err != nil {
 					return err
 				}
@@ -145,30 +134,19 @@ func (a *App) newUnlinkCommand() *cobra.Command {
 				if err != nil {
 					return err
 				}
-				if err := planner.New(storage).Unlink(&state, ids, scope, storage.Paths.ProjectRoot, agents, force); err != nil {
-					return err
-				}
-				if scope == domain.ScopeProject {
-					skills, err := storage.LoadAllSkills()
-					if err != nil {
-						return err
-					}
-					return storage.SyncProjectLock(state, skills)
-				}
-				return nil
+				return planner.New(storage).Disable(&state, ids, domain.PlacementUser, "", agents, force)
 			})
 			if err != nil {
 				return err
 			}
-			return a.emit("unlink", selected, func() error {
-				_, err := fmt.Fprintf(a.Out, "Unlinked %d Skill(s) from %s scope\n", len(selected), scope)
+			return a.emit("disable", selected, func() error {
+				_, err := fmt.Fprintf(a.Out, "Disabled %d Library Skill(s)\n", len(selected))
 				return err
 			})
 		},
 	}
-	command.Flags().StringVar(&scopeValue, "scope", string(domain.ScopeProject), "deployment scope")
-	command.Flags().StringSliceVar(&agentValues, "agent", nil, "only unlink selected agents")
-	command.Flags().StringArrayVar(&tagValues, "tag", nil, "select Skills containing this tag")
+	command.Flags().StringSliceVar(&agentValues, "agent", nil, "only disable selected agents")
+	command.Flags().StringArrayVar(&tagValues, "tag", nil, "select personal Library Skills by tag")
 	command.Flags().BoolVar(&force, "force", false, "remove a managed target even if it was modified")
 	return command
 }
@@ -176,7 +154,7 @@ func (a *App) newUnlinkCommand() *cobra.Command {
 func (a *App) newPlanCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "plan",
-		Short: "Show changes needed to reach the desired deployment state",
+		Short: "Show changes needed to reach the desired activation state",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			storage, err := a.openStore()
@@ -196,7 +174,7 @@ func (a *App) newApplyCommand() *cobra.Command {
 	var expectedDigest string
 	command := &cobra.Command{
 		Use:   "apply",
-		Short: "Apply the current deployment plan",
+		Short: "Apply the current personal and project activation plan",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			storage, err := a.openStore()
@@ -221,13 +199,7 @@ func (a *App) newApplyCommand() *cobra.Command {
 				if expectedDigest != "" && expectedDigest != plan.Digest {
 					return fmt.Errorf("plan digest changed: expected %s, got %s", expectedDigest, plan.Digest)
 				}
-				if err := engine.Apply(plan, &state); err != nil {
-					return err
-				}
-				if storage.HasProjectState(state) {
-					return storage.SyncProjectLock(state, skills)
-				}
-				return nil
+				return engine.Apply(plan, &state)
 			})
 			if err != nil {
 				return err
@@ -242,7 +214,7 @@ func (a *App) newApplyCommand() *cobra.Command {
 func (a *App) newStatusCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "status",
-		Short: "Show managed deployment status",
+		Short: "Show managed activation status",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			storage, err := a.openStore()
@@ -267,7 +239,7 @@ type doctorCheck struct {
 func (a *App) newDoctorCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "doctor",
-		Short: "Check skm, Git, catalog, and Agent paths",
+		Short: "Check skm, optional Git, Library, and Agent paths",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			storage, err := a.openStore()
@@ -275,13 +247,21 @@ func (a *App) newDoctorCommand() *cobra.Command {
 				return err
 			}
 			checks := []doctorCheck{{Name: "skm-home", Status: "ok", Message: storage.Paths.Home}}
+			sources, err := storage.LoadSources()
+			if err != nil {
+				return err
+			}
 			if path, err := exec.LookPath("git"); err != nil {
-				checks = append(checks, doctorCheck{Name: "git", Status: "error", Message: "git executable not found"})
+				status := "optional"
+				if len(sources.Sources) > 0 {
+					status = "error"
+				}
+				checks = append(checks, doctorCheck{Name: "git", Status: status, Message: "required only for configured Git sources"})
 			} else {
 				checks = append(checks, doctorCheck{Name: "git", Status: "ok", Message: path})
 			}
 			for _, agentName := range []domain.Agent{domain.AgentClaude, domain.AgentCodex} {
-				target, _ := adapter.Target(agentName, domain.ScopePersonal, storage.Paths.UserHome, storage.Paths.ProjectRoot, "probe")
+				target, _ := adapter.Target(agentName, domain.PlacementUser, storage.Paths.UserHome, storage.Paths.ProjectRoot, "probe")
 				directory := filepath.Dir(target)
 				status := "not-created"
 				if _, err := os.Stat(directory); err == nil {
@@ -296,7 +276,7 @@ func (a *App) newDoctorCommand() *cobra.Command {
 			for _, value := range values {
 				hash, hashErr := fsx.HashDir(value.Path)
 				if hashErr != nil || hash != value.Hash {
-					checks = append(checks, doctorCheck{Name: value.ID, Status: "error", Message: "catalog content is missing or modified"})
+					checks = append(checks, doctorCheck{Name: value.ID, Status: "error", Message: "Skill content is missing or modified"})
 				}
 			}
 			return a.emit("doctor", checks, func() error {
@@ -311,17 +291,17 @@ func (a *App) newDoctorCommand() *cobra.Command {
 	}
 }
 
-func selectSkills(manager *catalog.Manager, args, tagValues []string) ([]domain.Skill, error) {
+func selectLibrarySkills(manager *catalog.Manager, args, tagValues []string) ([]domain.Skill, error) {
 	if len(args) == 0 && len(tagValues) == 0 {
 		return nil, fmt.Errorf("provide at least one Skill or --tag")
 	}
 	if len(args) == 0 {
-		values, err := manager.List("", tagValues)
+		values, err := manager.List(domain.LocationLibrary, tagValues)
 		if err != nil {
 			return nil, err
 		}
 		if len(values) == 0 {
-			return nil, fmt.Errorf("no Skills match the selected tags")
+			return nil, fmt.Errorf("no Library Skills match the selected tags")
 		}
 		return values, nil
 	}
@@ -336,7 +316,7 @@ func selectSkills(manager *catalog.Manager, args, tagValues []string) ([]domain.
 	seen := make(map[string]struct{})
 	result := make([]domain.Skill, 0, len(args))
 	for _, query := range args {
-		value, err := manager.Resolve(query)
+		value, err := manager.ResolveLibrary(query)
 		if err != nil {
 			return nil, err
 		}
@@ -350,7 +330,7 @@ func selectSkills(manager *catalog.Manager, args, tagValues []string) ([]domain.
 		result = append(result, value)
 	}
 	if len(result) == 0 {
-		return nil, fmt.Errorf("no Skills match the selection")
+		return nil, fmt.Errorf("no Library Skills match the selection")
 	}
 	return result, nil
 }
@@ -394,9 +374,9 @@ func buildCurrentPlan(storage *store.Store) (domain.Plan, error) {
 
 func printPlan(out interface{ Write([]byte) (int, error) }, plan domain.Plan) error {
 	writer := tabwriter.NewWriter(out, 0, 4, 2, ' ', 0)
-	_, _ = fmt.Fprintln(writer, "STATUS\tAGENT\tSCOPE\tSKILL\tTARGET")
+	_, _ = fmt.Fprintln(writer, "STATUS\tAGENT\tPLACEMENT\tSKILL\tTARGET")
 	for _, operation := range plan.Operations {
-		_, _ = fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\n", operation.Status, operation.Agent, operation.Scope, operation.SkillID, operation.Target)
+		_, _ = fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\n", operation.Status, operation.Agent, operation.Placement, operation.SkillID, operation.Target)
 	}
 	if err := writer.Flush(); err != nil {
 		return err
