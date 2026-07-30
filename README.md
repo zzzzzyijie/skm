@@ -31,7 +31,7 @@ Git 仅在使用 Git Source 或恢复 `project require` 依赖时需要。Homebr
 ### Homebrew
 
 ```bash
-brew install --cask zzzzzyijie/tap/skm
+brew install zzzzzyijie/tap/skm
 skm version
 ```
 

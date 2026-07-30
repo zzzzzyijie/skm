@@ -1,6 +1,6 @@
 # skm 发布指南
 
-skm 通过 GitHub Release 提供预编译文件，并由同一个 Tag 自动更新 Homebrew Cask。
+skm 通过 GitHub Release 提供预编译文件，并由同一个 Tag 自动更新 Homebrew Formula。
 curl 安装器也从 GitHub Release 下载相同文件并验证 SHA-256。
 
 ## 1. 一次性配置 Homebrew Tap
@@ -34,10 +34,14 @@ git push origin v0.2.0
 1. 运行 Go 测试和安装器测试；
 2. 构建 macOS/Linux 的 amd64、arm64 文件；
 3. 生成 `checksums.txt` 和 GitHub Release；
-4. 更新 `homebrew-tap` 仓库中的 `Casks/skm.rb`。
+4. 根据 Release 校验值生成并更新 `homebrew-tap` 仓库中的 `Formula/skm.rb`。
 
 Release 构建通过链接器把 Tag 版本注入 `skm version`。本地源码构建显示 `dev`；
 通过 `go install ...@<version>` 安装时会从 Go 模块构建信息读取版本。
+
+当前 macOS Release 没有使用 Apple Developer ID 公证。Homebrew Formula 会先验证发布包的
+SHA-256，再清除解压文件继承的 quarantine 扩展属性，避免 Gatekeeper 阻止已验证的 CLI。
+以后接入 Developer ID 签名和公证后，应移除 Formula 生成器中的 `xattr` 兼容逻辑。
 
 ## 3. 发布后验证
 
@@ -45,7 +49,7 @@ Homebrew：
 
 ```bash
 brew update
-brew install --cask zzzzzyijie/tap/skm
+brew install zzzzzyijie/tap/skm
 skm version
 ```
 
@@ -72,7 +76,11 @@ goreleaser check
 goreleaser release --snapshot --clean
 ```
 
-Snapshot 不会创建 GitHub Release 或更新 Homebrew Tap。
+Snapshot 不会创建 GitHub Release 或更新 Homebrew Tap。Formula 生成器可以单独测试：
+
+```bash
+sh scripts/generate_homebrew_formula_test.sh
+```
 
 安装器自身不依赖网络的测试：
 

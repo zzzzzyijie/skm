@@ -13,12 +13,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
           cache: true
@@ -26,8 +26,10 @@ jobs:
       - name: Test
         run: go test ./...
 
-      - name: Test installer
-        run: sh scripts/install_test.sh
+      - name: Test distribution scripts
+        run: |
+          sh scripts/install_test.sh
+          sh scripts/generate_homebrew_formula_test.sh
 
       - name: Release
         uses: goreleaser/goreleaser-action@v7
@@ -37,4 +39,26 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+
+      - name: Checkout Homebrew Tap
+        uses: actions/checkout@v6
+        with:
+          repository: zzzzzyijie/homebrew-tap
+          token: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+          path: .homebrew-tap
+
+      - name: Update Homebrew Formula
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          sh scripts/generate_homebrew_formula.sh \
+            "$RELEASE_TAG" \
+            dist/checksums.txt \
+            .homebrew-tap/Formula/skm.rb
+          git -C .homebrew-tap config user.name "skm release bot"
+          git -C .homebrew-tap config user.email "actions@github.com"
+          git -C .homebrew-tap add Formula/skm.rb
+          if ! git -C .homebrew-tap diff --cached --quiet; then
+            git -C .homebrew-tap commit -m "Formula update for skm ${RELEASE_TAG}"
+            git -C .homebrew-tap push origin main
+          fi

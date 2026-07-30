@@ -46,25 +46,5 @@ changelog:
       - "^test:"
       - "^chore:"
 
-homebrew_casks:
-  - name: skm
-    ids:
-      - skm
-    binaries:
-      - skm
-    homepage: https://github.com/zzzzzyijie/skm
-    description: Manage and deploy AI Agent Skills
-    license: MIT
-    directory: Casks
-    skip_upload: auto
-    repository:
-      owner: zzzzzyijie
-      name: homebrew-tap
-      branch: main
-      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
-    commit_author:
-      name: skm release bot
-      email: actions@github.com
-
 release:
   prerelease: auto

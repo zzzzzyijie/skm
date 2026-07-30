@@ -26,7 +26,7 @@ Git 是可选依赖，仅 Git Source 和项目 Git 依赖恢复需要。Homebrew
 ### 2.1 Homebrew
 
 ```bash
-brew install --cask zzzzzyijie/tap/skm
+brew install zzzzzyijie/tap/skm
 skm version
 ```
 
