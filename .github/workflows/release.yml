@@ -45,6 +45,7 @@ jobs:
         with:
           repository: zzzzzyijie/homebrew-tap
           token: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+          ref: main
           path: .homebrew-tap
 
       - name: Verify Homebrew Tap write access
@@ -74,5 +75,6 @@ jobs:
           git -C .homebrew-tap add Formula/skm.rb
           if ! git -C .homebrew-tap diff --cached --quiet; then
             git -C .homebrew-tap commit -m "Formula update for skm ${RELEASE_TAG}"
-            git -C .homebrew-tap push origin main
+            git -C .homebrew-tap pull --rebase origin main
+            git -C .homebrew-tap push origin HEAD:main
           fi
