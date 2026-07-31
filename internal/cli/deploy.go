@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 	"text/tabwriter"
 
@@ -111,6 +112,8 @@ func (a *App) newDisableCommand() *cobra.Command {
 				return err
 			}
 			var selected []domain.Skill
+			disabledCount := 0
+			projectActivations := make(map[string][]string)
 			err = withLock(storage, func() error {
 				selected, err = selectLibrarySkills(catalog.New(storage), args, tagValues)
 				if err != nil {
@@ -134,14 +137,44 @@ func (a *App) newDisableCommand() *cobra.Command {
 				if err != nil {
 					return err
 				}
+				for _, activation := range state.Activations {
+					if _, ok := ids[activation.SkillID]; !ok {
+						continue
+					}
+					if activation.Placement == domain.PlacementProject {
+						projectActivations[activation.ProjectRoot] = append(projectActivations[activation.ProjectRoot], activation.SkillID)
+						continue
+					}
+					if activationMatchesAgents(activation, agents) {
+						disabledCount++
+					}
+				}
 				return planner.New(storage).Disable(&state, ids, domain.PlacementUser, "", agents, force)
 			})
 			if err != nil {
 				return err
 			}
 			return a.emit("disable", selected, func() error {
-				_, err := fmt.Fprintf(a.Out, "Disabled %d Library Skill(s)\n", len(selected))
-				return err
+				if _, err := fmt.Fprintf(a.Out, "Disabled user Activation(s) for %d Library Skill(s)\n", disabledCount); err != nil {
+					return err
+				}
+				if disabledCount != 0 || len(projectActivations) == 0 {
+					return nil
+				}
+				roots := make([]string, 0, len(projectActivations))
+				for root := range projectActivations {
+					roots = append(roots, root)
+				}
+				sort.Strings(roots)
+				for _, root := range roots {
+					skillIDs := uniqueSorted(projectActivations[root])
+					for _, skillID := range skillIDs {
+						if _, err := fmt.Fprintf(a.Out, "%s remains enabled by project %s; remove it with: skm --project %q project remove %s\n", skillID, root, root, skillID); err != nil {
+							return err
+						}
+					}
+				}
+				return nil
 			})
 		},
 	}
@@ -149,6 +182,32 @@ func (a *App) newDisableCommand() *cobra.Command {
 	command.Flags().StringArrayVar(&tagValues, "tag", nil, "select personal Library Skills by tag")
 	command.Flags().BoolVar(&force, "force", false, "remove a managed target even if it was modified")
 	return command
+}
+
+func activationMatchesAgents(activation domain.Activation, agents map[domain.Agent]struct{}) bool {
+	if len(agents) == 0 {
+		return true
+	}
+	for _, agentName := range activation.Agents {
+		if _, ok := agents[agentName]; ok {
+			return true
+		}
+	}
+	return false
+}
+
+func uniqueSorted(values []string) []string {
+	seen := make(map[string]struct{}, len(values))
+	result := make([]string, 0, len(values))
+	for _, value := range values {
+		if _, ok := seen[value]; ok {
+			continue
+		}
+		seen[value] = struct{}{}
+		result = append(result, value)
+	}
+	sort.Strings(result)
+	return result
 }
 
 func (a *App) newPlanCommand() *cobra.Command {

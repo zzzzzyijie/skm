@@ -222,6 +222,63 @@ func TestCLIRemoveRetainsSnapshotReferencedByAnotherLibrarySkill(t *testing.T) {
 	}
 }
 
+func TestCLIDisableReportsProjectActivationAndRemoveExplainsHowToRemoveIt(t *testing.T) {
+	root, userHome, project, skmHome := cliPaths(t)
+	skillPath := filepath.Join(root, "project-review")
+	writeCLISkill(t, skillPath, "project-review")
+	runCLI(t, "--home", skmHome, "--project", project, "add", skillPath, "--source", "team")
+
+	storage := openTestStore(t, skmHome, userHome, project)
+	library, err := storage.LoadCatalog()
+	if err != nil || len(library.Skills) != 1 {
+		t.Fatalf("library = %#v, err=%v", library, err)
+	}
+	value := library.Skills[0]
+	projectCatalog := domain.Catalog{Dependencies: []domain.ProjectDependency{{
+		ID: value.ID, Name: value.Name, Source: value.Source, Hash: value.Hash,
+		Agents: []domain.Agent{domain.AgentClaude, domain.AgentCodex}, Mode: domain.ModeAuto,
+	}}}
+	if err := storage.SaveProjectCatalog(projectCatalog); err != nil {
+		t.Fatal(err)
+	}
+	if err := storage.SaveProjectLock(projectCatalog); err != nil {
+		t.Fatal(err)
+	}
+	state := domain.State{Activations: []domain.Activation{{
+		SkillID:     "team/project-review",
+		Name:        "project-review",
+		Placement:   domain.PlacementProject,
+		ProjectRoot: project,
+		Agents:      []domain.Agent{domain.AgentClaude, domain.AgentCodex},
+		Mode:        domain.ModeAuto,
+	}}}
+	if err := storage.SaveState(state); err != nil {
+		t.Fatal(err)
+	}
+
+	out := runCLI(t, "--home", skmHome, "--project", project, "disable", "team/project-review")
+	if !bytes.Contains(out, []byte("Disabled user Activation(s) for 0 Library Skill(s)")) ||
+		!bytes.Contains(out, []byte("remains enabled by project "+project)) ||
+		!bytes.Contains(out, []byte("project remove team/project-review")) {
+		t.Fatalf("disable output did not explain project Activation:\n%s", out)
+	}
+
+	stderr := runCLIFailure(t, "--home", skmHome, "--project", project, "remove", "team/project-review")
+	if !bytes.Contains(stderr, []byte("is enabled by project "+project)) ||
+		!bytes.Contains(stderr, []byte("project remove team/project-review first")) {
+		t.Fatalf("remove error did not explain project Activation:\n%s", stderr)
+	}
+
+	runCLI(t, "--home", skmHome, "--project", project, "project", "remove", "team/project-review")
+	out = runCLI(t, "--home", skmHome, "--project", project, "remove", "team/project-review")
+	if !bytes.Contains(out, []byte("deleted its snapshot")) {
+		t.Fatalf("remove output after project remove: %s", out)
+	}
+	if _, err := os.Lstat(value.Path); !os.IsNotExist(err) {
+		t.Fatalf("removed snapshot still exists: %v", err)
+	}
+}
+
 func TestCLIPruneDryRunThenDeletesOrphan(t *testing.T) {
 	root, userHome, project, skmHome := cliPaths(t)
 	skillPath := filepath.Join(root, "orphan")

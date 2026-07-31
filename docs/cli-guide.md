@@ -167,10 +167,11 @@ skm remove local/code-review
 skm disable local/code-review
 ```
 
-如果被当前项目 require，先运行：
+`disable` 只处理用户级 Activation，不会移除项目级 Activation。如果被项目
+require，针对报错中显示的项目根目录运行：
 
 ```bash
-skm project remove team/code-review
+skm --project /path/to/project project remove team/code-review
 ```
 
 `remove` 从 Library 删除条目后，会检查剩余 Library、Activation、Deployment 和当前

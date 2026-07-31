@@ -176,9 +176,16 @@ func (a *App) newRemoveCommand() *cobra.Command {
 					return err
 				}
 				for _, activation := range state.Activations {
-					if activation.SkillID == value.ID {
-						return fmt.Errorf("skill %s is enabled; run skm disable first", value.ID)
+					if activation.SkillID != value.ID {
+						continue
 					}
+					if activation.Placement == domain.PlacementProject {
+						return fmt.Errorf(
+							"skill %s is enabled by project %s; run skm --project %q project remove %s first",
+							value.ID, activation.ProjectRoot, activation.ProjectRoot, value.ID,
+						)
+					}
+					return fmt.Errorf("skill %s is enabled for the user; run skm disable %s first", value.ID, value.ID)
 				}
 				project, err := storage.LoadProjectCatalog()
 				if err != nil {
