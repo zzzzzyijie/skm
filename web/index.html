@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SKM — AI Skill Manager</title>
+    <meta name="description" content="Manage and deploy AI Agent Skills with a visual interface">
+    <link rel="stylesheet" href="/app.css">
+</head>
+<body>
+    <header class="mobile-header">
+        <button class="icon-btn" id="menu-toggle" type="button" aria-label="Open navigation" aria-expanded="false">&#9776;</button>
+        <span class="mobile-brand">SKM</span>
+        <button class="btn-lang" id="mobile-lang-toggle" type="button">中文</button>
+    </header>
+    <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <span class="logo-mark">S</span>
+                <span class="logo-text">SKM</span>
+            </div>
+            <p class="logo-sub">AI Skill Manager</p>
+        </div>
+        <div class="nav-menu" id="nav-menu">
+            <button class="nav-item active" type="button" data-page="dashboard">
+                <span class="nav-icon">D</span>
+                <span class="nav-label">Dashboard</span>
+            </button>
+            <button class="nav-item" type="button" data-page="library">
+                <span class="nav-icon">L</span>
+                <span class="nav-label">Library</span>
+            </button>
+        </div>
+        <div class="sidebar-footer">
+            <div class="sidebar-footer-row">
+                <span class="version-label" id="version-label">v...</span>
+                <button class="btn-lang" id="lang-toggle" type="button" title="Switch language">中文</button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="main-content" id="main-content">
+        <div class="loading-full" id="initial-loading">
+            <div class="spinner"></div>
+            <p>Loading SKM...</p>
+        </div>
+    </main>
+
+    <div class="toast-container" id="toast-container"></div>
+
+    <script src="/app.js"></script>
+    <script src="/components/dashboard.js"></script>
+    <script src="/components/library.js"></script>
+</body>
+</html>

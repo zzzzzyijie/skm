@@ -53,6 +53,35 @@ func TestCLIAddTagEnableDisableAndPlan(t *testing.T) {
 	}
 }
 
+func TestCLIUserHomeOverrideKeepsAgentTargetsIsolated(t *testing.T) {
+	root, realUserHome, project, _ := cliPaths(t)
+	isolationRoot := filepath.Join(root, "isolated-user")
+	isolationSKMHome := filepath.Join(isolationRoot, ".skm")
+	skillPath := filepath.Join(root, "isolated-skill")
+	writeCLISkill(t, skillPath, "isolated-skill")
+
+	runCLI(t,
+		"--home", isolationSKMHome,
+		"--user-home", isolationRoot,
+		"--project", project,
+		"add", skillPath,
+	)
+	runCLI(t,
+		"--home", isolationSKMHome,
+		"--user-home", isolationRoot,
+		"--project", project,
+		"enable", "local/isolated-skill", "--agent", "codex",
+	)
+
+	isolationTarget := filepath.Join(isolationRoot, ".agents", "skills", "isolated-skill")
+	if info, err := os.Lstat(isolationTarget); err != nil || info.Mode()&os.ModeSymlink == 0 {
+		t.Fatalf("isolated target %s is not a symlink: info=%v err=%v", isolationTarget, info, err)
+	}
+	if _, err := os.Lstat(filepath.Join(realUserHome, ".agents", "skills", "isolated-skill")); !os.IsNotExist(err) {
+		t.Fatalf("real user target was modified: %v", err)
+	}
+}
+
 func TestCLIProjectVendorRetainsPersonalLibrary(t *testing.T) {
 	root, _, project, skmHome := cliPaths(t)
 	skillPath := filepath.Join(root, "release")

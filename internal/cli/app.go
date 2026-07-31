@@ -19,6 +19,7 @@ type App struct {
 	Out       io.Writer
 	Err       io.Writer
 	Home      string
+	UserHome  string
 	Project   string
 	JSON      bool
 	NoColor   bool
@@ -57,6 +58,7 @@ func (a *App) RootCommand() *cobra.Command {
 	root.SetOut(a.Out)
 	root.SetErr(a.Err)
 	root.PersistentFlags().StringVar(&a.Home, "home", "", "override SKM_HOME")
+	root.PersistentFlags().StringVar(&a.UserHome, "user-home", "", "override user home used for Agent targets")
 	root.PersistentFlags().StringVar(&a.Project, "project", "", "project root (defaults to current repository)")
 	root.PersistentFlags().BoolVar(&a.JSON, "json", false, "write versioned JSON output")
 	root.PersistentFlags().BoolVar(&a.NoColor, "no-color", false, "disable colored output")
@@ -78,6 +80,7 @@ func (a *App) RootCommand() *cobra.Command {
 		a.newTagCommand(),
 		a.newProjectCommand(),
 		a.newSyncCommand(),
+		a.newUICommand(),
 		a.newCompletionCommand(root),
 		&cobra.Command{
 			Use:   "version",
@@ -105,7 +108,7 @@ func currentVersion() string {
 }
 
 func (a *App) openStore() (*store.Store, error) {
-	paths, err := store.DefaultPaths(a.Home, a.Project)
+	paths, err := store.DefaultPathsWithUserHome(a.Home, a.UserHome, a.Project)
 	if err != nil {
 		return nil, err
 	}

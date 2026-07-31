@@ -66,9 +66,22 @@ go build -trimpath -o ./bin/skm ./cmd/skm
 ./bin/skm version
 ```
 
-发布维护方式见 [发布指南](docs/releasing.md)。
+完整的隔离开发、UI 验证、Snapshot 打包和正式发布流程见
+[隔离开发与发布流程](docs/development-release-workflow.md)。发布维护细节见
+[发布指南](docs/releasing.md)。
 
 ## 快速开始
+
+### Web UI
+
+启动内嵌的本地管理界面：
+
+```bash
+skm ui
+```
+
+默认监听 `http://localhost:9527` 并打开浏览器。可用 `--port` 更换端口，或用
+`--no-browser` 只启动服务。Web UI 与 CLI 使用同一份 Library 和 Activation 数据。
 
 ### 建立个人 Library
 
@@ -245,7 +258,18 @@ sh scripts/install_test.sh
 ```
 
 测试使用临时 HOME、项目目录和本地 Git 仓库，不访问真实 Agent 配置目录。
+一键运行隔离的 Library/Activation 冒烟测试：
+
+```bash
+sh scripts/dev_smoke_test.sh
+```
+
+使用 `--full` 加入仓库测试、安装器和 Formula 检查；完整开发到发布流程见
+[隔离开发与发布流程](docs/development-release-workflow.md)。
+
 发布配置的本地验证方式见 [发布指南](docs/releasing.md#4-本地检查发布配置)。
+需要覆盖测试开发二进制时，请使用 [隔离开发与发布流程](docs/development-release-workflow.md)，
+不要直接对真实 `~/.skm` 或 Agent 目录执行 `enable`、`apply`。
 
 ## License
 

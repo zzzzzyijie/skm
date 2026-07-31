@@ -76,6 +76,10 @@ go build -trimpath -o ./bin/skm ./cmd/skm
 ./bin/skm version
 ```
 
+开发版覆盖测试不应直接使用真实的 `~/.skm` 或 Agent 目录。完整的隔离构建、`--home`、
+`--user-home`、`--project` 测试与发布步骤见
+[隔离开发与发布流程](development-release-workflow.md)。
+
 ### 2.4 首次初始化
 
 ```bash

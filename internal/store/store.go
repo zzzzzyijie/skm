@@ -41,9 +41,21 @@ func New(paths Paths) (*Store, error) {
 }
 
 func DefaultPaths(homeOverride, projectOverride string) (Paths, error) {
-	userHome, err := os.UserHomeDir()
-	if err != nil {
-		return Paths{}, err
+	return DefaultPathsWithUserHome(homeOverride, "", projectOverride)
+}
+
+// DefaultPathsWithUserHome resolves the three independent filesystem roots
+// used by skm. The user-home override is intended for integration tests and
+// isolated development, where Agent deployment targets must not use the real
+// user home directory.
+func DefaultPathsWithUserHome(homeOverride, userHomeOverride, projectOverride string) (Paths, error) {
+	userHome := userHomeOverride
+	if userHome == "" {
+		var err error
+		userHome, err = os.UserHomeDir()
+		if err != nil {
+			return Paths{}, err
+		}
 	}
 	home := homeOverride
 	if home == "" {

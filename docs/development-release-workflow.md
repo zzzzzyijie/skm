@@ -1,0 +1,302 @@
+# 从本地开发到正式发布
+
+这是一套从修改代码、隔离验证、打包预览到发布新版本的固定流程。按顺序执行即可：
+
+```text
+改代码 -> 构建 ./bin/skm -> 临时目录冒烟测试 -> 自动化测试
+-> GoReleaser Snapshot -> 合并 main -> 打 Tag -> GitHub Release -> 全新安装验证
+```
+
+开发期间**不要覆盖** Homebrew 或 curl 已安装的 `skm`。开发版始终使用仓库中的
+`./bin/skm`，正式版仍由系统 PATH 中的 `skm` 提供。这样即使开发版有问题，也不会影响日常
+Skill Library。
+
+## 1. 为什么要同时隔离三个目录
+
+`skm` 会访问三类路径，它们必须一起隔离：
+
+| 参数 | 包含什么 | 不指定时会写入哪里 |
+| --- | --- | --- |
+| `--home` | Library、快照、Git Source、Activation 状态 | `~/.skm` |
+| `--user-home` | 用户级 Claude/Codex Skill 链接 | `~/.claude`、`~/.agents` |
+| `--project` | 项目 `.skm/` 和项目级 Agent 目录 | 当前仓库 |
+
+因此只使用 `--home /tmp/test` 是不够的：`enable` 仍会把链接放到真实的 `~/.claude` 或
+`~/.agents`。以下流程通过 `--user-home` 明确指定一个临时用户目录，完整覆盖
+`enable`、`disable`、`apply` 和 Web UI，而不碰真实数据。
+
+`--user-home` 仅用于测试或自动化集成环境；平时使用发布版时不要传它。
+
+## 2. 每次改动后的本地开发验证
+
+最快的验证方式是直接运行一键脚本：
+
+```bash
+sh scripts/dev_smoke_test.sh
+```
+
+它会临时构建二进制，完整运行 `init`、`add`、`enable`、`plan`、`status`、`doctor`、`disable`，
+并断言 Claude/Codex 链接只出现在临时目录。默认结束后会删除临时数据。常用选项：
+
+```bash
+sh scripts/dev_smoke_test.sh --full  # 再跑 go test、vet、安装器与 Formula 测试
+sh scripts/dev_smoke_test.sh --race  # --full 加 race detector
+sh scripts/dev_smoke_test.sh --keep  # 保留临时目录，便于检查状态或手动启动 UI
+```
+
+`--keep` 完成后会打印可直接复制的隔离 UI 启动命令。需要逐条理解或手动执行时，再使用下面的
+完整步骤。
+
+以下命令在仓库根目录执行，适用于 zsh 和 bash。先准备一次临时测试空间：
+
+```bash
+DEV_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/skm-dev.XXXXXX")"
+DEV_BIN="$PWD/bin/skm"
+DEV_USER_HOME="$DEV_ROOT/user"
+DEV_SKM_HOME="$DEV_USER_HOME/.skm"
+DEV_PROJECT="$DEV_ROOT/project"
+DEV_SKILL="$DEV_ROOT/sample-skill"
+
+mkdir -p "$DEV_USER_HOME" "$DEV_PROJECT" "$DEV_SKILL"
+printf '%s\n' \
+  '---' \
+  'name: sample-skill' \
+  'description: Isolated smoke-test Skill.' \
+  '---' \
+  'Use this only to test a local skm build.' \
+  > "$DEV_SKILL/SKILL.md"
+```
+
+现在 `DEV_ROOT` 是唯一允许写入的测试根目录。可以先检查变量，确认它是 `/tmp` 下的临时路径：
+
+```bash
+printf '%s\n' "$DEV_ROOT" "$DEV_SKM_HOME" "$DEV_USER_HOME" "$DEV_PROJECT"
+```
+
+接着构建当前代码：
+
+```bash
+go build -trimpath -o "$DEV_BIN" ./cmd/skm
+"$DEV_BIN" version
+```
+
+源码构建显示 `dev` 是正常结果，表示这个二进制没有 Release Tag 注入。它不代表构建失败。
+
+为避免在每条命令中重复三个隔离参数，定义一个只在当前终端有效的函数：
+
+```bash
+skm_dev() {
+  "$DEV_BIN" \
+    --home "$DEV_SKM_HOME" \
+    --user-home "$DEV_USER_HOME" \
+    --project "$DEV_PROJECT" \
+    "$@"
+}
+```
+
+按顺序运行下列冒烟测试：
+
+```bash
+skm_dev init
+skm_dev add "$DEV_SKILL" --tag smoke
+skm_dev list
+skm_dev enable local/sample-skill --agent claude,codex
+skm_dev plan
+skm_dev status
+skm_dev doctor
+```
+
+预期结果：
+
+- `list` 中有 `local/sample-skill`。
+- `plan` 和 `status` 中 Claude、Codex 对应操作为 `unchanged`。
+- `doctor` 中的 `skm-home` 指向 `$DEV_SKM_HOME`，Claude/Codex 路径位于 `$DEV_USER_HOME`。
+
+明确检查链接是否写到了临时目录：
+
+```bash
+test -L "$DEV_USER_HOME/.claude/skills/sample-skill"
+test -L "$DEV_USER_HOME/.agents/skills/sample-skill"
+printf '%s\n' "isolated activation passed"
+```
+
+若任一命令失败，先停止在这里修复，不要继续制作 Snapshot 或创建 Tag。若接下来还要执行第 5
+节的 Snapshot 测试，请保留 `DEV_ROOT`、变量和 `skm_dev` 函数。仅在本轮日常开发验证已经结束时，
+才清理临时 Activation 和目录：
+
+```bash
+skm_dev disable local/sample-skill
+rm -rf "$DEV_ROOT"
+```
+
+只在确认 `DEV_ROOT` 是本节通过 `mktemp -d` 创建的临时目录后，才执行最后一条删除命令。
+
+## 3. 开发 Web UI 时额外检查
+
+完成第 2 节的 `add` 和 `enable` 后，在同一个终端启动 UI：
+
+```bash
+skm_dev ui --port 9527 --no-browser
+```
+
+浏览器打开 `http://localhost:9527`，手动检查：
+
+1. Dashboard 的总数、启用数和 Doctor 路径是否来自临时目录。
+2. Library 能否搜索、查看详情、管理标签、启用和禁用。
+3. Activation 是否能显示 Plan、选择 Agent/链接模式、禁用单个 Agent。
+4. Sources 空状态、更新和同步是否正常。
+5. 缩窄浏览器至手机宽度，确认抽屉导航、按钮和表格没有重叠。
+
+按 `Ctrl-C` 停止服务。Web UI 与 CLI 使用同一组路径，因此不需要另一套清理命令。
+
+## 4. 提交或合并前的自动化检查
+
+所有本地冒烟测试通过后，在仓库根目录运行：
+
+```bash
+GOCACHE=/tmp/skm-go-cache go test ./...
+GOCACHE=/tmp/skm-go-cache go test -race ./...
+GOCACHE=/tmp/skm-go-cache go vet ./...
+sh scripts/install_test.sh
+sh scripts/generate_homebrew_formula_test.sh
+git diff --check
+```
+
+这些命令分别检查单元/集成测试、并发竞争、静态问题、curl 安装器、Homebrew Formula 生成器和
+补丁中的空白字符问题。任何一项失败都不应进入发布步骤。
+
+检查改动范围后再提交：
+
+```bash
+git status --short
+git diff --stat
+git add <已确认的文件>
+git commit -m "feat: describe the change"
+git push origin <feature-branch>
+```
+
+在 PR 或代码审查完成后合并到 `main`。不要在有未提交改动的工作区创建发布 Tag。
+
+## 5. 发布前生成候选包（Snapshot）
+
+Snapshot 与正式 Release 使用同一份 GoReleaser 配置，但只写本地 `dist/`，不会创建 GitHub
+Release，也不会更新 Homebrew Tap。
+
+先安装 GoReleaser，然后在干净工作区运行：
+
+```bash
+git status --short
+goreleaser check
+goreleaser release --snapshot --clean
+```
+
+第一条命令应没有输出。Snapshot 成功后，检查二进制和归档是否都生成：
+
+```bash
+find dist -type f -name skm -perm -111 -print
+find dist -type f -name 'skm_*.tar.gz' -print
+```
+
+为避免前一轮开发状态掩盖问题，本节应使用一套新的临时根目录。重新执行第 2 节开头的“准备
+临时测试空间”和 `skm_dev` 函数定义，但先不要执行其中的 `go build` 或冒烟命令。然后选择当前
+机器的 Snapshot 二进制，并使用它执行同一套隔离测试：
+
+```bash
+SNAPSHOT_BIN="$(find dist -type f -name skm -perm -111 | head -n 1)"
+test -n "$SNAPSHOT_BIN"
+DEV_BIN="$SNAPSHOT_BIN"
+"$DEV_BIN" version
+
+skm_dev init
+skm_dev add "$DEV_SKILL" --tag smoke
+skm_dev enable local/sample-skill --agent claude,codex
+skm_dev status
+skm_dev disable local/sample-skill
+```
+
+如果 Snapshot 二进制与 `./bin/skm` 的行为不同，修复 GoReleaser 配置或代码后重新执行本节。
+Snapshot 通过才说明“打出的包”也能工作，不只是 `go build` 的二进制能工作。
+
+## 6. 创建正式版本
+
+正式发布只在 `main` 上进行。先同步本地分支并再次确认状态：
+
+```bash
+git checkout main
+git pull --ff-only origin main
+git status --short
+git log -1 --oneline
+```
+
+确认没有未提交改动、最后一个提交就是要发布的内容后，选择正确的语义化版本号并创建 Tag：
+
+```bash
+git tag -a v0.3.0 -m "v0.3.0"
+git push origin v0.3.0
+```
+
+把示例 `v0.3.0` 换成实际版本号：
+
+- 修复且不改变兼容行为，用补丁版本，例如 `v0.2.1`。
+- 新增兼容功能，用次版本，例如 `v0.3.0`。
+- 存在破坏性变更，用主版本，例如 `v1.0.0`。
+
+推送 Tag 后，GitHub Actions 会自动执行测试、构建 macOS/Linux 的 amd64/arm64 归档、生成
+`checksums.txt`、创建 GitHub Release，并更新 Homebrew Formula。确认 Release 工作流成功，且
+Release 页面包含所有归档和校验和。
+
+不要删除、移动或复用已发布 Tag。若工作流因代码或配置问题失败，修复后创建新的版本 Tag；若
+只是 GitHub 的临时服务故障，可在 Actions 页面重新运行失败的工作流。Homebrew Tap Token 的
+要求见 [发布指南](releasing.md)。
+
+## 7. 发布后的全新安装验证
+
+发布成功后，至少选择一种真实安装方式验证；推荐两种都做。
+
+### Homebrew
+
+已安装用户模拟升级：
+
+```bash
+brew update
+brew upgrade zzzzzyijie/tap/skm
+skm version
+```
+
+首次安装时，把 `brew upgrade` 换成：
+
+```bash
+brew install zzzzzyijie/tap/skm
+skm version
+```
+
+### curl 安装器
+
+使用临时安装目录，不覆盖系统中的 `skm`：
+
+```bash
+RELEASE_TEST_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/skm-release.XXXXXX")"
+curl -fsSL https://raw.githubusercontent.com/zzzzzyijie/skm/main/scripts/install.sh | \
+  sh -s -- --version v0.3.0 --install-dir "$RELEASE_TEST_ROOT/bin"
+"$RELEASE_TEST_ROOT/bin/skm" version
+```
+
+将 `v0.3.0` 改为刚发布的 Tag。此处同样应使用新的隔离根目录：重新执行第 2 节开头的准备块和
+`skm_dev` 函数定义，但先不要运行其中的 `go build` 或冒烟命令。然后令 `DEV_BIN` 指向安装器
+下载的二进制，重复 `init`、`add`、`enable`、`status`、`disable` 测试：
+
+```bash
+DEV_BIN="$RELEASE_TEST_ROOT/bin/skm"
+skm_dev init
+skm_dev add "$DEV_SKILL" --tag smoke
+skm_dev enable local/sample-skill --agent claude,codex
+skm_dev status
+skm_dev disable local/sample-skill
+```
+
+上述命令仍使用 `DEV_SKM_HOME`、`DEV_USER_HOME`、`DEV_PROJECT`，所以正式安装包也不会写入真实
+Library 或 Agent 目录。验证完毕后，确认临时目录无误再清理：
+
+```bash
+rm -rf "$RELEASE_TEST_ROOT" "$DEV_ROOT"
+```
