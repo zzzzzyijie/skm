@@ -40,14 +40,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Checkout Homebrew Tap
-        uses: actions/checkout@v6
-        with:
-          repository: zzzzzyijie/homebrew-tap
-          token: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
-          ref: main
-          path: .homebrew-tap
-
       - name: Verify Homebrew Tap write access
         env:
           GH_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
@@ -62,19 +54,60 @@ jobs:
             exit 1
           fi
 
-      - name: Update Homebrew Formula
+      - name: Generate Homebrew Formula
         env:
           RELEASE_TAG: ${{ github.ref_name }}
         run: |
+          mkdir -p .homebrew-formula
           sh scripts/generate_homebrew_formula.sh \
             "$RELEASE_TAG" \
             dist/checksums.txt \
-            .homebrew-tap/Formula/skm.rb
-          git -C .homebrew-tap config user.name "skm release bot"
-          git -C .homebrew-tap config user.email "actions@github.com"
-          git -C .homebrew-tap add Formula/skm.rb
-          if ! git -C .homebrew-tap diff --cached --quiet; then
-            git -C .homebrew-tap commit -m "Formula update for skm ${RELEASE_TAG}"
-            git -C .homebrew-tap pull --rebase origin main
-            git -C .homebrew-tap push origin HEAD:main
-          fi
+            .homebrew-formula/skm.rb
+
+      - name: Publish Homebrew Formula
+        uses: actions/github-script@v9
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        with:
+          github-token: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+          script: |
+            const fs = require("fs");
+            const owner = "zzzzzyijie";
+            const repo = "homebrew-tap";
+            const path = "Formula/skm.rb";
+            const branch = "main";
+            const content = fs.readFileSync(".homebrew-formula/skm.rb").toString("base64");
+            const message = `Formula update for skm ${process.env.RELEASE_TAG}`;
+
+            for (let attempt = 1; attempt <= 3; attempt += 1) {
+              let sha;
+              try {
+                const current = await github.rest.repos.getContent({ owner, repo, path, ref: branch });
+                if (Array.isArray(current.data)) {
+                  throw new Error(`${path} is a directory, not a Formula file`);
+                }
+                sha = current.data.sha;
+                if (current.data.content.replace(/\n/g, "") === content) {
+                  core.info(`${path} is already current`);
+                  return;
+                }
+              } catch (error) {
+                if (error.status !== 404) {
+                  throw error;
+                }
+              }
+
+              try {
+                await github.rest.repos.createOrUpdateFileContents({
+                  owner, repo, path, branch, content, message, sha,
+                });
+                core.info(`Published ${path} on attempt ${attempt}`);
+                return;
+              } catch (error) {
+                if (attempt === 3 || ![409, 422].includes(error.status)) {
+                  throw error;
+                }
+                core.warning(`Formula update conflicted on attempt ${attempt}; retrying`);
+                await new Promise((resolve) => setTimeout(resolve, attempt * 1000));
+              }
+            }

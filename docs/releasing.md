@@ -1,6 +1,6 @@
 # skm 发布指南
 
-skm 通过 GitHub Release 提供预编译文件，并由同一个 Tag 自动更新 Homebrew Formula。
+skm 通过 GitHub Release 提供预编译文件，并由同一个 Tag 通过 GitHub Contents API 自动更新 Homebrew Formula。
 curl 安装器也从 GitHub Release 下载相同文件并验证 SHA-256。
 
 ## 1. 一次性配置 Homebrew Tap
@@ -18,7 +18,8 @@ fine-grained Personal Access Token，并在 `zzzzzyijie/skm` 仓库中添加 Act
 HOMEBREW_TAP_GITHUB_TOKEN
 ```
 
-不能使用默认 `GITHUB_TOKEN` 更新另一个仓库；跨仓库发布需要单独 Token。
+不能使用默认 `GITHUB_TOKEN` 更新另一个仓库；跨仓库发布需要单独 Token。发布工作流使用该
+Token 调用 Contents API，而不依赖跨仓库 Git checkout 或 push。
 将仓库改为公开只解决匿名下载，不会赋予 Actions 跨仓库写权限。fine-grained Token
 必须满足以下配置：
 
@@ -51,7 +52,7 @@ git push origin v0.2.0
 1. 运行 Go 测试和安装器测试；
 2. 构建 macOS/Linux 的 amd64、arm64 文件；
 3. 生成 `checksums.txt` 和 GitHub Release；
-4. 根据 Release 校验值生成并更新 `homebrew-tap` 仓库中的 `Formula/skm.rb`。
+4. 根据 Release 校验值生成并通过 Contents API 更新 `homebrew-tap` 仓库中的 `Formula/skm.rb`。
 
 Release 构建通过链接器把 Tag 版本注入 `skm version`。本地源码构建显示 `dev`；
 通过 `go install ...@<version>` 安装时会从 Go 模块构建信息读取版本。
