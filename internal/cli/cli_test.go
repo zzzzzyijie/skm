@@ -184,6 +184,75 @@ func TestCLIEnableRejectsSameNameBeforeChangingState(t *testing.T) {
 	}
 }
 
+func TestCLIRemoveDeletesUnreferencedSnapshot(t *testing.T) {
+	root, userHome, project, skmHome := cliPaths(t)
+	skillPath := filepath.Join(root, "remove-me")
+	writeCLISkill(t, skillPath, "remove-me")
+	runCLI(t, "--home", skmHome, "--project", project, "add", skillPath)
+	storage := openTestStore(t, skmHome, userHome, project)
+	catalog, err := storage.LoadCatalog()
+	if err != nil || len(catalog.Skills) != 1 {
+		t.Fatalf("catalog = %#v, err=%v", catalog, err)
+	}
+	objectPath := catalog.Skills[0].Path
+
+	out := runCLI(t, "--home", skmHome, "--project", project, "remove", "local/remove-me")
+	if !bytes.Contains(out, []byte("deleted its snapshot")) {
+		t.Fatalf("remove output: %s", out)
+	}
+	if _, err := os.Lstat(objectPath); !os.IsNotExist(err) {
+		t.Fatalf("removed snapshot still exists: %v", err)
+	}
+}
+
+func TestCLIRemoveRetainsSnapshotReferencedByAnotherLibrarySkill(t *testing.T) {
+	root, _, project, skmHome := cliPaths(t)
+	skillPath := filepath.Join(root, "shared")
+	writeCLISkill(t, skillPath, "shared")
+	runCLI(t, "--home", skmHome, "--project", project, "add", skillPath, "--source", "team-a")
+	runCLI(t, "--home", skmHome, "--project", project, "add", skillPath, "--source", "team-b")
+
+	out := runCLI(t, "--home", skmHome, "--project", project, "remove", "team-a/shared")
+	if !bytes.Contains(out, []byte("snapshot retained because it is still referenced")) {
+		t.Fatalf("first remove output: %s", out)
+	}
+	out = runCLI(t, "--home", skmHome, "--project", project, "remove", "team-b/shared")
+	if !bytes.Contains(out, []byte("deleted its snapshot")) {
+		t.Fatalf("second remove output: %s", out)
+	}
+}
+
+func TestCLIPruneDryRunThenDeletesOrphan(t *testing.T) {
+	root, userHome, project, skmHome := cliPaths(t)
+	skillPath := filepath.Join(root, "orphan")
+	writeCLISkill(t, skillPath, "orphan")
+	runCLI(t, "--home", skmHome, "--project", project, "add", skillPath)
+	storage := openTestStore(t, skmHome, userHome, project)
+	catalog, err := storage.LoadCatalog()
+	if err != nil || len(catalog.Skills) != 1 {
+		t.Fatalf("catalog = %#v, err=%v", catalog, err)
+	}
+	objectPath := catalog.Skills[0].Path
+	if err := storage.SaveCatalog(domain.Catalog{}); err != nil {
+		t.Fatal(err)
+	}
+
+	out := runCLI(t, "--home", skmHome, "--project", project, "prune", "--dry-run")
+	if !bytes.Contains(out, []byte("Would prune 1 unreferenced snapshot")) {
+		t.Fatalf("prune dry-run output: %s", out)
+	}
+	if _, err := os.Stat(objectPath); err != nil {
+		t.Fatalf("dry-run removed object: %v", err)
+	}
+	out = runCLI(t, "--home", skmHome, "--project", project, "prune")
+	if !bytes.Contains(out, []byte("Pruned 1 unreferenced snapshot")) {
+		t.Fatalf("prune output: %s", out)
+	}
+	if _, err := os.Lstat(objectPath); !os.IsNotExist(err) {
+		t.Fatalf("orphan still exists: %v", err)
+	}
+}
+
 func assertPlanStatuses(t *testing.T, raw []byte, count int, status string) {
 	t.Helper()
 	var envelope struct {

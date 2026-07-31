@@ -34,10 +34,13 @@ skm source add <git-url> --name <name> [--tag ...]
 skm list [--tag ...]
 skm show <skill>
 skm remove <skill>
+skm prune [--dry-run]
 ```
 
 添加只表示 Library 拥有该 Skill，不会自动部署。删除正在启用或被当前项目
-引用的 Skill 时必须先禁用或解除项目依赖。
+引用的 Skill 时必须先禁用或解除项目依赖。`remove` 在删除 Library 条目后立即清理
+没有其他已知引用的物理快照；仍被其他 Library 条目、固定 Activation、Deployment
+或当前项目依赖引用的快照继续保留。`prune` 使用相同的引用规则清理所有历史孤立快照。
 
 ### 2.1 标签
 
@@ -161,7 +164,7 @@ Git 是可选的协作与恢复能力，不是个人 Library 的前置条件。s
 
 ```text
 Library:
-  init, add, list, show, validate, remove
+  init, add, list, show, validate, remove, prune
   source add|list|update|remove, sync
   tag list|add|remove|rename
 

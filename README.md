@@ -81,7 +81,13 @@ skm list --tag development
 skm show local/code-review
 ```
 
-`add` 只加入 Library，不自动启用。
+`add` 只加入 Library，不自动启用。移除前必须先禁用；`remove` 会删除没有其他引用的
+物理快照，共享或被项目固定的快照会保留。历史孤立快照可先预览再清理：
+
+```bash
+skm prune --dry-run
+skm prune
+```
 
 ### 对 Agent 启用或禁用
 
@@ -212,7 +218,7 @@ skm enable --tag development --tag review --agent claude
 
 ```text
 Library:
-  init, add, list, show, validate, remove
+  init, add, list, show, validate, remove, prune
   source add|list|update|remove, sync
   tag list|add|remove|rename
 

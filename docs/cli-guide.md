@@ -173,6 +173,25 @@ skm disable local/code-review
 skm project remove team/code-review
 ```
 
+`remove` 从 Library 删除条目后，会检查剩余 Library、Activation、Deployment 和当前
+项目依赖。没有任何引用时同时删除 `~/.skm/objects/<hash>/<name>`；相同快照仍被其他
+Skill 或项目引用时只删除 Library 条目并保留快照。
+
+Git Source binding 不会被 `remove` 删除。只移除 Git-backed Skill 后再次运行
+`source update` 或 `sync`，该 Skill 可能重新导入；需要停止同步时应同时调整或删除
+对应 Source binding。
+
+Source 更新产生的旧版本等孤立快照可以统一清理。先使用 dry-run 查看候选路径和空间：
+
+```bash
+skm prune --dry-run
+skm prune
+```
+
+`prune` 只处理标准 `objects/<64位hash>/<name>` 目录，并保留 Library、固定
+Activation、Deployment 或当前项目依赖仍引用的快照。其他项目中尚未应用的 Git
+依赖不属于当前机器的活动引用；需要时可由项目锁文件和 Git Source 重新恢复。
+
 ## 5. 标签
 
 标签只管理个人 Library：

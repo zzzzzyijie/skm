@@ -96,6 +96,10 @@ clone -> checkout ref -> discover -> validate -> snapshot -> catalog upsert
 Git Source 更新不会直接修改已部署目录；Planner 根据 Activation 将用户链接原子
 切换到新快照。项目 require 使用锁定快照，不随个人 Source 更新自动漂移。
 
+Library `remove` 删除索引后，对当前快照执行可达性检查：剩余 Library 条目、固定
+Activation、Deployment 和当前项目依赖均视为引用。无引用快照立即删除；历史版本
+等孤立对象由 `prune` 统一清理。清理只接受标准 hash/name 布局，不跟随异常符号链接。
+
 ## 5. Activation 与 Planner
 
 个人 `enable` 只创建用户 Placement Activation。项目 Activation 由

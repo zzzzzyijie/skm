@@ -1,0 +1,4 @@
+interface:
+  display_name: "My Skill Two"
+  short_description: "Minimal skill for testing skill management"
+  default_prompt: "Use $my-skill-two to return a short test response."

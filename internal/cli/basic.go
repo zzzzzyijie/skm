@@ -10,6 +10,7 @@ import (
 	"github.com/zzzzzyijie/skm/internal/catalog"
 	"github.com/zzzzzyijie/skm/internal/domain"
 	"github.com/zzzzzyijie/skm/internal/skill"
+	"github.com/zzzzzyijie/skm/internal/store"
 )
 
 func (a *App) newInitCommand() *cobra.Command {
@@ -163,6 +164,7 @@ func (a *App) newRemoveCommand() *cobra.Command {
 				return err
 			}
 			var removed domain.Skill
+			var snapshot store.ObjectRemovalResult
 			err = withLock(storage, func() error {
 				manager := catalog.New(storage)
 				value, err := manager.ResolveLibrary(args[0])
@@ -188,17 +190,70 @@ func (a *App) newRemoveCommand() *cobra.Command {
 					}
 				}
 				removed, err = manager.Remove(value.ID)
-				return err
+				if err != nil {
+					return err
+				}
+				snapshot, err = storage.DeleteObjectIfUnreferenced(removed.Hash, removed.Name)
+				if err != nil {
+					return fmt.Errorf("removed %s from Library but failed to clean its snapshot: %w", removed.ID, err)
+				}
+				return nil
 			})
 			if err != nil {
 				return err
 			}
 			return a.emit("remove", removed, func() error {
-				_, err := fmt.Fprintf(a.Out, "Removed %s from Library\n", removed.ID)
+				var message string
+				switch {
+				case snapshot.Deleted:
+					message = " and deleted its snapshot"
+				case len(snapshot.References) > 0:
+					message = "; snapshot retained because it is still referenced"
+				case snapshot.RetainedReason != "":
+					message = "; snapshot retained: " + snapshot.RetainedReason
+				case !snapshot.Existed:
+					message = "; snapshot was already absent"
+				default:
+					message = "; snapshot retained"
+				}
+				_, err := fmt.Fprintf(a.Out, "Removed %s from Library%s\n", removed.ID, message)
 				return err
 			})
 		},
 	}
+}
+
+func (a *App) newPruneCommand() *cobra.Command {
+	var dryRun bool
+	command := &cobra.Command{
+		Use:   "prune",
+		Short: "Remove unreferenced immutable Skill snapshots",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			storage, err := a.openStore()
+			if err != nil {
+				return err
+			}
+			var result store.PruneResult
+			err = withLock(storage, func() error {
+				result, err = storage.PruneObjects(dryRun)
+				return err
+			})
+			if err != nil {
+				return err
+			}
+			return a.emit("prune", result, func() error {
+				if result.DryRun {
+					_, err := fmt.Fprintf(a.Out, "Would prune %d unreferenced snapshot(s), reclaiming %d bytes; retained %d referenced snapshot(s)\n", result.Candidates, result.Bytes, result.Retained)
+					return err
+				}
+				_, err := fmt.Fprintf(a.Out, "Pruned %d unreferenced snapshot(s), reclaimed %d bytes; retained %d referenced snapshot(s)\n", result.Removed, result.Bytes, result.Retained)
+				return err
+			})
+		},
+	}
+	command.Flags().BoolVar(&dryRun, "dry-run", false, "show unreferenced snapshots without deleting them")
+	return command
 }
 
 func singleLine(value string) string {
