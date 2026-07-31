@@ -69,6 +69,95 @@ func TestGitSourceRejectsCredentialURL(t *testing.T) {
 	}
 }
 
+func TestGitSourceRemoveDeletesCheckoutAndRetainsImportedSkill(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git is not installed")
+	}
+	repository := t.TempDir()
+	run(t, repository, "git", "init", "-b", "main")
+	writeRepoSkill(t, repository, "skills/one", "one", "version one")
+	commitAll(t, repository, "initial")
+
+	storage := sourceStore(t)
+	manager := NewGitManager(storage, catalog.New(storage))
+	_, imported, err := manager.Add(domain.Source{
+		Name: "team", URL: repository, Paths: []string{"skills/one"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	checkoutPath := storage.SourcePath("team")
+	if _, err := os.Stat(checkoutPath); err != nil {
+		t.Fatalf("source checkout missing before remove: %v", err)
+	}
+
+	removed, err := manager.Remove("team")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !removed.BindingRemoved || !removed.CheckoutRemoved || removed.Source == nil {
+		t.Fatalf("unexpected removal result: %#v", removed)
+	}
+	if _, err := os.Lstat(checkoutPath); !os.IsNotExist(err) {
+		t.Fatalf("source checkout still exists: %v", err)
+	}
+	sources, err := storage.LoadSources()
+	if err != nil || len(sources.Sources) != 0 {
+		t.Fatalf("sources = %#v, err=%v", sources, err)
+	}
+	if _, err := catalog.New(storage).ResolveLibrary("team/one"); err != nil {
+		t.Fatalf("imported Library Skill was removed: %v", err)
+	}
+	if _, err := os.Stat(imported[0].Path); err != nil {
+		t.Fatalf("imported snapshot was removed: %v", err)
+	}
+}
+
+func TestGitSourceRemoveDeletesOrphanedCheckout(t *testing.T) {
+	storage := sourceStore(t)
+	checkoutPath := storage.SourcePath("team")
+	if err := os.MkdirAll(checkoutPath, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	removed, err := NewGitManager(storage, catalog.New(storage)).Remove("team")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if removed.BindingRemoved || !removed.CheckoutRemoved || removed.Source != nil {
+		t.Fatalf("unexpected orphan removal result: %#v", removed)
+	}
+	if _, err := os.Lstat(checkoutPath); !os.IsNotExist(err) {
+		t.Fatalf("orphaned checkout still exists: %v", err)
+	}
+	if _, err := NewGitManager(storage, catalog.New(storage)).Remove("team"); err == nil {
+		t.Fatal("missing source and checkout should not be removed twice")
+	}
+}
+
+func TestGitSourceRemoveRefusesSymlinkedCheckout(t *testing.T) {
+	storage := sourceStore(t)
+	external := t.TempDir()
+	marker := filepath.Join(external, "keep")
+	if err := os.WriteFile(marker, []byte("keep"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	checkoutPath := storage.SourcePath("team")
+	if err := os.Symlink(external, checkoutPath); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := NewGitManager(storage, catalog.New(storage)).Remove("team"); err == nil {
+		t.Fatal("symlinked source checkout should be rejected")
+	}
+	if _, err := os.Stat(marker); err != nil {
+		t.Fatalf("symlink target was modified: %v", err)
+	}
+	if info, err := os.Lstat(checkoutPath); err != nil || info.Mode()&os.ModeSymlink == 0 {
+		t.Fatalf("source symlink was modified: info=%v err=%v", info, err)
+	}
+}
+
 func TestFetchPinnedDoesNotChangeLibraryOrSourceBinding(t *testing.T) {
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("git is not installed")

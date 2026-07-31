@@ -29,6 +29,14 @@ type GitManager struct {
 	Now     func() time.Time
 }
 
+type RemovalResult struct {
+	Name            string         `json:"name"`
+	Source          *domain.Source `json:"source,omitempty"`
+	BindingRemoved  bool           `json:"bindingRemoved"`
+	CheckoutPath    string         `json:"checkoutPath,omitempty"`
+	CheckoutRemoved bool           `json:"checkoutRemoved"`
+}
+
 func NewGitManager(storage *store.Store, catalogManager *catalog.Manager) *GitManager {
 	return &GitManager{Store: storage, Catalog: catalogManager, GitPath: "git", Now: time.Now}
 }
@@ -114,10 +122,14 @@ func (m *GitManager) Update(names []string) ([]domain.Source, []domain.Skill, er
 	return updatedSources, imported, nil
 }
 
-func (m *GitManager) Remove(name string) (domain.Source, error) {
+func (m *GitManager) Remove(name string) (RemovalResult, error) {
+	name = strings.ToLower(strings.TrimSpace(name))
+	if !validSourceName.MatchString(name) {
+		return RemovalResult{}, fmt.Errorf("invalid source name %q", name)
+	}
 	sources, err := m.Store.LoadSources()
 	if err != nil {
-		return domain.Source{}, err
+		return RemovalResult{}, err
 	}
 	var removed domain.Source
 	result := sources.Sources[:0]
@@ -128,14 +140,58 @@ func (m *GitManager) Remove(name string) (domain.Source, error) {
 		}
 		result = append(result, value)
 	}
-	if removed.Name == "" {
-		return domain.Source{}, fmt.Errorf("source %q not found", name)
+	checkoutRoot := filepath.Join(m.Store.Paths.Home, "sources")
+	checkoutPath := m.Store.SourcePath(name)
+	checkoutExists, err := removableCheckoutExists(checkoutRoot, checkoutPath)
+	if err != nil {
+		return RemovalResult{}, err
 	}
-	sources.Sources = result
-	if err := m.Store.SaveSources(sources); err != nil {
-		return domain.Source{}, err
+	if removed.Name == "" && !checkoutExists {
+		return RemovalResult{}, fmt.Errorf("source %q not found", name)
 	}
-	return removed, nil
+	removal := RemovalResult{
+		Name:           name,
+		CheckoutPath:   checkoutPath,
+		BindingRemoved: removed.Name != "",
+	}
+	if removed.Name != "" {
+		removal.Source = &removed
+		sources.Sources = result
+		if err := m.Store.SaveSources(sources); err != nil {
+			return RemovalResult{}, err
+		}
+	}
+	if checkoutExists {
+		if err := os.RemoveAll(checkoutPath); err != nil {
+			return removal, fmt.Errorf("failed to remove source checkout %s: %w", checkoutPath, err)
+		}
+		removal.CheckoutRemoved = true
+	}
+	return removal, nil
+}
+
+func removableCheckoutExists(root, path string) (bool, error) {
+	if !fsx.Within(root, path) {
+		return false, fmt.Errorf("source checkout path escapes %s", root)
+	}
+	rootInfo, err := os.Lstat(root)
+	if err != nil {
+		return false, err
+	}
+	if !rootInfo.IsDir() || rootInfo.Mode()&os.ModeSymlink != 0 {
+		return false, fmt.Errorf("refusing source checkout through non-directory %s", root)
+	}
+	info, err := os.Lstat(path)
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
+		return false, fmt.Errorf("refusing to remove non-directory source checkout %s", path)
+	}
+	return true, nil
 }
 
 func (m *GitManager) syncOne(value domain.Source) (domain.Source, []domain.Skill, error) {

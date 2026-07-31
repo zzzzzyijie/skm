@@ -115,14 +115,14 @@ func (a *App) newSourceUpdateCommand() *cobra.Command {
 func (a *App) newSourceRemoveCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "remove <name>",
-		Short: "Remove a Git binding without deleting imported snapshots",
+		Short: "Remove a Git binding and cached checkout",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			storage, err := a.openStore()
 			if err != nil {
 				return err
 			}
-			var removed domain.Source
+			var removed gitSource.RemovalResult
 			err = withLock(storage, func() error {
 				removed, err = gitSource.NewGitManager(storage, catalog.New(storage)).Remove(args[0])
 				return err
@@ -131,7 +131,15 @@ func (a *App) newSourceRemoveCommand() *cobra.Command {
 				return err
 			}
 			return a.emit("source remove", removed, func() error {
-				_, err := fmt.Fprintf(a.Out, "Removed source binding %s; imported snapshots were retained\n", removed.Name)
+				if !removed.BindingRemoved {
+					_, err := fmt.Fprintf(a.Out, "Removed orphaned source checkout %s\n", removed.Name)
+					return err
+				}
+				checkout := ""
+				if removed.CheckoutRemoved {
+					checkout = " and its checkout"
+				}
+				_, err := fmt.Fprintf(a.Out, "Removed source binding %s%s; imported Library Skills were retained\n", removed.Name, checkout)
 				return err
 			})
 		},

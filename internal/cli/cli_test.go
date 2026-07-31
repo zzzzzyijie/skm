@@ -310,6 +310,22 @@ func TestCLIPruneDryRunThenDeletesOrphan(t *testing.T) {
 	}
 }
 
+func TestCLISourceRemoveDeletesOrphanedCheckout(t *testing.T) {
+	_, _, project, skmHome := cliPaths(t)
+	checkoutPath := filepath.Join(skmHome, "sources", "team")
+	if err := os.MkdirAll(checkoutPath, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	out := runCLI(t, "--home", skmHome, "--project", project, "source", "remove", "team")
+	if !bytes.Contains(out, []byte("Removed orphaned source checkout team")) {
+		t.Fatalf("source remove output: %s", out)
+	}
+	if _, err := os.Lstat(checkoutPath); !os.IsNotExist(err) {
+		t.Fatalf("orphaned checkout still exists: %v", err)
+	}
+}
+
 func assertPlanStatuses(t *testing.T, raw []byte, count int, status string) {
 	t.Helper()
 	var envelope struct {

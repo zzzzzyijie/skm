@@ -406,7 +406,9 @@ skm source update
 skm source remove team
 ```
 
-移除 Source 绑定不删除已导入快照。
+移除 Source 绑定会同时删除 `~/.skm/sources/<name>` 中的 Git checkout，但不删除已导入
+Library 的 Skill 和不可变快照。如果绑定已经不存在但 checkout 仍然存在，同一命令会将
+该孤立 checkout 清理掉；两者都不存在时才报告 Source not found。
 
 更新 Source 并刷新当前 Activation：
 
