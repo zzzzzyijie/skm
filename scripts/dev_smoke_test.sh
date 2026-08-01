@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # Build and exercise skm against temporary Library, Agent, and project roots.
-# It never writes to the caller's real ~/.skm, ~/.claude, ~/.agents, or project.
+# It never writes to the caller's real ~/.skm, ~/.claude, ~/.codex, or project.
 
 set -eu
 
@@ -95,7 +95,7 @@ run_skm --json list | grep -F 'local/smoke-skill' >/dev/null
 run_skm enable local/smoke-skill --agent claude,codex
 
 claude_target="$user_home/.claude/skills/smoke-skill"
-codex_target="$user_home/.agents/skills/smoke-skill"
+codex_target="$user_home/.codex/skills/smoke-skill"
 [ -L "$claude_target" ]
 [ -L "$codex_target" ]
 run_skm --json plan | grep -F '"status":"unchanged"' >/dev/null

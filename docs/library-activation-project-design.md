@@ -20,6 +20,7 @@ Project Requirement 项目声明依赖或独立维护哪些 Skill
 ```text
 ~/.skm/
 ├── catalog.yaml
+├── projects.yaml
 ├── objects/<hash>/<skill>/
 ├── sources.yaml
 ├── sources/
@@ -68,7 +69,7 @@ skm disable <skill> --agent claude
 
 ```text
 ~/.claude/skills/<name> -> ~/.skm/objects/<hash>/<name>
-~/.agents/skills/<name> -> ~/.skm/objects/<hash>/<name>
+~/.codex/skills/<name> -> ~/.skm/objects/<hash>/<name>
 ```
 
 禁用只移除 skm 管理的链接和 Activation，不删除 Library 内容。两个已启用 Skill
@@ -76,7 +77,7 @@ skm disable <skill> --agent claude
 
 ## 4. Project Requirement
 
-项目有两种使用 Skill 的模式，必须由用户显式选择。
+项目有三种使用 Skill 的模式，必须由用户显式选择：本机即时部署、require 和 vendor。
 
 个人 Library Skill 通过用户级 Activation 已经可以在所有项目中使用，不需要初始化
 项目。只有项目需要声明团队依赖或维护独立副本时才产生项目状态；`require`、
@@ -99,7 +100,31 @@ skm project apply
 只有具有可共享 Git 来源的 Library Skill 可以 `require`。本地-only Skill 无法在其他
 机器恢复，必须先发布到 Git Source，或使用 `vendor`。
 
-### 4.2 vendor：项目独立维护副本
+### 4.2 本机项目部署：link/copy
+
+本机项目部署不要求项目包含 `.skm`，项目注册信息保存在用户侧：
+
+```text
+~/.skm/projects.yaml
+```
+
+注册和部署：
+
+```bash
+skm project add ~/Projects/shop-api --name shop-api
+skm project link shop-api local/code-review --agent claude
+skm project copy shop-api local/release-check --agent codex
+```
+
+`link` 直接软链到个人 Library 的不可变对象，Agent 运行时不需要启动 skm，但依赖
+`~/.skm/objects/<hash>/<name>`。`copy` 将内容复制到项目 Agent 目录，复制完成后项目
+可以脱离 skm 运行。项目注册表只属于本机，不提供团队恢复能力。
+
+`project list` 列出已注册项目；`project skills` 列出当前项目的 require/vendor 状态。
+`project status` 检查指定项目的部署。相同项目、Agent、Skill 和 hash 的操作返回
+`unchanged`；不同 ID 或 hash 的同名目标报告冲突，不自动覆盖。
+
+### 4.3 vendor：项目独立维护副本
 
 ```bash
 skm project vendor local/code-review --agent claude,codex
@@ -126,8 +151,10 @@ vendor 不会移动、删除或自动修改个人原版，也不执行隐式双�
 └── skills/                 # 仅 vendored Skill
 ```
 
-`project.yaml` 是期望状态，`lock.yaml` 是可复现快照。项目 Agent 目录下的软链接是
-本机部署结果，不是项目数据。这些文件不要求预先初始化，由项目命令按需创建。
+`project.yaml` 是期望状态，`lock.yaml` 是可复现快照。Require/vendor 模式下，项目
+Agent 目录下的软链接是本机部署结果，不是项目数据；本机 link/copy 模式下，Agent
+目录中的结果就是用户要求的最终部署状态。Require/vendor 文件不要求预先初始化，由
+项目命令按需创建。
 
 `project init` 仅用于在没有 `.git` 的目录中提前创建空 `.skm`，使 skm 从子目录运行
 时能够识别项目根；它不是个人使用或项目工作流的前置步骤。
@@ -172,7 +199,8 @@ Activation:
   enable, disable, plan, apply, status
 
 Project:
-  project list
+  project add|list|show|link|copy|unlink|status|unregister
+  project skills
   project require
   project vendor
   project remove

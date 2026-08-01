@@ -76,6 +76,70 @@ func TestLibraryTagAndActivationLifecycle(t *testing.T) {
 	}
 }
 
+func TestProjectLifecycleAPI(t *testing.T) {
+	storage := testStore(t)
+	handler := New(storage).Handler()
+	projectPath := filepath.Join(t.TempDir(), "web-project")
+	if err := os.MkdirAll(projectPath, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	linkSkill := makeSkill(t, "web-link")
+	copySkill := makeSkill(t, "web-copy")
+	requestJSON(t, handler, http.MethodPost, "/api/skills", map[string]any{"path": linkSkill}, http.StatusCreated, nil)
+	requestJSON(t, handler, http.MethodPost, "/api/skills", map[string]any{"path": copySkill}, http.StatusCreated, nil)
+
+	var project domain.Project
+	requestJSON(t, handler, http.MethodPost, "/api/projects", map[string]any{"path": projectPath}, http.StatusCreated, &project)
+	canonicalProjectPath, err := filepath.EvalSymlinks(projectPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if project.ID != "web-project" || project.Path != canonicalProjectPath {
+		t.Fatalf("project default name = %#v", project)
+	}
+	var projects []struct {
+		ID              string `json:"id"`
+		ActivationCount int    `json:"activationCount"`
+	}
+	requestJSON(t, handler, http.MethodGet, "/api/projects", nil, http.StatusOK, &projects)
+	if len(projects) != 1 || projects[0].ID != project.ID || projects[0].ActivationCount != 0 {
+		t.Fatalf("project list = %#v", projects)
+	}
+
+	var deployment struct {
+		Plan domain.Plan `json:"plan"`
+	}
+	requestJSON(t, handler, http.MethodPost, "/api/projects/web-project/link", map[string]any{
+		"skill": "local/web-link", "agents": []string{"claude"},
+	}, http.StatusOK, &deployment)
+	if len(deployment.Plan.Operations) != 1 || deployment.Plan.Operations[0].Status != domain.StatusCreate {
+		t.Fatalf("link plan = %#v", deployment.Plan)
+	}
+	linkTarget := filepath.Join(projectPath, ".claude", "skills", "web-link")
+	if info, err := os.Lstat(linkTarget); err != nil || info.Mode()&os.ModeSymlink == 0 {
+		t.Fatalf("project link target = %v, err=%v", info, err)
+	}
+
+	requestJSON(t, handler, http.MethodPost, "/api/projects/web-project/link", map[string]any{
+		"skill": "local/web-link", "agents": []string{"claude"},
+	}, http.StatusOK, &deployment)
+	if len(deployment.Plan.Operations) != 1 || deployment.Plan.Operations[0].Status != domain.StatusUnchanged {
+		t.Fatalf("repeated link plan = %#v", deployment.Plan)
+	}
+	requestJSON(t, handler, http.MethodPost, "/api/projects/web-project/copy", map[string]any{
+		"skill": "local/web-copy", "agents": []string{"codex"},
+	}, http.StatusOK, &deployment)
+	copyTarget := filepath.Join(projectPath, ".codex", "skills", "web-copy")
+	if info, err := os.Lstat(copyTarget); err != nil || info.Mode()&os.ModeSymlink != 0 {
+		t.Fatalf("project copy target = %v, err=%v", info, err)
+	}
+
+	requestJSON(t, handler, http.MethodDelete, "/api/projects/web-project", nil, http.StatusBadRequest, nil)
+	requestJSON(t, handler, http.MethodPost, "/api/projects/web-project/unlink", map[string]any{"skill": "web-link"}, http.StatusOK, nil)
+	requestJSON(t, handler, http.MethodPost, "/api/projects/web-project/unlink", map[string]any{"skill": "local/web-copy"}, http.StatusOK, nil)
+	requestJSON(t, handler, http.MethodDelete, "/api/projects/web-project", nil, http.StatusOK, nil)
+}
+
 func testStore(t *testing.T) *store.Store {
 	t.Helper()
 	root := t.TempDir()

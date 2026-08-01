@@ -34,7 +34,7 @@ func TestCLIAddTagEnableDisableAndPlan(t *testing.T) {
 	runCLI(t, "--home", skmHome, "--project", project, "enable", "--tag", "backend", "--agent", "claude,codex")
 	for _, target := range []string{
 		filepath.Join(userHome, ".claude", "skills", "review"),
-		filepath.Join(userHome, ".agents", "skills", "review"),
+		filepath.Join(userHome, ".codex", "skills", "review"),
 	} {
 		if info, err := os.Lstat(target); err != nil || info.Mode()&os.ModeSymlink == 0 {
 			t.Fatalf("target %s is not a symlink: info=%v err=%v", target, info, err)
@@ -44,7 +44,7 @@ func TestCLIAddTagEnableDisableAndPlan(t *testing.T) {
 	assertPlanStatuses(t, out, 2, "unchanged")
 
 	runCLI(t, "--home", skmHome, "--project", project, "disable", "review")
-	if _, err := os.Lstat(filepath.Join(userHome, ".agents", "skills", "review")); !os.IsNotExist(err) {
+	if _, err := os.Lstat(filepath.Join(userHome, ".codex", "skills", "review")); !os.IsNotExist(err) {
 		t.Fatalf("disabled target still exists: %v", err)
 	}
 	out = runCLI(t, "--home", skmHome, "--project", project, "list")
@@ -73,11 +73,11 @@ func TestCLIUserHomeOverrideKeepsAgentTargetsIsolated(t *testing.T) {
 		"enable", "local/isolated-skill", "--agent", "codex",
 	)
 
-	isolationTarget := filepath.Join(isolationRoot, ".agents", "skills", "isolated-skill")
+	isolationTarget := filepath.Join(isolationRoot, ".codex", "skills", "isolated-skill")
 	if info, err := os.Lstat(isolationTarget); err != nil || info.Mode()&os.ModeSymlink == 0 {
 		t.Fatalf("isolated target %s is not a symlink: info=%v err=%v", isolationTarget, info, err)
 	}
-	if _, err := os.Lstat(filepath.Join(realUserHome, ".agents", "skills", "isolated-skill")); !os.IsNotExist(err) {
+	if _, err := os.Lstat(filepath.Join(realUserHome, ".codex", "skills", "isolated-skill")); !os.IsNotExist(err) {
 		t.Fatalf("real user target was modified: %v", err)
 	}
 }
@@ -93,7 +93,7 @@ func TestCLIProjectVendorRetainsPersonalLibrary(t *testing.T) {
 	}
 	for _, target := range []string{
 		filepath.Join(project, ".claude", "skills", "release"),
-		filepath.Join(project, ".agents", "skills", "release"),
+		filepath.Join(project, ".codex", "skills", "release"),
 		filepath.Join(project, ".skm", "skills", "release", "SKILL.md"),
 	} {
 		if _, err := os.Lstat(target); err != nil {
@@ -107,6 +107,108 @@ func TestCLIProjectVendorRetainsPersonalLibrary(t *testing.T) {
 	manifest, err := os.ReadFile(filepath.Join(project, ".skm", "project.yaml"))
 	if err != nil || !bytes.Contains(manifest, []byte("forkedFrom: local/release")) {
 		t.Fatalf("vendor manifest: %v\n%s", err, manifest)
+	}
+}
+
+func TestCLIRegisteredProjectLinkAndCopy(t *testing.T) {
+	root, _, currentProject, skmHome := cliPaths(t)
+	registeredProject := filepath.Join(root, "registered-project")
+	if err := os.MkdirAll(registeredProject, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	defaultNamedProject := filepath.Join(root, "default-named-project")
+	if err := os.MkdirAll(defaultNamedProject, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	linkSkill := filepath.Join(root, "link-skill")
+	copySkill := filepath.Join(root, "copy-skill")
+	writeCLISkill(t, linkSkill, "link-skill")
+	writeCLISkill(t, copySkill, "copy-skill")
+	runCLI(t, "--home", skmHome, "--project", currentProject, "add", linkSkill)
+	runCLI(t, "--home", skmHome, "--project", currentProject, "add", copySkill)
+	runCLI(t, "--home", skmHome, "--project", currentProject, "project", "add", defaultNamedProject)
+	out := runCLI(t, "--home", skmHome, "--project", currentProject, "--json", "project", "list")
+	if !bytes.Contains(out, []byte(`"id":"default-named-project"`)) {
+		t.Fatalf("project add did not default to the root directory name: %s", out)
+	}
+	runCLI(t, "--home", skmHome, "--project", currentProject, "project", "add", registeredProject, "--name", "A")
+	if _, err := os.Stat(filepath.Join(registeredProject, ".skm")); !os.IsNotExist(err) {
+		t.Fatalf("project add wrote project metadata: %v", err)
+	}
+
+	out = runCLI(t, "--home", skmHome, "--project", currentProject, "--json", "project", "list")
+	if !bytes.Contains(out, []byte(`"id":"A"`)) || !bytes.Contains(out, []byte(`"activationCount":0`)) {
+		t.Fatalf("registered project list: %s", out)
+	}
+
+	runCLI(t, "--home", skmHome, "--project", currentProject, "project", "link", "A", "local/link-skill", "--agent", "claude")
+	linkTarget := filepath.Join(registeredProject, ".claude", "skills", "link-skill")
+	info, err := os.Lstat(linkTarget)
+	if err != nil || info.Mode()&os.ModeSymlink == 0 {
+		t.Fatalf("project link target is not a symlink: info=%v err=%v", info, err)
+	}
+
+	out = runCLI(t, "--home", skmHome, "--project", currentProject, "project", "link", "A", "local/link-skill", "--agent", "claude")
+	if !bytes.Contains(out, []byte("unchanged")) {
+		t.Fatalf("repeated project link was not idempotent: %s", out)
+	}
+	stderr := runCLIFailure(t, "--home", skmHome, "--project", currentProject, "project", "copy", "A", "local/link-skill", "--agent", "codex")
+	if !bytes.Contains(stderr, []byte("already uses mode symlink")) {
+		t.Fatalf("mixed project deployment mode was accepted: %s", stderr)
+	}
+
+	runCLI(t, "--home", skmHome, "--project", currentProject, "project", "copy", "A", "local/copy-skill", "--agent", "codex")
+	copyTarget := filepath.Join(registeredProject, ".codex", "skills", "copy-skill")
+	info, err = os.Lstat(copyTarget)
+	if err != nil || info.Mode()&os.ModeSymlink != 0 {
+		t.Fatalf("project copy target is a symlink or missing: info=%v err=%v", info, err)
+	}
+	if _, err := os.Stat(filepath.Join(copyTarget, "SKILL.md")); err != nil {
+		t.Fatalf("copied Skill content is missing: %v", err)
+	}
+
+	out = runCLI(t, "--home", skmHome, "--project", currentProject, "--json", "project", "status", "A")
+	if !bytes.Contains(out, []byte(`"placement":"project"`)) || !bytes.Contains(out, []byte(`"status":"unchanged"`)) {
+		t.Fatalf("project status: %s", out)
+	}
+
+	runCLI(t, "--home", skmHome, "--project", currentProject, "project", "unlink", "A", "local/link-skill", "--agent", "claude")
+	if _, err := os.Lstat(linkTarget); !os.IsNotExist(err) {
+		t.Fatalf("project link target still exists after unlink: %v", err)
+	}
+	runCLI(t, "--home", skmHome, "--project", currentProject, "project", "unlink", "A", "local/copy-skill", "--agent", "codex")
+	runCLI(t, "--home", skmHome, "--project", currentProject, "project", "unregister", "A")
+	if _, err := os.Stat(registeredProject); err != nil {
+		t.Fatalf("unregister removed project files: %v", err)
+	}
+}
+
+func TestCLIRegisteredProjectRejectsSameNameConflict(t *testing.T) {
+	root, _, currentProject, skmHome := cliPaths(t)
+	registeredProject := filepath.Join(root, "conflict-project")
+	if err := os.MkdirAll(registeredProject, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	firstPath := filepath.Join(root, "first-project-skill")
+	secondPath := filepath.Join(root, "second-project-skill")
+	writeCLISkill(t, firstPath, "review")
+	writeCLISkill(t, secondPath, "review")
+	runCLI(t, "--home", skmHome, "--project", currentProject, "add", firstPath, "--source", "team-a")
+	runCLI(t, "--home", skmHome, "--project", currentProject, "add", secondPath, "--source", "team-b")
+	runCLI(t, "--home", skmHome, "--project", currentProject, "project", "add", registeredProject, "--name", "A")
+	runCLI(t, "--home", skmHome, "--project", currentProject, "project", "link", "A", "team-a/review", "--agent", "codex")
+	target := filepath.Join(registeredProject, ".codex", "skills", "review")
+	before, err := os.Readlink(target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	stderr := runCLIFailure(t, "--home", skmHome, "--project", currentProject, "project", "link", "A", "team-b/review", "--agent", "codex")
+	if !bytes.Contains(stderr, []byte("multiple Skills target")) {
+		t.Fatalf("unexpected project conflict error: %s", stderr)
+	}
+	after, err := os.Readlink(target)
+	if err != nil || after != before {
+		t.Fatalf("project conflict changed target: before=%s after=%s err=%v", before, after, err)
 	}
 }
 
@@ -133,7 +235,7 @@ func TestCLIProjectRequireCanBeSatisfiedByUserActivation(t *testing.T) {
 	if !bytes.Contains(out, []byte("Satisfied by user activation: team/review:codex")) {
 		t.Fatalf("require was not satisfied by user:\n%s", out)
 	}
-	if _, err := os.Lstat(filepath.Join(project, ".agents", "skills", "review")); !os.IsNotExist(err) {
+	if _, err := os.Lstat(filepath.Join(project, ".codex", "skills", "review")); !os.IsNotExist(err) {
 		t.Fatalf("redundant project link was created: %v", err)
 	}
 	manifest, err := os.ReadFile(filepath.Join(project, ".skm", "project.yaml"))
@@ -187,7 +289,7 @@ func TestCLIEnableRejectsSameNameBeforeChangingState(t *testing.T) {
 	runCLI(t, "--home", skmHome, "--project", project, "add", secondPath, "--source", "team-b")
 	runCLI(t, "--home", skmHome, "--project", project, "enable", "team-a/review", "--agent", "codex")
 
-	target := filepath.Join(userHome, ".agents", "skills", "review")
+	target := filepath.Join(userHome, ".codex", "skills", "review")
 	beforeLink, err := os.Readlink(target)
 	if err != nil {
 		t.Fatal(err)

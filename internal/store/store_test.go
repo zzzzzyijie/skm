@@ -37,6 +37,13 @@ func TestEnsureAndYAMLRoundTrips(t *testing.T) {
 	if err != nil || len(loadedSources.Sources) != 1 {
 		t.Fatalf("sources = %#v, err=%v", loadedSources, err)
 	}
+	if err := storage.SaveProjects(domain.Projects{Projects: []domain.Project{{ID: "A", Path: filepath.Join(storage.Paths.Home, "project-a")}}}); err != nil {
+		t.Fatal(err)
+	}
+	loadedProjects, err := storage.LoadProjects()
+	if err != nil || len(loadedProjects.Projects) != 1 || loadedProjects.Projects[0].ID != "A" {
+		t.Fatalf("projects = %#v, err=%v", loadedProjects, err)
+	}
 	state := domain.State{Activations: []domain.Activation{{SkillID: "local/one", Placement: domain.PlacementUser}}}
 	if err := storage.SaveState(state); err != nil {
 		t.Fatal(err)

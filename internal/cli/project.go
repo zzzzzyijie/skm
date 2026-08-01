@@ -29,6 +29,14 @@ func (a *App) newProjectCommand() *cobra.Command {
 	command.AddCommand(
 		a.newProjectInitCommand(),
 		a.newProjectListCommand(),
+		a.newProjectSkillsCommand(),
+		a.newProjectAddCommand(),
+		a.newProjectShowCommand(),
+		a.newProjectLinkCommand(),
+		a.newProjectCopyCommand(),
+		a.newProjectUnlinkCommand(),
+		a.newProjectStatusCommand(),
+		a.newProjectUnregisterCommand(),
 		a.newProjectRequireCommand(),
 		a.newProjectVendorCommand(),
 		a.newProjectRemoveCommand(),
@@ -68,9 +76,9 @@ func (a *App) newProjectInitCommand() *cobra.Command {
 	}
 }
 
-func (a *App) newProjectListCommand() *cobra.Command {
+func (a *App) newProjectSkillsCommand() *cobra.Command {
 	return &cobra.Command{
-		Use:   "list",
+		Use:   "skills",
 		Short: "List required and vendored project Skills",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -83,7 +91,7 @@ func (a *App) newProjectListCommand() *cobra.Command {
 				return err
 			}
 			data := map[string]any{"dependencies": project.Dependencies, "vendored": project.Skills}
-			return a.emit("project list", data, func() error {
+			return a.emit("project skills", data, func() error {
 				writer := tabwriter.NewWriter(a.Out, 0, 4, 2, ' ', 0)
 				_, _ = fmt.Fprintln(writer, "TYPE\tID\tAGENTS\tREVISION/HASH")
 				for _, dependency := range project.Dependencies {

@@ -7,13 +7,14 @@
 ```text
 Library     用户拥有的 Skill 集合
 Activation  Library Skill 对 Agent 的启用状态
-Project     项目 require 依赖或 vendor 副本
+Project     本机项目登记、直接部署，或项目 require/vendor 状态
 ```
 
 重要区别：
 
 - `add` 只加入个人 Library，不自动启用。
 - `enable/disable` 控制用户级 Agent 链接，不删除 Library 内容。
+- `project add/link/copy` 管理本机项目并直接部署 Library Skill，不要求项目运行时安装 skm。
 - `project require` 引用可从 Git 恢复的锁定依赖。
 - `project vendor` 复制成项目独立维护版本，个人原版保留。
 - 标签属于个人 Library Skill。
@@ -244,7 +245,10 @@ skm enable --tag development --tag review --agent codex
 | Agent | 用户目标 |
 | --- | --- |
 | Claude Code | `~/.claude/skills/<name>` |
-| Codex | `~/.agents/skills/<name>` |
+| Codex | `~/.codex/skills/<name>` |
+
+升级前由 skm 管理的 Codex 目标若仍位于 `~/.agents/skills/<name>`，`disable` 会在安全校验
+通过后清理旧目标；新启用的 Skill 只会写入 `.codex/skills`。
 
 ### 6.2 部署模式
 
@@ -425,7 +429,65 @@ skm sync --no-apply
 项目 require 锁定版本不会随 `sync` 漂移。要升级项目依赖，在 Source 更新后重新运行
 `skm project require <id>`。
 
-## 8. Project Require
+## 8. 本机项目部署
+
+本机项目部署模式适合“skm 负责执行一次部署，项目和 Agent 之后独立运行”的场景。
+项目注册信息保存在用户侧 `~/.skm/projects.yaml`，不会因为 `project add` 自动向项目
+写入 `.skm` 文件。
+
+### 8.1 注册和查看项目
+
+```bash
+skm project add "$HOME/Projects/shop-api" --name shop-api
+skm project list
+skm project show shop-api
+```
+
+`--name` 是可选的；省略时使用规范化项目路径的根文件夹名称，例如
+`skm project add /tmp/shop-api` 默认登记为 `shop-api`。项目名在本机唯一；路径会被规范化，同一个真实目录不能重复注册。`project list` 列出
+本机注册的项目，`project skills` 列出当前目录项目中的 `require/vendor` 状态。
+
+### 8.2 软链或复制 Skill
+
+```bash
+skm project link shop-api local/code-review --agent claude
+skm project copy shop-api local/release-check --agent codex
+skm project status shop-api
+```
+
+目标路径为：
+
+```text
+<project>/.claude/skills/<name>
+<project>/.codex/skills/<name>
+```
+
+`link` 直接链接到个人 Library 的不可变快照。Agent 使用时不需要启动 skm，但软链仍
+依赖 `~/.skm/objects/<hash>/<name>`。Library 更新生成新 hash 后，旧软链不会自动漂移，
+需要再次执行 `project link`。
+
+`copy` 将内容复制到项目 Agent 目录。复制完成后，即使不安装或不运行 skm，Agent 仍可
+使用该 Skill；若其他机器需要直接使用复制结果，应由项目自己的 Git 工作流提交对应
+目录。
+
+同一个项目 Skill 使用一个部署模式；如果需要从软链切换为复制，先执行 `project unlink`
+再重新 `link` 或 `copy`。这样可以避免同一 Skill 的不同 Agent 使用不同模式时产生歧义。
+
+重复执行相同项目、Skill、Agent 和 hash 的操作是幂等的，会显示 `unchanged`。同一个
+项目和 Agent 中存在不同 ID 或 hash 的同名 Skill 时，操作失败且不会覆盖未知目标。
+
+### 8.3 解绑和注销
+
+```bash
+skm project unlink shop-api local/code-review --agent claude
+skm project unregister shop-api
+```
+
+`unlink` 会安全移除 skm 管理的目标和项目 Activation；被外部修改的目标默认拒绝删除，
+确认后可使用 `--force`。`unregister` 只删除 `~/.skm/projects.yaml` 中的登记，不删除
+项目目录；项目仍有托管 Activation 时必须先解绑。
+
+## 9. Project Require
 
 Require 适用于“团队项目消费共享 Skill，但不在本仓库修改它”。
 
@@ -479,7 +541,7 @@ Satisfied by user activation: team/code-review:codex
 同名但 ID 或版本不同会直接报冲突。skm 不假设 Claude Code 和 Codex 具有相同的
 覆盖规则。
 
-## 9. Project Vendor
+## 10. Project Vendor
 
 Vendor 适用于“项目要修改并独立维护这个 Skill”。
 
@@ -521,10 +583,10 @@ skm disable local/release-check
 skm project vendor local/release-check
 ```
 
-## 10. 项目管理
+## 11. 项目 Manifest 管理
 
 ```bash
-skm project list
+skm project skills
 skm project apply
 skm project remove team/code-review
 skm project remove project/release-check
@@ -549,7 +611,7 @@ skm project init
 指定其他项目：
 
 ```bash
-skm --project "$HOME/Projects/shop-api" project list
+skm --project "$HOME/Projects/shop-api" project skills
 skm --project "$HOME/Projects/shop-api" project apply
 ```
 
@@ -563,9 +625,9 @@ skm --project "$HOME/Projects/shop-api" project apply
 .skm/skills/            # 若有 vendor
 ```
 
-不应提交由 skm 生成的 `.claude/skills/<name>`、`.agents/skills/<name>` 软链接。
+不应提交由 skm 生成的 `.claude/skills/<name>`、`.codex/skills/<name>` 软链接。
 
-## 11. 冲突和修复
+## 12. 冲突和修复
 
 ### `conflict-unmanaged`
 
@@ -666,6 +728,14 @@ skm tag remove <skill> <tag...>
 skm tag rename <old> <new>
 
 skm project list
+skm project add <project-path> [--name ...]
+skm project show <project>
+skm project link <project> <skill> [--agent ...] [--dry-run]
+skm project copy <project> <skill> [--agent ...] [--dry-run]
+skm project unlink <project> <skill> [--agent ...] [--force]
+skm project status <project>
+skm project unregister <project>
+skm project skills
 skm project require <skill> [--agent ...] [--mode ...] [--no-apply]
 skm project vendor <skill> [--agent ...] [--mode ...] [--tag ...] [--no-apply]
 skm project remove <skill> [--force]

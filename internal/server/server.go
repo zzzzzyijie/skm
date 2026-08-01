@@ -52,6 +52,14 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /api/sources/{name}/update", s.handleUpdateSource)
 	mux.HandleFunc("POST /api/sync", s.handleSync)
 	mux.HandleFunc("GET /api/doctor", s.handleDoctor)
+	mux.HandleFunc("GET /api/projects", s.handleListProjects)
+	mux.HandleFunc("POST /api/projects", s.handleAddProject)
+	mux.HandleFunc("GET /api/projects/{id}/status", s.handleProjectStatus)
+	mux.HandleFunc("GET /api/projects/{id}", s.handleShowProject)
+	mux.HandleFunc("POST /api/projects/{id}/link", s.handleProjectLink)
+	mux.HandleFunc("POST /api/projects/{id}/copy", s.handleProjectCopy)
+	mux.HandleFunc("POST /api/projects/{id}/unlink", s.handleProjectUnlink)
+	mux.HandleFunc("DELETE /api/projects/{id}", s.handleUnregisterProject)
 
 	// Static files
 	fileServer := http.FileServer(http.FS(web.FS))

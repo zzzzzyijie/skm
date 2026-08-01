@@ -7,7 +7,8 @@
 - **Activation 管理**：`enable`、`disable`、`plan`、`apply`、`status`、`doctor`
 - **Source 管理**：`source add/list/update/remove`、`sync`
 - **Tag 管理**：`tag list/add/remove/rename`
-- **Project 管理**：`project list/require/vendor/remove/apply`
+- **Project 管理**：Web UI 支持 `project add/list/show/link/copy/unlink/status/unregister` 的
+  本机项目部署流程；CLI 仍支持完整的 `project skills/require/vendor/remove/apply`
 
 现在要为这个 CLI 工具增加一个 Web UI 前端，MVP 版本。
 
@@ -43,7 +44,7 @@
 
 ## MVP 功能范围
 
-### 核心页面（2 个）
+### 核心页面（3 个）
 
 #### 1. Dashboard（首页概览）
 - Skill 总数、已启用数、Source 数量
@@ -60,6 +61,16 @@
 - 本地导入通过 macOS Finder 选择 Skill 文件夹
 
 Activation 不再作为独立导航页面，启用状态在对应的 Skill 卡片中完成。
+
+#### 3. Projects（本机项目部署）
+- 项目注册列表：路径、存在状态和项目级 Activation 数量
+- 添加项目：路径必填，名称可选；省略名称时由后端使用项目根文件夹名称
+- 选择项目后，从个人 Library 选择 Skill，按 Agent 勾选 Claude/Codex
+- 选择软链接或复制模式，执行部署、查看状态、解绑和注销
+- 重复部署显示 `unchanged`；冲突、被外部修改和混用部署模式通过错误提示返回
+
+本页面对应的项目注册信息保存到用户侧 `~/.skm/projects.yaml`。`copy` 完成后项目
+目录中的 Skill 可以脱离 skm 运行；`link` 仍依赖用户侧 Library 快照。
 
 ## 目录结构
 
@@ -85,7 +96,8 @@ skm/
     ├── assets/                    # Claude/Codex 图标
     └── components/                # JS 组件模块
         ├── dashboard.js
-        └── library.js
+        ├── library.js
+        └── projects.js
 ```
 
 ## REST API 设计
@@ -117,4 +129,13 @@ POST   /api/sources/:name/update  # 更新 Source
 POST   /api/sync               # Sync 所有 Source
 
 GET    /api/doctor             # 健康检查
+
+GET    /api/projects           # 本机注册项目列表
+POST   /api/projects           # 登记项目 {path, name}
+GET    /api/projects/:id       # 项目详情、Activation 和部署状态
+GET    /api/projects/:id/status # 项目部署状态
+POST   /api/projects/:id/link # 软链接 {skill, agents, dryRun}
+POST   /api/projects/:id/copy # 复制 {skill, agents, dryRun}
+POST   /api/projects/:id/unlink # 解绑 {skill, agents, force}
+DELETE /api/projects/:id      # 注销项目登记
 ```

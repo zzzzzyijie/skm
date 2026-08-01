@@ -15,6 +15,7 @@ Project     项目引用或独立维护哪些 Skill
 - Library 标签：分类、组合筛选和批量启用。
 - Git Source：导入和更新个人或团队 Skill 仓库。
 - Agent Activation：用受控软链接启用到 Claude Code 和 Codex。
+- 本机项目部署：登记多个项目，并将 Library Skill 软链或复制到项目 Agent 目录。
 - Project Require：记录 Git 来源、revision 和 hash，可在其他机器恢复。
 - Project Vendor：复制成项目独立版本，个人原版继续保留。
 - 安全部署：不覆盖未知目标，检测被修改的链接或副本。
@@ -81,7 +82,8 @@ skm ui
 ```
 
 默认监听 `http://localhost:9527` 并打开浏览器。可用 `--port` 更换端口，或用
-`--no-browser` 只启动服务。Web UI 与 CLI 使用同一份 Library 和 Activation 数据。
+`--no-browser` 只启动服务。Web UI 与 CLI 使用同一份 Library、Project 注册和 Activation
+数据；Projects 页面可完成本机项目登记、Skill 软链/复制、状态检查和解绑。
 
 ### 建立个人 Library
 
@@ -117,7 +119,7 @@ skm disable local/code-review --agent claude
 
 ```text
 ~/.claude/skills/code-review -> ~/.skm/objects/<hash>/code-review
-~/.agents/skills/code-review -> ~/.skm/objects/<hash>/code-review
+~/.codex/skills/code-review -> ~/.skm/objects/<hash>/code-review
 ```
 
 禁用不会删除 Library 内容。
@@ -160,6 +162,36 @@ skm source add git@github.com:your-name/my-skills.git \
 [CLI 使用指南](docs/cli-guide.md#72-将个人-library-skill-绑定到远程-git)。
 
 ## 项目使用
+
+### 本机项目部署：不要求项目运行时依赖 skm
+
+`project add` 只在用户的 `~/.skm/projects.yaml` 中登记项目路径，不会向项目写入
+`.skm` 文件。之后可以从个人 Library 直接部署到项目对应的 Agent 目录：
+
+```bash
+skm project add "$HOME/Projects/shop-api" --name shop-api
+skm project list
+
+skm project link shop-api local/code-review --agent claude
+skm project copy shop-api local/release-check --agent codex
+skm project status shop-api
+```
+
+`link` 会创建指向 `~/.skm/objects/<hash>/<name>` 的软链接；项目运行时不需要启动
+skm，但仍依赖本机 Library 快照。`copy` 会把 Skill 内容复制到项目的
+`.claude/skills` 或 `.codex/skills`，复制完成后 Agent 可以脱离 skm 运行。
+复制后的目录若要让其他机器直接使用，需要由项目自己的 Git 工作流提交。
+
+重复执行相同的部署是幂等的；同一个项目和 Agent 中如果已有不同 ID 或 hash 的同名
+Skill，skm 会报告冲突且不会覆盖未知目标。解绑和注销：
+
+```bash
+skm project unlink shop-api local/code-review --agent claude
+skm project unregister shop-api
+```
+
+`unregister` 只删除本机项目登记，不删除项目目录。`project skills` 才是查看当前
+项目 `require/vendor` 状态的命令。
 
 无需提前运行 `skm project init`。个人 Skill 经 `enable` 后可供所有项目使用；
 `project require`、`project vendor` 和 `project apply` 会在需要时自动创建 `.skm/`
@@ -239,7 +271,8 @@ Activation:
   enable, disable, plan, apply, status, doctor
 
 Project:
-  project list|require|vendor|remove|apply
+  project add|list|show|link|copy|unlink|status|unregister
+  project skills|require|vendor|remove|apply
 
 Optional:
   project init  # 仅用于标记没有 .git 的项目根

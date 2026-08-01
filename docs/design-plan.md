@@ -25,6 +25,7 @@ skm 是本地 Skill Library 和部署管理器。它不执行 Skill 中的脚本
 | `Source` | Git URL、ref、绑定路径和当前 revision |
 | `Activation` | Skill、Agent、部署位置和期望模式 |
 | `ProjectDependency` | 可恢复 Git 依赖及锁定 revision/hash |
+| `Project` | 本机登记的项目 ID 和规范化路径 |
 | `Deployment` | skm 已创建的实际目标及所有权证据 |
 | `Plan` | 幂等文件操作及输入摘要 |
 
@@ -48,6 +49,7 @@ Scope 类型。
 ~/.skm/
 ├── config.yaml
 ├── catalog.yaml
+├── projects.yaml
 ├── sources.yaml
 ├── objects/<hash>/<name>/
 ├── sources/<source>/
@@ -69,15 +71,16 @@ Agent 目标：
 ```text
 User:
   ~/.claude/skills/<name>
-  ~/.agents/skills/<name>
+  ~/.codex/skills/<name>
 
 Project:
   <project>/.claude/skills/<name>
-  <project>/.agents/skills/<name>
+  <project>/.codex/skills/<name>
 ```
 
-Agent 目标是生成状态；`.skm/project.yaml`、`.skm/lock.yaml` 和
-`.skm/skills/` 才是可提交的项目状态。
+Agent 目标是生成状态。Require/vendor 模式下，`.skm/project.yaml`、`.skm/lock.yaml`
+和 `.skm/skills/` 是可提交的项目状态；本机即时部署模式的状态保存在用户侧，项目目录
+只保留最终 Agent 软链或复制结果。
 
 ## 4. Library 导入
 
@@ -102,8 +105,8 @@ Activation、Deployment 和当前项目依赖均视为引用。无引用快照�
 
 ## 5. Activation 与 Planner
 
-个人 `enable` 只创建用户 Placement Activation。项目 Activation 由
-`project.yaml` 派生，不由用户手写。
+个人 `enable` 只创建用户 Placement Activation。项目 Activation 可以由项目
+`project.yaml` 派生，也可以由用户侧注册项目的即时部署命令创建。
 
 Planner 状态：
 
@@ -117,6 +120,26 @@ Planner 状态：
 
 相同 Agent/Placement 中两个 Skill 指向同名目标时直接失败，不根据来源或层级暗中
 覆盖。Apply 使用临时路径和原子替换。
+
+### 5.1 本机项目部署
+
+`project add` 只将项目路径登记到用户侧 `~/.skm/projects.yaml`，不向项目写入 `.skm`
+文件。`project link` 和 `project copy` 使用同一套 project Placement Activation 和
+Planner，目标分别为：
+
+```text
+<project>/.claude/skills/<name>
+<project>/.codex/skills/<name>
+```
+
+本机项目模式是即时部署模型：项目目录中的 Agent 内容是最终运行结果，项目运行时不需要
+skm。软链模式仍依赖 `~/.skm/objects` 中的快照；复制模式将内容复制到项目 Agent 目录，
+可以在不安装 skm 的情况下运行。两种模式都记录 hash，重复操作保持幂等，目标冲突时
+拒绝覆盖。
+
+项目注册表是本机索引，不是团队可恢复配置。需要跨机器恢复时仍使用 `project require`
+或 `project vendor`；需要让复制结果直接可用时，应由项目自己的 Git 工作流提交复制的
+Agent Skill 目录。
 
 ## 6. 项目 require
 

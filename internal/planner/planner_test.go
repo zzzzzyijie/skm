@@ -48,7 +48,7 @@ func TestApplyUserSymlinkIsIdempotentAndUpdatesManagedTarget(t *testing.T) {
 func TestBuildRefusesUnmanagedProjectTarget(t *testing.T) {
 	storage := plannerStore(t)
 	value := plannerSkill(t, "review", "body", domain.LocationProject, "project/review")
-	target := filepath.Join(storage.Paths.ProjectRoot, ".agents", "skills", "review")
+	target := filepath.Join(storage.Paths.ProjectRoot, ".codex", "skills", "review")
 	if err := os.MkdirAll(target, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -81,7 +81,7 @@ func TestCopyModificationBecomesConflict(t *testing.T) {
 	if err := engine.Apply(plan, &state); err != nil {
 		t.Fatal(err)
 	}
-	target := filepath.Join(storage.Paths.UserHome, ".agents", "skills", "review", "SKILL.md")
+	target := filepath.Join(storage.Paths.UserHome, ".codex", "skills", "review", "SKILL.md")
 	if err := os.WriteFile(target, []byte("modified"), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -90,6 +90,38 @@ func TestCopyModificationBecomesConflict(t *testing.T) {
 		t.Fatal(err)
 	}
 	assertSingleStatus(t, plan, domain.StatusConflictUnmanaged)
+}
+
+func TestDisableRemovesLegacyCodexDeployment(t *testing.T) {
+	storage := plannerStore(t)
+	value := plannerSkill(t, "review", "body", domain.LocationLibrary, "local/review")
+	legacyTarget := filepath.Join(storage.Paths.UserHome, ".agents", "skills", "review")
+	if err := os.MkdirAll(filepath.Dir(legacyTarget), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(value.Path, legacyTarget); err != nil {
+		t.Fatal(err)
+	}
+	state := domain.State{
+		Activations: []domain.Activation{{
+			SkillID: value.ID, Name: value.Name, Placement: domain.PlacementUser,
+			Agents: []domain.Agent{domain.AgentCodex}, Mode: domain.ModeSymlink,
+		}},
+		Deployments: []domain.Deployment{{
+			SkillID: value.ID, Name: value.Name, Agent: domain.AgentCodex,
+			Placement: domain.PlacementUser, Target: legacyTarget,
+			SourcePath: value.Path, Mode: domain.ModeSymlink, Hash: value.Hash,
+		}},
+	}
+	if err := New(storage).Disable(&state, map[string]struct{}{value.ID: {}}, domain.PlacementUser, "", map[domain.Agent]struct{}{domain.AgentCodex: {}}, false); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Lstat(legacyTarget); !os.IsNotExist(err) {
+		t.Fatalf("legacy target still exists: %v", err)
+	}
+	if len(state.Deployments) != 0 || len(state.Activations) != 0 {
+		t.Fatalf("legacy deployment state remains: %#v", state)
+	}
 }
 
 func TestSameNameUserActivationsAreRejected(t *testing.T) {

@@ -295,6 +295,20 @@ func (s *Store) SaveSources(sources domain.Sources) error {
 	return saveYAML(filepath.Join(s.Paths.Home, "sources.yaml"), sources)
 }
 
+func (s *Store) LoadProjects() (domain.Projects, error) {
+	projects := domain.Projects{Version: domain.SchemaVersion}
+	if err := loadYAML(filepath.Join(s.Paths.Home, "projects.yaml"), &projects); err != nil {
+		return domain.Projects{}, err
+	}
+	return projects, nil
+}
+
+func (s *Store) SaveProjects(projects domain.Projects) error {
+	projects.Version = domain.SchemaVersion
+	sort.Slice(projects.Projects, func(i, j int) bool { return projects.Projects[i].ID < projects.Projects[j].ID })
+	return saveYAML(filepath.Join(s.Paths.Home, "projects.yaml"), projects)
+}
+
 func (s *Store) LoadState() (domain.State, error) {
 	state := domain.State{Version: domain.SchemaVersion}
 	if err := loadYAML(filepath.Join(s.Paths.Home, "state", "state.yaml"), &state); err != nil {

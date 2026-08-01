@@ -18,11 +18,11 @@ Skill Library。
 | 参数 | 包含什么 | 不指定时会写入哪里 |
 | --- | --- | --- |
 | `--home` | Library、快照、Git Source、Activation 状态 | `~/.skm` |
-| `--user-home` | 用户级 Claude/Codex Skill 链接 | `~/.claude`、`~/.agents` |
+| `--user-home` | 用户级 Claude/Codex Skill 链接 | `~/.claude`、`~/.codex` |
 | `--project` | 项目 `.skm/` 和项目级 Agent 目录 | 当前仓库 |
 
 因此只使用 `--home /tmp/test` 是不够的：`enable` 仍会把链接放到真实的 `~/.claude` 或
-`~/.agents`。以下流程通过 `--user-home` 明确指定一个临时用户目录，完整覆盖
+`~/.codex`。以下流程通过 `--user-home` 明确指定一个临时用户目录，完整覆盖
 `enable`、`disable`、`apply` 和 Web UI，而不碰真实数据。
 
 `--user-home` 仅用于测试或自动化集成环境；平时使用发布版时不要传它。
@@ -116,7 +116,7 @@ skm_dev doctor
 
 ```bash
 test -L "$DEV_USER_HOME/.claude/skills/sample-skill"
-test -L "$DEV_USER_HOME/.agents/skills/sample-skill"
+test -L "$DEV_USER_HOME/.codex/skills/sample-skill"
 printf '%s\n' "isolated activation passed"
 ```
 

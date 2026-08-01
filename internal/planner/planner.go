@@ -210,8 +210,8 @@ func (e *Engine) Disable(state *domain.State, skillIDs map[string]struct{}, plac
 			keptDeployments = append(keptDeployments, deployment)
 			continue
 		}
-		expected, err := adapter.Target(deployment.Agent, deployment.Placement, e.Store.Paths.UserHome, deployment.ProjectRoot, deployment.Name)
-		if err != nil || filepath.Clean(expected) != filepath.Clean(deployment.Target) {
+		expected, err := deploymentTargetIsExpected(deployment, e.Store.Paths.UserHome)
+		if err != nil || !expected {
 			return fmt.Errorf("deployment target failed safety check: %s", deployment.Target)
 		}
 		if err := removeManaged(deployment, force); err != nil {
@@ -241,6 +241,21 @@ func (e *Engine) Disable(state *domain.State, skillIDs map[string]struct{}, plac
 	}
 	state.Activations = keptActivations
 	return e.Store.SaveState(*state)
+}
+
+func deploymentTargetIsExpected(deployment domain.Deployment, userHome string) (bool, error) {
+	expected, err := adapter.Target(deployment.Agent, deployment.Placement, userHome, deployment.ProjectRoot, deployment.Name)
+	if err != nil {
+		return false, err
+	}
+	if filepath.Clean(expected) == filepath.Clean(deployment.Target) {
+		return true, nil
+	}
+	legacy, err := adapter.LegacyTarget(deployment.Agent, deployment.Placement, userHome, deployment.ProjectRoot, deployment.Name)
+	if err != nil {
+		return false, err
+	}
+	return legacy != "" && filepath.Clean(legacy) == filepath.Clean(deployment.Target), nil
 }
 
 func targetMatches(path string, info os.FileInfo, mode domain.LinkMode, sourcePath, hash string) (bool, error) {

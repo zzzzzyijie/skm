@@ -136,6 +136,18 @@ type Sources struct {
 	Sources []Source `yaml:"sources" json:"sources"`
 }
 
+type Project struct {
+	ID        string    `yaml:"id" json:"id"`
+	Path      string    `yaml:"path" json:"path"`
+	AddedAt   time.Time `yaml:"addedAt" json:"addedAt"`
+	UpdatedAt time.Time `yaml:"updatedAt" json:"updatedAt"`
+}
+
+type Projects struct {
+	Version  int       `yaml:"version" json:"version"`
+	Projects []Project `yaml:"projects" json:"projects"`
+}
+
 type Activation struct {
 	SkillID     string    `yaml:"skillId" json:"skillId"`
 	Name        string    `yaml:"name" json:"name"`

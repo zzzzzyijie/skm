@@ -3,7 +3,7 @@
 // ===== i18n =====
 var translations = {
     en: {
-        'nav.dashboard': 'Dashboard', 'nav.library': 'Library',
+        'nav.dashboard': 'Dashboard', 'nav.library': 'Library', 'nav.projects': 'Projects',
         'dash.title': 'Dashboard', 'dash.totalSkills': 'Total Skills', 'dash.enabled': 'Enabled', 'dash.gitSources': 'Git Sources',
         'dash.recentlyAdded': 'Recently Added', 'dash.id': 'ID', 'dash.tags': 'Tags', 'dash.added': 'Added', 'dash.hash': 'Hash',
         'dash.loadFailed': 'Failed to load dashboard',
@@ -40,9 +40,23 @@ var translations = {
         'act.linkMode': 'Link mode', 'act.modeAuto': 'Auto', 'act.modeSymlink': 'Symlink', 'act.modeCopy': 'Copy',
         'act.summary': '{0} activation operation(s)', 'act.noChanges': 'Everything is up to date',
         'loading': 'Loading...', 'loadingSKM': 'Loading SKM...',
+        'proj.title': 'Projects', 'proj.add': 'Add project', 'proj.empty': 'No projects registered',
+        'proj.emptyDesc': 'Register a local project to deploy Library Skills into its Agent directories.',
+        'proj.path': 'Project path', 'proj.name': 'Project name', 'proj.nameHint': 'Optional. Defaults to the project root folder name.',
+        'proj.register': 'Register project', 'proj.registered': 'Project registered', 'proj.list': 'Registered projects',
+        'proj.ready': 'Ready', 'proj.missing': 'Missing', 'proj.activations': 'Activations', 'proj.skill': 'Skill',
+        'proj.agents': 'Agents', 'proj.mode': 'Mode', 'proj.actions': 'Actions', 'proj.deploy': 'Deploy Skill',
+        'proj.link': 'Link', 'proj.copy': 'Copy', 'proj.unlink': 'Unlink', 'proj.status': 'Refresh status',
+        'proj.unregister': 'Unregister', 'proj.noSkills': 'No Skills deployed to this project.',
+        'proj.noSkillsDesc': 'Choose a Library Skill below to link or copy it into the project.',
+        'proj.selectSkill': 'Select a Library Skill', 'proj.chooseAgent': 'Select at least one Agent',
+        'proj.chooseSkill': 'Select a Skill', 'proj.unregistered': 'Project unregistered',
+        'proj.deployed': 'Skill deployed', 'proj.unlinked': 'Skill unlinked', 'proj.confirmUnregister': 'Unregister this project? Managed Skills must be unlinked first.',
+        'proj.noProjects': 'No projects', 'proj.pathRequired': 'Project path is required', 'proj.statusTitle': 'Deployment status',
+        'proj.statusEmpty': 'No deployment operations', 'proj.target': 'Target', 'proj.source': 'Source',
     },
     zh: {
-        'nav.dashboard': '仪表盘', 'nav.library': 'Skill 库',
+        'nav.dashboard': '仪表盘', 'nav.library': 'Skill 库', 'nav.projects': '项目',
         'dash.title': '仪表盘', 'dash.totalSkills': 'Skill 总数', 'dash.enabled': '已启用', 'dash.gitSources': 'Git 来源',
         'dash.recentlyAdded': '最近添加', 'dash.id': 'ID', 'dash.tags': '标签', 'dash.added': '添加时间', 'dash.hash': '哈希',
         'dash.loadFailed': '加载仪表盘失败',
@@ -79,6 +93,20 @@ var translations = {
         'act.linkMode': '链接模式', 'act.modeAuto': '自动', 'act.modeSymlink': '软链接', 'act.modeCopy': '复制',
         'act.summary': '{0} 个激活操作', 'act.noChanges': '当前状态已是最新',
         'loading': '加载中...', 'loadingSKM': '正在加载 SKM...',
+        'proj.title': '项目', 'proj.add': '添加项目', 'proj.empty': '暂无登记项目',
+        'proj.emptyDesc': '登记本机项目后，可将 Skill 库中的 Skill 部署到项目 Agent 目录。',
+        'proj.path': '项目路径', 'proj.name': '项目名称', 'proj.nameHint': '可选。不填写时默认使用项目根文件夹名称。',
+        'proj.register': '登记项目', 'proj.registered': '项目已登记', 'proj.list': '已登记项目',
+        'proj.ready': '可用', 'proj.missing': '不存在', 'proj.activations': '激活数', 'proj.skill': 'Skill',
+        'proj.agents': 'Agent', 'proj.mode': '模式', 'proj.actions': '操作', 'proj.deploy': '部署 Skill',
+        'proj.link': '软链接', 'proj.copy': '复制', 'proj.unlink': '解绑', 'proj.status': '刷新状态',
+        'proj.unregister': '注销', 'proj.noSkills': '该项目暂无已部署 Skill。',
+        'proj.noSkillsDesc': '从下方选择 Library Skill，将它软链或复制到项目中。',
+        'proj.selectSkill': '选择 Library Skill', 'proj.chooseAgent': '请至少选择一个 Agent',
+        'proj.chooseSkill': '请选择 Skill', 'proj.unregistered': '项目已注销',
+        'proj.deployed': 'Skill 已部署', 'proj.unlinked': 'Skill 已解绑', 'proj.confirmUnregister': '确认注销该项目？必须先解绑已管理的 Skill。',
+        'proj.noProjects': '暂无项目', 'proj.pathRequired': '项目路径不能为空', 'proj.statusTitle': '部署状态',
+        'proj.statusEmpty': '没有部署操作', 'proj.target': '目标', 'proj.source': '来源',
     }
 };
 
@@ -105,7 +133,7 @@ function setLang(lang) {
 }
 
 function updateNavLabels() {
-    var map = { dashboard: 'nav.dashboard', library: 'nav.library' };
+    var map = { dashboard: 'nav.dashboard', library: 'nav.library', projects: 'nav.projects' };
     document.querySelectorAll('.nav-item').forEach(function (item) {
         var key = map[item.dataset.page];
         if (key) item.querySelector('.nav-label').textContent = t(key);
@@ -244,11 +272,11 @@ var App = {
         this.loadVersion();
         updateNavLabels();
         var initialPage = window.location.hash.replace(/^#\/?/, '');
-        if (!['dashboard', 'library'].includes(initialPage)) initialPage = 'dashboard';
+        if (!['dashboard', 'library', 'projects'].includes(initialPage)) initialPage = 'dashboard';
         this.navigate(initialPage, false);
         window.addEventListener('hashchange', function () {
             var page = window.location.hash.replace(/^#\/?/, '');
-            if (['dashboard', 'library'].includes(page) && page !== App.currentPage) {
+            if (['dashboard', 'library', 'projects'].includes(page) && page !== App.currentPage) {
                 App.navigate(page, false);
             }
         });
@@ -299,6 +327,7 @@ var App = {
         switch (page) {
             case 'dashboard':  renderDashboard(); break;
             case 'library':    renderLibrary(); break;
+            case 'projects':   renderProjects(); break;
         }
     },
 
