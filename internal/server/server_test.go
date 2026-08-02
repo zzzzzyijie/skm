@@ -106,6 +106,31 @@ func TestProjectLifecycleAPI(t *testing.T) {
 		t.Fatalf("project list = %#v", projects)
 	}
 
+	makeProjectSkill(t, projectPath, "claude", "claude-only")
+	makeProjectSkill(t, projectPath, "codex", "codex-only")
+	makeProjectSkill(t, projectPath, "claude", "shared")
+	makeProjectSkill(t, projectPath, "codex", "shared")
+	var details struct {
+		Exists bool `json:"exists"`
+		Scan   struct {
+			SkillCount  int            `json:"skillCount"`
+			AgentCounts map[string]int `json:"agentCounts"`
+			Skills      []struct {
+				ID     string   `json:"id"`
+				Agents []string `json:"agents"`
+			} `json:"skills"`
+		} `json:"scan"`
+	}
+	requestJSON(t, handler, http.MethodGet, "/api/projects/web-project", nil, http.StatusOK, &details)
+	if !details.Exists || details.Scan.SkillCount != 3 || details.Scan.AgentCounts["claude"] != 2 || details.Scan.AgentCounts["codex"] != 2 {
+		t.Fatalf("project scan summary = %#v", details)
+	}
+	for _, scanned := range details.Scan.Skills {
+		if scanned.ID == "shared" && (len(scanned.Agents) != 2 || scanned.Agents[0] != "claude" || scanned.Agents[1] != "codex") {
+			t.Fatalf("shared Skill scan = %#v", scanned)
+		}
+	}
+
 	var deployment struct {
 		Plan domain.Plan `json:"plan"`
 	}
@@ -168,6 +193,18 @@ func makeSkill(t *testing.T, name string) string {
 		t.Fatal(err)
 	}
 	return directory
+}
+
+func makeProjectSkill(t *testing.T, projectPath, agent, name string) {
+	t.Helper()
+	directory := filepath.Join(projectPath, "."+agent, "skills", name)
+	if err := os.MkdirAll(directory, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	content := "---\nname: " + name + "\ndescription: Project scan test Skill\n---\n"
+	if err := os.WriteFile(filepath.Join(directory, "SKILL.md"), []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func requestJSON(t *testing.T, handler http.Handler, method, url string, body any, wantStatus int, target any) {

@@ -9,22 +9,47 @@ import (
 	"strings"
 	"time"
 
+	"github.com/zzzzzyijie/skm/internal/adapter"
 	"github.com/zzzzzyijie/skm/internal/catalog"
 	"github.com/zzzzzyijie/skm/internal/domain"
 	"github.com/zzzzzyijie/skm/internal/planner"
+	"github.com/zzzzzyijie/skm/internal/skill"
 	"github.com/zzzzzyijie/skm/internal/store"
 )
 
 type projectRow struct {
 	domain.Project
-	Exists          bool `json:"exists"`
-	ActivationCount int  `json:"activationCount"`
+	Exists          bool                 `json:"exists"`
+	ActivationCount int                  `json:"activationCount"`
+	SkillCount      int                  `json:"skillCount"`
+	AgentCounts     map[domain.Agent]int `json:"agentCounts"`
 }
 
 type projectDetails struct {
 	Project     domain.Project      `json:"project"`
+	Exists      bool                `json:"exists"`
 	Activations []domain.Activation `json:"activations"`
+	Scan        projectScan         `json:"scan"`
 	Plan        domain.Plan         `json:"plan"`
+}
+
+type projectScan struct {
+	ScannedAt   time.Time            `json:"scannedAt"`
+	SkillCount  int                  `json:"skillCount"`
+	AgentCounts map[domain.Agent]int `json:"agentCounts"`
+	Skills      []projectScanSkill   `json:"skills"`
+	Errors      []string             `json:"errors,omitempty"`
+}
+
+type projectScanSkill struct {
+	ID          string                  `json:"id"`
+	Name        string                  `json:"name"`
+	Description string                  `json:"description,omitempty"`
+	Agents      []domain.Agent          `json:"agents"`
+	Paths       map[domain.Agent]string `json:"paths"`
+	Hash        string                  `json:"hash,omitempty"`
+	Status      string                  `json:"status"`
+	Issues      []string                `json:"issues,omitempty"`
 }
 
 func (s *Server) handleListProjects(w http.ResponseWriter, r *http.Request) {
@@ -46,8 +71,18 @@ func (s *Server) handleListProjects(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	for _, project := range projects.Projects {
-		_, statErr := os.Stat(project.Path)
-		rows = append(rows, projectRow{Project: project, Exists: statErr == nil, ActivationCount: counts[filepath.Clean(project.Path)]})
+		info, statErr := os.Stat(project.Path)
+		scan, scanErr := scanProjectSkills(project.Path)
+		if scanErr != nil {
+			scan = projectScan{AgentCounts: map[domain.Agent]int{domain.AgentClaude: 0, domain.AgentCodex: 0}}
+		}
+		rows = append(rows, projectRow{
+			Project:         project,
+			Exists:          statErr == nil && info.IsDir(),
+			ActivationCount: counts[filepath.Clean(project.Path)],
+			SkillCount:      scan.SkillCount,
+			AgentCounts:     scan.AgentCounts,
+		})
 	}
 	sort.Slice(rows, func(i, j int) bool { return rows[i].ID < rows[j].ID })
 	writeJSON(w, http.StatusOK, rows)
@@ -309,11 +344,115 @@ func (s *Server) projectDetails(project domain.Project) (projectDetails, error) 
 	if err != nil {
 		return projectDetails{}, err
 	}
+	scan, err := scanProjectSkills(project.Path)
+	if err != nil {
+		return projectDetails{}, err
+	}
 	plan, err := s.projectPlan(project.Path)
 	if err != nil {
 		return projectDetails{}, err
 	}
-	return projectDetails{Project: project, Activations: projectActivations(state, project.Path), Plan: plan}, nil
+	info, statErr := os.Stat(project.Path)
+	activations := projectActivations(state, project.Path)
+	if activations == nil {
+		activations = []domain.Activation{}
+	}
+	if plan.Operations == nil {
+		plan.Operations = []domain.Operation{}
+	}
+	return projectDetails{
+		Project:     project,
+		Exists:      statErr == nil && info.IsDir(),
+		Activations: activations,
+		Scan:        scan,
+		Plan:        plan,
+	}, nil
+}
+
+func scanProjectSkills(projectRoot string) (projectScan, error) {
+	result := projectScan{
+		ScannedAt:   time.Now().UTC(),
+		AgentCounts: map[domain.Agent]int{domain.AgentClaude: 0, domain.AgentCodex: 0},
+		Skills:      make([]projectScanSkill, 0),
+	}
+	byID := make(map[string]int)
+
+	for _, agentName := range []domain.Agent{domain.AgentClaude, domain.AgentCodex} {
+		root, err := adapter.Target(agentName, domain.PlacementProject, "", projectRoot, "")
+		if err != nil {
+			return projectScan{}, err
+		}
+		entries, err := os.ReadDir(root)
+		if os.IsNotExist(err) {
+			continue
+		}
+		if err != nil {
+			result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", adapter.DisplayName(agentName), err))
+			continue
+		}
+		for _, entry := range entries {
+			path := filepath.Join(root, entry.Name())
+			index, ok := byID[entry.Name()]
+			if !ok {
+				result.Skills = append(result.Skills, projectScanSkill{
+					ID:     entry.Name(),
+					Name:   entry.Name(),
+					Status: "ok",
+					Agents: make([]domain.Agent, 0, 2),
+					Paths:  make(map[domain.Agent]string),
+				})
+				index = len(result.Skills) - 1
+				byID[entry.Name()] = index
+			}
+			item := &result.Skills[index]
+			item.Agents = append(item.Agents, agentName)
+			item.Paths[agentName] = path
+			result.AgentCounts[agentName]++
+
+			info, statErr := os.Stat(path)
+			if statErr != nil {
+				addScanIssue(item, agentName, "error", statErr.Error())
+				continue
+			}
+			if !info.IsDir() {
+				addScanIssue(item, agentName, "warning", "skill entry is not a directory")
+				continue
+			}
+			resolved, resolveErr := filepath.EvalSymlinks(path)
+			if resolveErr != nil {
+				addScanIssue(item, agentName, "error", resolveErr.Error())
+				continue
+			}
+			document, validateErr := skill.Validate(resolved)
+			if validateErr != nil {
+				addScanIssue(item, agentName, "warning", validateErr.Error())
+				continue
+			}
+			if item.Name == item.ID {
+				item.Name = document.Name
+			}
+			if item.Description == "" {
+				item.Description = document.Description
+			}
+			if item.Hash == "" {
+				item.Hash = document.Hash
+			}
+		}
+	}
+
+	sort.Slice(result.Skills, func(i, j int) bool {
+		return strings.ToLower(result.Skills[i].Name) < strings.ToLower(result.Skills[j].Name)
+	})
+	result.SkillCount = len(result.Skills)
+	return result, nil
+}
+
+func addScanIssue(item *projectScanSkill, agentName domain.Agent, status, message string) {
+	item.Issues = append(item.Issues, fmt.Sprintf("%s: %s", adapter.DisplayName(agentName), message))
+	if item.Status == "error" || (item.Status == "warning" && status != "error") {
+		return
+	}
+	item.Status = status
 }
 
 func (s *Server) projectPlan(projectRoot string) (domain.Plan, error) {
