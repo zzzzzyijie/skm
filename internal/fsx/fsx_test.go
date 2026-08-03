@@ -35,6 +35,36 @@ func TestHashDirChangesWithContent(t *testing.T) {
 	}
 }
 
+func TestHashDirIgnoringFinderMetadata(t *testing.T) {
+	root := t.TempDir()
+	source := filepath.Join(root, "source")
+	target := filepath.Join(root, "target")
+	for _, directory := range []string{source, target} {
+		if err := os.MkdirAll(directory, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(directory, "SKILL.md"), []byte("skill"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(target, ".DS_Store"), []byte("finder metadata"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	sourceHash, err := HashDirIgnoringFinderMetadata(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	targetHash, err := HashDirIgnoringFinderMetadata(target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sourceHash != targetHash {
+		t.Fatalf("Finder metadata changed hash: %s != %s", sourceHash, targetHash)
+	}
+
+}
+
 func TestCopyDirAtomicReplacesDestination(t *testing.T) {
 	root := t.TempDir()
 	source := filepath.Join(root, "source")

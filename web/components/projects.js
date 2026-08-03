@@ -253,12 +253,36 @@ async function deployProjectSkill(mode) {
     } catch (err) { showToast(err.message, 'error'); }
 }
 
-async function unlinkProjectSkill(skill) {
+async function unlinkProjectSkill(skill, force) {
     try {
-        await api.post('/api/projects/' + encodeURIComponent(projectState.selectedID) + '/unlink', { skill: skill });
+        await api.post('/api/projects/' + encodeURIComponent(projectState.selectedID) + '/unlink', { skill: skill, force: Boolean(force) });
         showToast(t('proj.unlinked'));
         await renderProjects();
-    } catch (err) { showToast(err.message, 'error'); }
+        return true;
+    } catch (err) {
+        if (!force && err.message.indexOf('use --force') >= 0) {
+            showForceUnlinkModal(skill);
+            return false;
+        }
+        showToast(err.message, 'error');
+        return false;
+    }
+}
+
+function showForceUnlinkModal(skill) {
+    var content = '<p class="confirm-copy">' + t('proj.forceUnlinkDesc').replace('{0}', escapeHtml(skill)) + '</p>';
+    var actions = '<button class="btn btn-ghost" type="button" data-close-modal>' + t('lib.cancel') + '</button>' +
+        '<button class="btn btn-danger" type="button" id="btn-confirm-force-unlink">' + t('proj.forceUnlink') + '</button>';
+    showModal(t('proj.forceUnlinkTitle'), content, actions);
+    document.getElementById('btn-confirm-force-unlink').addEventListener('click', async function () {
+        this.disabled = true;
+        var removed = await unlinkProjectSkill(skill, true);
+        if (removed) {
+            closeModal();
+        } else {
+            this.disabled = false;
+        }
+    });
 }
 
 function unregisterProject() {

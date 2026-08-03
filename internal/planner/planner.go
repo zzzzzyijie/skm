@@ -105,6 +105,40 @@ func (e *Engine) Build(skills []domain.Skill, state domain.State) (domain.Plan, 
 	return domain.Plan{Digest: hex.EncodeToString(digest[:]), Operations: operations}, nil
 }
 
+// BuildScoped builds a plan for one placement without allowing unrelated
+// projects or user-level deployments to block the requested operation.
+func (e *Engine) BuildScoped(skills []domain.Skill, state domain.State, placement domain.Placement, projectRoot string) (domain.Plan, error) {
+	if !placement.Valid() {
+		return domain.Plan{}, fmt.Errorf("invalid placement %q", placement)
+	}
+	scoped := domain.State{Version: state.Version}
+	for _, activation := range state.Activations {
+		if activationInScope(activation, placement, projectRoot) {
+			scoped.Activations = append(scoped.Activations, activation)
+		}
+	}
+	for _, deployment := range state.Deployments {
+		if deploymentInScope(deployment, placement, projectRoot) {
+			scoped.Deployments = append(scoped.Deployments, deployment)
+		}
+	}
+	return e.Build(skills, scoped)
+}
+
+func activationInScope(activation domain.Activation, placement domain.Placement, projectRoot string) bool {
+	if activation.Placement != placement {
+		return false
+	}
+	return placement != domain.PlacementProject || filepath.Clean(activation.ProjectRoot) == filepath.Clean(projectRoot)
+}
+
+func deploymentInScope(deployment domain.Deployment, placement domain.Placement, projectRoot string) bool {
+	if deployment.Placement != placement {
+		return false
+	}
+	return placement != domain.PlacementProject || filepath.Clean(deployment.ProjectRoot) == filepath.Clean(projectRoot)
+}
+
 func (e *Engine) resolveActivation(activation domain.Activation, byID map[string]domain.Skill) (domain.Skill, error) {
 	if activation.PinnedHash == "" {
 		value, ok := byID[activation.SkillID]
@@ -277,7 +311,15 @@ func targetMatches(path string, info os.FileInfo, mode domain.LinkMode, sourcePa
 			return false, nil
 		}
 		actualHash, err := fsx.HashDir(path)
-		return actualHash == hash, err
+		if err != nil || actualHash == hash {
+			return actualHash == hash, err
+		}
+		sourceHash, err := fsx.HashDirIgnoringFinderMetadata(sourcePath)
+		if err != nil {
+			return false, err
+		}
+		actualHash, err = fsx.HashDirIgnoringFinderMetadata(path)
+		return actualHash == sourceHash, err
 	default:
 		return false, fmt.Errorf("unsupported link mode %q", mode)
 	}

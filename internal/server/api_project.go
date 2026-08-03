@@ -218,7 +218,7 @@ func (s *Server) handleProjectDeploy(w http.ResponseWriter, r *http.Request, mod
 		if skillsErr != nil {
 			return skillsErr
 		}
-		plan, err = engine.Build(skills, state)
+		plan, err = engine.BuildScoped(skills, state, domain.PlacementProject, project.Path)
 		if err != nil {
 			return err
 		}
@@ -456,17 +456,15 @@ func addScanIssue(item *projectScanSkill, agentName domain.Agent, status, messag
 }
 
 func (s *Server) projectPlan(projectRoot string) (domain.Plan, error) {
-	plan, err := s.buildCurrentPlan()
+	state, err := s.store.LoadState()
 	if err != nil {
 		return domain.Plan{}, err
 	}
-	filtered := domain.Plan{Digest: plan.Digest}
-	for _, operation := range plan.Operations {
-		if operation.Placement == domain.PlacementProject && filepath.Clean(operation.ProjectRoot) == filepath.Clean(projectRoot) {
-			filtered.Operations = append(filtered.Operations, operation)
-		}
+	skills, err := s.store.LoadAllSkills()
+	if err != nil {
+		return domain.Plan{}, err
 	}
-	return filtered, nil
+	return planner.New(s.store).BuildScoped(skills, state, domain.PlacementProject, projectRoot)
 }
 
 func projectActivations(state domain.State, projectRoot string) []domain.Activation {

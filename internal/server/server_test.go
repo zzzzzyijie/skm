@@ -158,10 +158,23 @@ func TestProjectLifecycleAPI(t *testing.T) {
 	if info, err := os.Lstat(copyTarget); err != nil || info.Mode()&os.ModeSymlink != 0 {
 		t.Fatalf("project copy target = %v, err=%v", info, err)
 	}
+	if err := os.WriteFile(filepath.Join(copyTarget, ".DS_Store"), []byte("finder metadata"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	requestJSON(t, handler, http.MethodPost, "/api/enable", map[string]any{
+		"skills": []string{"local/web-link"}, "agents": []string{"codex"}, "mode": "auto",
+	}, http.StatusOK, nil)
+	if err := os.WriteFile(filepath.Join(copyTarget, "SKILL.md"), []byte("modified"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	requestJSON(t, handler, http.MethodPost, "/api/enable", map[string]any{
+		"skills": []string{"local/web-link"}, "agents": []string{"codex"}, "mode": "auto",
+	}, http.StatusOK, nil)
 
 	requestJSON(t, handler, http.MethodDelete, "/api/projects/web-project", nil, http.StatusBadRequest, nil)
 	requestJSON(t, handler, http.MethodPost, "/api/projects/web-project/unlink", map[string]any{"skill": "web-link"}, http.StatusOK, nil)
-	requestJSON(t, handler, http.MethodPost, "/api/projects/web-project/unlink", map[string]any{"skill": "local/web-copy"}, http.StatusOK, nil)
+	requestJSON(t, handler, http.MethodPost, "/api/projects/web-project/unlink", map[string]any{"skill": "local/web-copy"}, http.StatusBadRequest, nil)
+	requestJSON(t, handler, http.MethodPost, "/api/projects/web-project/unlink", map[string]any{"skill": "local/web-copy", "force": true}, http.StatusOK, nil)
 	requestJSON(t, handler, http.MethodDelete, "/api/projects/web-project", nil, http.StatusOK, nil)
 }
 

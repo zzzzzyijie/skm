@@ -82,6 +82,16 @@ func ValidateTree(root string) (TreeInfo, error) {
 }
 
 func HashDir(root string) (string, error) {
+	return hashDir(root, false)
+}
+
+// HashDirIgnoringFinderMetadata is used when comparing copied Skill targets.
+// Finder metadata must not make an otherwise unchanged target look modified.
+func HashDirIgnoringFinderMetadata(root string) (string, error) {
+	return hashDir(root, true)
+}
+
+func hashDir(root string, ignoreFinderMetadata bool) (string, error) {
 	if _, err := ValidateTree(root); err != nil {
 		return "", err
 	}
@@ -91,9 +101,16 @@ func HashDir(root string) (string, error) {
 		if err != nil {
 			return err
 		}
-		if path != root {
-			paths = append(paths, path)
+		if path == root {
+			return nil
 		}
+		if ignoreFinderMetadata && isFinderMetadata(path) {
+			if entry.IsDir() {
+				return fs.SkipDir
+			}
+			return nil
+		}
+		paths = append(paths, path)
 		return nil
 	})
 	if err != nil {
@@ -203,6 +220,10 @@ func copyDir(source, destination string) error {
 		}
 		return outErr
 	})
+}
+
+func isFinderMetadata(path string) bool {
+	return filepath.Base(path) == ".DS_Store"
 }
 
 func AtomicWriteFile(path string, data []byte, mode fs.FileMode) error {

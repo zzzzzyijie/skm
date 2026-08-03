@@ -76,7 +76,7 @@ func (s *Server) handleEnable(w http.ResponseWriter, r *http.Request) {
 		if skillsErr != nil {
 			return skillsErr
 		}
-		plan, err = engine.Build(skills, state)
+		plan, err = engine.BuildScoped(skills, state, domain.PlacementUser, "")
 		if err != nil {
 			return err
 		}

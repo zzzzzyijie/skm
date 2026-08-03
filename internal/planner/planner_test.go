@@ -92,6 +92,68 @@ func TestCopyModificationBecomesConflict(t *testing.T) {
 	assertSingleStatus(t, plan, domain.StatusConflictUnmanaged)
 }
 
+func TestProjectCopyIgnoresFinderMetadata(t *testing.T) {
+	storage := plannerStore(t)
+	value := plannerSkill(t, "review", "body", domain.LocationLibrary, "local/review")
+	state := domain.State{Activations: []domain.Activation{{
+		SkillID: value.ID, Name: value.Name, Placement: domain.PlacementProject, ProjectRoot: storage.Paths.ProjectRoot,
+		Agents: []domain.Agent{domain.AgentClaude}, Mode: domain.ModeCopy, PinnedHash: value.Hash, PinnedPath: value.Path,
+	}}}
+	engine := New(storage)
+	plan, err := engine.BuildScoped([]domain.Skill{value}, state, domain.PlacementProject, storage.Paths.ProjectRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := engine.Apply(plan, &state); err != nil {
+		t.Fatal(err)
+	}
+	target := filepath.Join(storage.Paths.ProjectRoot, ".claude", "skills", "review")
+	if err := os.WriteFile(filepath.Join(target, ".DS_Store"), []byte("finder metadata"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	plan, err = engine.BuildScoped([]domain.Skill{value}, state, domain.PlacementProject, storage.Paths.ProjectRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertSingleStatus(t, plan, domain.StatusUnchanged)
+	if err := engine.Disable(&state, map[string]struct{}{value.ID: {}}, domain.PlacementProject, storage.Paths.ProjectRoot, map[domain.Agent]struct{}{domain.AgentClaude: {}}, false); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Lstat(target); !os.IsNotExist(err) {
+		t.Fatalf("project target still exists: %v", err)
+	}
+}
+
+func TestBuildScopedDoesNotIncludeOtherPlacementConflicts(t *testing.T) {
+	storage := plannerStore(t)
+	projectSkill := plannerSkill(t, "project-review", "project", domain.LocationLibrary, "local/project-review")
+	userSkill := plannerSkill(t, "user-review", "user", domain.LocationLibrary, "local/user-review")
+	state := domain.State{Activations: []domain.Activation{
+		{SkillID: projectSkill.ID, Name: projectSkill.Name, Placement: domain.PlacementProject, ProjectRoot: storage.Paths.ProjectRoot, Agents: []domain.Agent{domain.AgentClaude}, Mode: domain.ModeCopy, PinnedHash: projectSkill.Hash, PinnedPath: projectSkill.Path},
+		{SkillID: userSkill.ID, Name: userSkill.Name, Placement: domain.PlacementUser, Agents: []domain.Agent{domain.AgentCodex}, Mode: domain.ModeSymlink},
+	}}
+	engine := New(storage)
+	projectPlan, err := engine.BuildScoped([]domain.Skill{projectSkill, userSkill}, state, domain.PlacementProject, storage.Paths.ProjectRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := engine.Apply(projectPlan, &state); err != nil {
+		t.Fatal(err)
+	}
+	projectTarget := filepath.Join(storage.Paths.ProjectRoot, ".claude", "skills", projectSkill.Name, "SKILL.md")
+	if err := os.WriteFile(projectTarget, []byte("modified"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	userPlan, err := engine.BuildScoped([]domain.Skill{projectSkill, userSkill}, state, domain.PlacementUser, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertSingleStatus(t, userPlan, domain.StatusCreate)
+	if err := engine.Apply(userPlan, &state); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestDisableRemovesLegacyCodexDeployment(t *testing.T) {
 	storage := plannerStore(t)
 	value := plannerSkill(t, "review", "body", domain.LocationLibrary, "local/review")
