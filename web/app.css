@@ -382,6 +382,8 @@ button.tag { font-family: var(--font-sans); }
 .detail-list { display: grid; gap: 12px; margin-bottom: 18px; }
 .detail-list > div { min-width: 0; }
 .detail-list dd { color: var(--text-secondary); font-size: 12px; overflow-wrap: anywhere; }
+.project-skill-document + .project-skill-document { margin-top: 28px; padding-top: 22px; border-top: 1px solid var(--border); }
+.project-skill-content { max-height: 360px; margin: 0; padding: 12px; overflow: auto; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); color: var(--text-secondary); font-family: var(--font-mono); font-size: 12px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
 .detail-path { font-size: 10px !important; }
 .detail-tags { min-height: 26px; }
 .tag-manager { display: grid; border: 1px solid var(--border); border-radius: var(--radius-sm); }
@@ -429,14 +431,10 @@ button.tag { font-family: var(--font-sans); }
 .project-detail-status { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
 .project-section { margin-bottom: 28px; }
 .project-scan-time { color: var(--text-muted); font-family: var(--font-mono); font-size: 10px; white-space: nowrap; }
-.project-scan-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
+.project-scan-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 14px; }
 .project-scan-stat { display: flex; min-height: 70px; align-items: flex-start; justify-content: center; flex-direction: column; gap: 4px; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); }
 .project-scan-stat strong { color: var(--text); font-size: 23px; line-height: 1; }
 .project-scan-stat span { color: var(--text-muted); font-size: 11px; font-weight: 650; }
-.project-scan-stat-claude { border-color: rgba(242, 184, 75, 0.3); }
-.project-scan-stat-claude strong { color: var(--warning); }
-.project-scan-stat-codex { border-color: rgba(85, 199, 232, 0.3); }
-.project-scan-stat-codex strong { color: var(--info); }
 .project-scan-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
 .project-agent-filter { display: inline-flex; gap: 3px; padding: 3px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); }
 .project-agent-filter-btn { min-height: 29px; padding: 4px 10px; border: 0; border-radius: 4px; background: transparent; color: var(--text-secondary); cursor: pointer; font-size: 11px; font-weight: 700; }
@@ -449,24 +447,17 @@ button.tag { font-family: var(--font-sans); }
 .project-skill-main, .project-skill-state { min-width: 0; }
 .project-skill-title { display: flex; min-width: 0; align-items: baseline; flex-wrap: wrap; gap: 8px; }
 .project-skill-title strong { color: var(--text); font-size: 14px; overflow-wrap: anywhere; }
-.project-skill-id { color: var(--text-muted); font-size: 10px; overflow-wrap: anywhere; }
 .project-skill-description { margin-top: 5px; color: var(--text-secondary); font-size: 12px; line-height: 1.45; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.project-skill-paths { display: grid; gap: 3px; margin-top: 8px; }
-.project-skill-path { color: var(--text-muted); font-size: 9px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .project-skill-agents { display: flex; min-width: 0; flex-wrap: wrap; gap: 6px; align-items: center; }
 .project-agent-badge { display: inline-flex; min-height: 27px; align-items: center; gap: 6px; padding: 4px 7px; border: 1px solid var(--border); border-radius: 5px; background: var(--surface-raised); color: var(--text-secondary); font-size: 10px; font-weight: 700; white-space: nowrap; }
 .project-agent-badge img { width: 15px; height: 15px; object-fit: contain; }
 .project-agent-badge.project-agent-claude { border-color: rgba(242, 184, 75, 0.35); color: var(--warning); }
 .project-agent-badge.project-agent-codex { border-color: rgba(85, 199, 232, 0.35); color: var(--info); }
 .project-skill-badges { display: flex; flex-wrap: wrap; gap: 5px; }
-.project-skill-hash { display: block; margin-top: 6px; color: var(--text-muted); font-size: 9px; }
 .project-skill-issue { margin-top: 5px; color: var(--warning); font-size: 10px; overflow-wrap: anywhere; }
-.project-skill-action { display: flex; justify-content: flex-end; }
-.project-deploy-form { display: grid; grid-template-columns: minmax(180px, 1.25fr) minmax(160px, 1fr) minmax(160px, 1fr) auto; gap: 12px; align-items: end; padding: 16px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
-.project-deploy-form .form-group { min-width: 0; margin-bottom: 0; }
+.project-skill-action { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.project-add-skill { display: flex; justify-content: flex-end; margin: -6px 0 28px; }
 .project-mode { margin: 0; }
-.project-deploy-actions { display: flex; gap: 7px; }
-.project-deploy-actions .btn { white-space: nowrap; }
 .project-meta { display: flex; justify-content: flex-end; margin-top: -12px; }
 
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -482,7 +473,6 @@ button.tag { font-family: var(--font-sans); }
     .filter-bar { justify-content: flex-start; }
     .project-layout { grid-template-columns: 1fr; }
     .project-list { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
-    .project-deploy-form { grid-template-columns: 1fr 1fr; }
     .project-skill-row { grid-template-columns: minmax(0, 1.5fr) minmax(140px, .9fr) auto; }
     .project-skill-main { grid-row: span 2; }
     .project-skill-action { grid-column: 3; grid-row: 2; }
@@ -547,11 +537,9 @@ button.tag { font-family: var(--font-sans); }
     .project-skill-row { grid-template-columns: 1fr; gap: 11px; align-items: start; }
     .project-skill-main { grid-row: auto; }
     .project-skill-description { white-space: normal; }
-    .project-skill-path { white-space: normal; }
     .project-skill-action { grid-column: auto; grid-row: auto; justify-content: flex-start; }
-    .project-deploy-form { grid-template-columns: 1fr; }
-    .project-deploy-actions { width: 100%; }
-    .project-deploy-actions .btn { flex: 1; }
+    .project-add-skill { justify-content: stretch; }
+    .project-add-skill .btn { width: 100%; }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -110,6 +110,8 @@ func TestProjectLifecycleAPI(t *testing.T) {
 	makeProjectSkill(t, projectPath, "codex", "codex-only")
 	makeProjectSkill(t, projectPath, "claude", "shared")
 	makeProjectSkill(t, projectPath, "codex", "shared")
+	makeProjectSkill(t, projectPath, "cursor", "cursor-only")
+	makeProjectSkill(t, projectPath, "agent", "agent-only")
 	for _, agent := range []string{"claude", "codex"} {
 		skillsRoot := filepath.Join(projectPath, "."+agent, "skills")
 		if err := os.WriteFile(filepath.Join(skillsRoot, ".DS_Store"), []byte("finder metadata"), 0o644); err != nil {
@@ -127,19 +129,53 @@ func TestProjectLifecycleAPI(t *testing.T) {
 		Scan   struct {
 			SkillCount  int            `json:"skillCount"`
 			AgentCounts map[string]int `json:"agentCounts"`
-			Skills      []struct {
+			Agents      []struct {
+				ID         string `json:"id"`
+				Label      string `json:"label"`
+				SkillCount int    `json:"skillCount"`
+			} `json:"agents"`
+			Skills []struct {
 				ID     string   `json:"id"`
 				Agents []string `json:"agents"`
 			} `json:"skills"`
 		} `json:"scan"`
 	}
 	requestJSON(t, handler, http.MethodGet, "/api/projects/web-project", nil, http.StatusOK, &details)
-	if !details.Exists || details.Scan.SkillCount != 3 || details.Scan.AgentCounts["claude"] != 2 || details.Scan.AgentCounts["codex"] != 2 {
+	if !details.Exists || details.Scan.SkillCount != 5 || details.Scan.AgentCounts["claude"] != 2 || details.Scan.AgentCounts["codex"] != 2 || details.Scan.AgentCounts["cursor"] != 1 || details.Scan.AgentCounts["agent"] != 1 {
 		t.Fatalf("project scan summary = %#v", details)
+	}
+	agents := make(map[string]string)
+	for _, agent := range details.Scan.Agents {
+		agents[agent.ID] = agent.Label
+	}
+	if agents["cursor"] != "Cursor" || agents["agent"] != "Agent" {
+		t.Fatalf("project scan Agents = %#v", details.Scan.Agents)
 	}
 	for _, scanned := range details.Scan.Skills {
 		if scanned.ID == "shared" && (len(scanned.Agents) != 2 || scanned.Agents[0] != "claude" || scanned.Agents[1] != "codex") {
 			t.Fatalf("shared Skill scan = %#v", scanned)
+		}
+		if scanned.ID == "cursor-only" && (len(scanned.Agents) != 1 || scanned.Agents[0] != "cursor") {
+			t.Fatalf("Cursor Skill scan = %#v", scanned)
+		}
+	}
+	var projectSkillDetail struct {
+		ID        string `json:"id"`
+		Documents []struct {
+			Agent       string         `json:"agent"`
+			Name        string         `json:"name"`
+			Description string         `json:"description"`
+			Body        string         `json:"body"`
+			Metadata    map[string]any `json:"metadata"`
+		} `json:"documents"`
+	}
+	requestJSON(t, handler, http.MethodGet, "/api/projects/web-project/skills/shared", nil, http.StatusOK, &projectSkillDetail)
+	if projectSkillDetail.ID != "shared" || len(projectSkillDetail.Documents) != 2 {
+		t.Fatalf("project Skill details = %#v", projectSkillDetail)
+	}
+	for _, document := range projectSkillDetail.Documents {
+		if document.Name != "shared" || document.Description == "" || document.Body == "" || document.Metadata["name"] != "shared" {
+			t.Fatalf("project Skill document = %#v", document)
 		}
 	}
 
@@ -226,7 +262,7 @@ func makeProjectSkill(t *testing.T, projectPath, agent, name string) {
 	if err := os.MkdirAll(directory, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	content := "---\nname: " + name + "\ndescription: Project scan test Skill\n---\n"
+	content := "---\nname: " + name + "\ndescription: Project scan test Skill\n---\n\n# " + name + "\n"
 	if err := os.WriteFile(filepath.Join(directory, "SKILL.md"), []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}

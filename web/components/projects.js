@@ -69,23 +69,17 @@ function paintProjects() {
 
     var detail = projectState.detail;
     if (!detail) return;
-    var deployButton = document.getElementById('btn-project-deploy');
-    if (deployButton) deployButton.addEventListener('click', deployProjectSkill);
-    var copyButton = document.getElementById('btn-project-copy');
-    if (copyButton) copyButton.addEventListener('click', function () { deployProjectSkill('copy'); });
-    container.querySelectorAll('[data-project-mode]').forEach(function (button) {
-        button.addEventListener('click', function () {
-            container.querySelectorAll('[data-project-mode]').forEach(function (item) { item.classList.toggle('active', item === button); });
-            document.getElementById('btn-project-deploy').classList.toggle('is-hidden', button.dataset.projectMode !== 'link');
-            document.getElementById('btn-project-copy').classList.toggle('is-hidden', button.dataset.projectMode !== 'copy');
-        });
-    });
+    var addSkillButton = document.getElementById('btn-project-add-skill');
+    if (addSkillButton) addSkillButton.addEventListener('click', showProjectSkillDeployModal);
     var refreshButton = document.getElementById('btn-project-refresh');
     if (refreshButton) refreshButton.addEventListener('click', function () { loadProjectDetail(projectState.selectedID); });
     var unregisterButton = document.getElementById('btn-project-unregister');
     if (unregisterButton) unregisterButton.addEventListener('click', unregisterProject);
     container.querySelectorAll('[data-unlink-skill]').forEach(function (button) {
         button.addEventListener('click', function () { unlinkProjectSkill(button.dataset.unlinkSkill); });
+    });
+    container.querySelectorAll('[data-project-skill-details]').forEach(function (button) {
+        button.addEventListener('click', function () { showProjectSkillDetails(button.dataset.projectSkillDetails); });
     });
 }
 
@@ -94,7 +88,7 @@ function projectListItem(project) {
     var status = project.exists ? t('proj.ready') : t('proj.missing');
     var skillCount = typeof project.skillCount === 'number' ? project.skillCount : (project.activationCount || 0);
     var counts = project.agentCounts || {};
-    var agentSummary = ['claude', 'codex'].filter(function (agent) { return Number(counts[agent] || 0) > 0; }).map(function (agent) {
+    var agentSummary = Object.keys(counts).sort().filter(function (agent) { return Number(counts[agent] || 0) > 0; }).map(function (agent) {
         return projectAgentName(agent) + ' ' + Number(counts[agent]);
     }).join(' / ');
     return '<button class="project-list-item' + (selected ? ' active' : '') + '" type="button" data-project-id="' + escapeHtml(project.id) + '">' +
@@ -113,39 +107,30 @@ function projectDetailMarkup() {
         '</span><span class="mono project-path">' + escapeHtml(project.path) + '</span></div></div><div class="header-actions"><button class="btn btn-secondary btn-sm" type="button" id="btn-project-refresh">' +
         t('proj.scan') + '</button><button class="btn btn-danger btn-sm" type="button" id="btn-project-unregister">' + t('proj.unregister') + '</button></div></div>';
     html += projectScanMarkup(detail);
-    html += '<section class="project-section"><div class="section-heading"><div><h3 class="section-title">' + t('proj.deploy') + '</h3><p class="section-caption">' +
-        t('proj.deployDesc') + '</p></div></div>';
-    html += '<div class="project-deploy-form"><label class="form-group"><span class="form-label">' + t('proj.skill') + '</span><select class="select" id="project-skill-select">' +
-        '<option value="">' + t('proj.selectSkill') + '</option>';
-    projectState.skills.forEach(function (skill) {
-        html += '<option value="' + escapeHtml(skill.id) + '">' + escapeHtml(skill.id) + '</option>';
-    });
-    html += '</select></label><div class="form-group"><span class="form-label">' + t('proj.agents') + '</span><div class="choice-grid">' +
-        '<label class="check-option"><input type="checkbox" name="project-agent" value="claude" checked><span>' + projectAgentName('claude') + '</span></label>' +
-        '<label class="check-option"><input type="checkbox" name="project-agent" value="codex" checked><span>' + projectAgentName('codex') + '</span></label></div></div>' +
-        '<div class="form-group"><span class="form-label">' + t('proj.mode') + '</span><div class="import-mode project-mode"><button class="import-mode-option active" type="button" data-project-mode="link">' +
-        t('proj.link') + '</button><button class="import-mode-option" type="button" data-project-mode="copy">' + t('proj.copy') + '</button></div></div>' +
-        '<div class="project-deploy-actions"><button class="btn btn-primary" type="button" id="btn-project-deploy">' + t('proj.link') +
-        '</button><button class="btn btn-secondary is-hidden" type="button" id="btn-project-copy">' + t('proj.copy') + '</button></div></div></section>';
+    html += '<div class="project-add-skill"><button class="btn btn-primary" type="button" id="btn-project-add-skill">+ ' + t('proj.addSkill') + '</button></div>';
     html += projectPlanMarkup(detail.plan);
     return html;
 }
 
 function projectScanMarkup(detail) {
-    var scan = detail.scan || { skillCount: 0, agentCounts: {}, skills: [] };
+    var scan = detail.scan || { skillCount: 0, agentCounts: {}, agents: [], skills: [] };
     var skills = scan.skills || [];
+    var agents = scan.agents || [];
     var filter = projectState.agentFilter || 'all';
+    if (filter !== 'all' && !agents.some(function (agent) { return agent.id === filter; })) {
+        filter = 'all';
+        projectState.agentFilter = filter;
+    }
     var visible = skills.filter(function (skill) {
         return filter === 'all' || (skill.agents || []).indexOf(filter) >= 0;
     });
     var html = '<section class="project-section project-scan-section"><div class="section-heading"><div><h3 class="section-title">' + t('proj.scanTitle') +
         '</h3><p class="section-caption">' + t('proj.scanDesc') + '</p></div><span class="project-scan-time">' + t('proj.lastScan') + ': ' + formatDate(scan.scannedAt) + '</span></div>';
     html += '<div class="project-scan-summary"><div class="project-scan-stat"><strong>' + Number(scan.skillCount || 0) + '</strong><span>' + t('proj.skills') + '</span></div>' +
-        '<div class="project-scan-stat project-scan-stat-claude"><strong>' + Number((scan.agentCounts || {}).claude || 0) + '</strong><span>' + projectAgentName('claude') + '</span></div>' +
-        '<div class="project-scan-stat project-scan-stat-codex"><strong>' + Number((scan.agentCounts || {}).codex || 0) + '</strong><span>' + projectAgentName('codex') + '</span></div></div>';
+        agents.map(projectScanAgentStat).join('') + '</div>';
     html += '<div class="project-scan-toolbar"><div class="project-agent-filter" role="tablist" aria-label="' + t('proj.agents') + '">' +
-        projectAgentFilterButton('all', t('proj.allAgents'), filter) + projectAgentFilterButton('claude', projectAgentName('claude'), filter) +
-        projectAgentFilterButton('codex', projectAgentName('codex'), filter) + '</div><span class="muted">' + visible.length + ' / ' + skills.length + ' ' + t('proj.skills') + '</span></div>';
+        projectAgentFilterButton('all', t('proj.allAgents'), filter) + agents.map(function (agent) { return projectAgentFilterButton(agent.id, agent.label || projectAgentName(agent.id), filter); }).join('') +
+        '</div><span class="muted">' + visible.length + ' / ' + skills.length + ' ' + t('proj.skills') + '</span></div>';
     if (scan.errors && scan.errors.length) {
         html += '<div class="project-scan-warning">' + scan.errors.map(function (message) { return '<span>' + escapeHtml(message) + '</span>'; }).join('') + '</div>';
     }
@@ -157,6 +142,10 @@ function projectScanMarkup(detail) {
     return html + '</section>';
 }
 
+function projectScanAgentStat(agent) {
+    return '<div class="project-scan-stat"><strong>' + Number(agent.skillCount || 0) + '</strong><span>' + escapeHtml(agent.label || projectAgentName(agent.id)) + '</span></div>';
+}
+
 function projectAgentFilterButton(agent, label, active) {
     return '<button class="project-agent-filter-btn' + (agent === active ? ' active' : '') + '" type="button" role="tab" aria-selected="' + (agent === active) +
         '" data-project-agent-filter="' + agent + '">' + escapeHtml(label) + '</button>';
@@ -165,18 +154,54 @@ function projectAgentFilterButton(agent, label, active) {
 function projectScanSkillRow(skill, detail) {
     var activation = projectActivationFor(skill, detail.activations || []);
     var agents = (skill.agents || []).map(function (agent) { return projectAgentBadge(agent); }).join('');
-    var paths = Object.keys(skill.paths || {}).map(function (agent) {
-        return '<span class="project-skill-path mono" title="' + escapeHtml(skill.paths[agent]) + '">' + escapeHtml(projectAgentName(agent)) + ': ' + escapeHtml(skill.paths[agent]) + '</span>';
-    }).join('');
     var statusLabel = projectScanStatusLabel(skill.status);
     var managed = activation ? '<span class="badge badge-source">' + escapeHtml(t('proj.managed')) + '</span>' : '<span class="badge badge-muted">' + escapeHtml(t('proj.external')) + '</span>';
-    var action = activation ? '<button class="btn btn-danger btn-sm" type="button" data-unlink-skill="' + escapeHtml(activation.skillId) + '">' + t('proj.unlink') + '</button>' : '';
+    var action = '<button class="btn btn-ghost btn-sm" type="button" data-project-skill-details="' + escapeHtml(skill.id) + '">' + t('proj.viewDetails') + '</button>' +
+        (activation ? '<button class="btn btn-danger btn-sm" type="button" data-unlink-skill="' + escapeHtml(activation.skillId) + '">' + t('proj.unlink') + '</button>' : '');
     var issue = (skill.issues || []).map(function (message) { return '<div class="project-skill-issue">' + escapeHtml(message) + '</div>'; }).join('');
     return '<article class="project-skill-row"><div class="project-skill-main"><div class="project-skill-title"><strong>' + escapeHtml(skill.name || skill.id) +
-        '</strong><span class="mono project-skill-id">' + escapeHtml(skill.id) + '</span></div><p class="project-skill-description">' + escapeHtml(skill.description || t('proj.noDescription')) +
-        '</p><div class="project-skill-paths">' + paths + '</div>' + issue + '</div><div class="project-skill-agents">' + agents + '</div><div class="project-skill-state"><div class="project-skill-badges"><span class="badge ' +
-        statusBadgeClass(skill.status || 'ok') + '">' + escapeHtml(statusLabel) + '</span>' + managed + '</div>' + (skill.hash ? '<span class="mono project-skill-hash">' + escapeHtml(skill.hash.substring(0, 12)) + '</span>' : '') +
+        '</strong></div><p class="project-skill-description">' + escapeHtml(skill.description || t('proj.noDescription')) +
+        '</p>' + issue + '</div><div class="project-skill-agents">' + agents + '</div><div class="project-skill-state"><div class="project-skill-badges"><span class="badge ' +
+        statusBadgeClass(skill.status || 'ok') + '">' + escapeHtml(statusLabel) + '</span>' + managed + '</div>' +
         '</div><div class="project-skill-action">' + action + '</div></article>';
+}
+
+function showProjectSkillDeployModal() {
+    var content = '<div class="form-group"><label class="form-label" for="project-skill-select">' + t('proj.skill') + '</label><select class="select" id="project-skill-select">' +
+        '<option value="">' + t('proj.selectSkill') + '</option>';
+    projectState.skills.forEach(function (skill) {
+        content += '<option value="' + escapeHtml(skill.id) + '">' + escapeHtml(skill.id) + '</option>';
+    });
+    content += '</select></div><div class="form-group"><span class="form-label">' + t('proj.agents') + '</span><div class="choice-grid">' +
+        '<label class="check-option"><input type="checkbox" name="project-agent" value="claude" checked><span>' + projectAgentName('claude') + '</span></label>' +
+        '<label class="check-option"><input type="checkbox" name="project-agent" value="codex" checked><span>' + projectAgentName('codex') + '</span></label></div></div>' +
+        '<div class="form-group"><span class="form-label">' + t('proj.mode') + '</span><div class="import-mode project-mode"><button class="import-mode-option active" type="button" data-project-mode="link">' +
+        t('proj.link') + '</button><button class="import-mode-option" type="button" data-project-mode="copy">' + t('proj.copy') + '</button></div></div>';
+    showModal(t('proj.addSkill'), content, '<button class="btn btn-ghost" type="button" data-close-modal>' + t('lib.cancel') + '</button><button class="btn btn-primary" type="button" id="btn-confirm-project-deploy">' + t('proj.addSkill') + '</button>');
+    document.querySelectorAll('[data-project-mode]').forEach(function (button) {
+        button.addEventListener('click', function () {
+            document.querySelectorAll('[data-project-mode]').forEach(function (item) { item.classList.toggle('active', item === button); });
+        });
+    });
+    document.getElementById('btn-confirm-project-deploy').addEventListener('click', deployProjectSkill);
+}
+
+async function showProjectSkillDetails(skillID) {
+    try {
+        var detail = await api.get('/api/projects/' + encodeURIComponent(projectState.selectedID) + '/skills/' + encodeURIComponent(skillID));
+        var documents = detail.documents || [];
+        var content = documents.map(projectSkillDocumentMarkup).join('');
+        showModal(t('proj.skillDetails'), content, '<button class="btn btn-ghost" type="button" data-close-modal>' + t('lib.close') + '</button>');
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
+}
+
+function projectSkillDocumentMarkup(document) {
+    var metadata = document.metadata && Object.keys(document.metadata).length ? '<div class="form-group"><label class="form-label">' + t('proj.metadata') + '</label><pre class="project-skill-content">' + escapeHtml(JSON.stringify(document.metadata, null, 2)) + '</pre></div>' : '';
+    var body = document.body ? '<pre class="project-skill-content">' + escapeHtml(document.body) + '</pre>' : '<p class="muted">' + t('proj.noContent') + '</p>';
+    return '<section class="project-skill-document"><div class="detail-hero"><div><div class="detail-name">' + escapeHtml(document.name) + '</div><div class="mono muted">' + escapeHtml(projectAgentName(document.agent)) + '</div></div><span class="mono muted">' + escapeHtml((document.hash || '').substring(0, 12)) + '</span></div><dl class="detail-list"><div><dt>' +
+        t('lib.description') + '</dt><dd>' + escapeHtml(document.description || '-') + '</dd></div><div><dt>' + t('proj.skillPath') + '</dt><dd class="mono detail-path">' + escapeHtml(document.path) + '</dd></div></dl>' + metadata + '<div class="form-group"><label class="form-label">' + t('proj.content') + '</label>' + body + '</div></section>';
 }
 
 function projectActivationFor(skill, activations) {
@@ -186,12 +211,18 @@ function projectActivationFor(skill, activations) {
 }
 
 function projectAgentName(agent) {
-    return agent === 'claude' ? t('proj.claudeCode') : t('proj.codex');
+    if (agent === 'claude') return t('proj.claudeCode');
+    if (agent === 'codex') return t('proj.codex');
+    if (agent === 'cursor') return 'Cursor';
+    if (agent === 'agent') return 'Agent';
+    if (agent === 'agents') return 'Agents';
+    return '.' + agent;
 }
 
 function projectAgentBadge(agent) {
-    var logo = agent === 'claude' ? '/assets/claude.svg' : '/assets/codex.svg';
-    return '<span class="project-agent-badge project-agent-' + escapeHtml(agent) + '"><img src="' + logo + '" alt=""><span>' + escapeHtml(projectAgentName(agent)) + '</span></span>';
+    var logo = agent === 'claude' ? '/assets/claude.svg' : (agent === 'codex' ? '/assets/codex.svg' : '');
+    var agentClass = agent === 'claude' || agent === 'codex' ? ' project-agent-' + agent : '';
+    return '<span class="project-agent-badge' + agentClass + '">' + (logo ? '<img src="' + logo + '" alt="">' : '') + '<span>' + escapeHtml(projectAgentName(agent)) + '</span></span>';
 }
 
 function projectScanStatusLabel(status) {
@@ -252,17 +283,23 @@ function selectedProjectAgents() {
     return Array.prototype.map.call(document.querySelectorAll('input[name="project-agent"]:checked'), function (input) { return input.value; });
 }
 
-async function deployProjectSkill(mode) {
+async function deployProjectSkill() {
     var skill = document.getElementById('project-skill-select').value;
     if (!skill) { showToast(t('proj.chooseSkill'), 'error'); return; }
     var agents = selectedProjectAgents();
     if (!agents.length) { showToast(t('proj.chooseAgent'), 'error'); return; }
-    var activeMode = mode || (document.querySelector('[data-project-mode].active') || {}).dataset.projectMode || 'link';
+    var activeMode = (document.querySelector('[data-project-mode].active') || {}).dataset.projectMode || 'link';
+    var button = document.getElementById('btn-confirm-project-deploy');
+    button.disabled = true;
     try {
         await api.post('/api/projects/' + encodeURIComponent(projectState.selectedID) + '/' + activeMode, { skill: skill, agents: agents });
+        closeModal();
         showToast(t('proj.deployed'));
         await renderProjects();
-    } catch (err) { showToast(err.message, 'error'); }
+    } catch (err) {
+        button.disabled = false;
+        showToast(err.message, 'error');
+    }
 }
 
 async function unlinkProjectSkill(skill, force) {
