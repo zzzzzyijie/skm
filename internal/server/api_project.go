@@ -392,6 +392,10 @@ func scanProjectSkills(projectRoot string) (projectScan, error) {
 		}
 		for _, entry := range entries {
 			path := filepath.Join(root, entry.Name())
+			resolved, candidate, candidateErr := projectSkillDirectory(path)
+			if !candidate {
+				continue
+			}
 			index, ok := byID[entry.Name()]
 			if !ok {
 				result.Skills = append(result.Skills, projectScanSkill{
@@ -409,18 +413,8 @@ func scanProjectSkills(projectRoot string) (projectScan, error) {
 			item.Paths[agentName] = path
 			result.AgentCounts[agentName]++
 
-			info, statErr := os.Stat(path)
-			if statErr != nil {
-				addScanIssue(item, agentName, "error", statErr.Error())
-				continue
-			}
-			if !info.IsDir() {
-				addScanIssue(item, agentName, "warning", "skill entry is not a directory")
-				continue
-			}
-			resolved, resolveErr := filepath.EvalSymlinks(path)
-			if resolveErr != nil {
-				addScanIssue(item, agentName, "error", resolveErr.Error())
+			if candidateErr != nil {
+				addScanIssue(item, agentName, "error", candidateErr.Error())
 				continue
 			}
 			document, validateErr := skill.Validate(resolved)
@@ -445,6 +439,30 @@ func scanProjectSkills(projectRoot string) (projectScan, error) {
 	})
 	result.SkillCount = len(result.Skills)
 	return result, nil
+}
+
+// projectSkillDirectory identifies a top-level Agent Skill directory. Files and
+// folders without SKILL.md are not Skills and must not appear in scan results.
+func projectSkillDirectory(path string) (string, bool, error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		return "", false, nil
+	}
+	if !info.IsDir() {
+		return "", false, nil
+	}
+	resolved, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		return "", false, nil
+	}
+	_, err = os.Stat(filepath.Join(resolved, "SKILL.md"))
+	if os.IsNotExist(err) {
+		return "", false, nil
+	}
+	if err != nil {
+		return resolved, true, err
+	}
+	return resolved, true, nil
 }
 
 func addScanIssue(item *projectScanSkill, agentName domain.Agent, status, message string) {

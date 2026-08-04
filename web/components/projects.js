@@ -214,20 +214,32 @@ function projectPlanMarkup(plan) {
 }
 
 function showAddProjectModal() {
-    var content = '<div class="form-group"><label class="form-label" for="project-path-input">' + t('proj.path') + '</label><input class="input" id="project-path-input" placeholder="/path/to/project"></div>' +
-        '<div class="form-group"><label class="form-label" for="project-name-input">' + t('proj.name') + '</label><input class="input" id="project-name-input"><div class="form-hint">' + t('proj.nameHint') + '</div></div>';
+    var content = '<div class="form-group"><label class="form-label" for="project-path-input">' + t('proj.path') + '</label><div class="path-picker"><input class="input" id="project-path-input" readonly placeholder="' + t('proj.chooseProjectPath') + '"><button class="btn btn-secondary" type="button" id="btn-choose-project-path">' + t('lib.choosePath') + '</button></div></div>';
     showModal(t('proj.register'), content, '<button class="btn btn-ghost" type="button" data-close-modal>' + t('lib.cancel') + '</button><button class="btn btn-primary" type="button" id="btn-confirm-project">' + t('proj.register') + '</button>');
+    document.getElementById('btn-choose-project-path').addEventListener('click', chooseProjectDirectory);
     document.getElementById('btn-confirm-project').addEventListener('click', addProject);
+}
+
+async function chooseProjectDirectory() {
+    var button = document.getElementById('btn-choose-project-path');
+    button.disabled = true;
+    try {
+        var result = await api.post('/api/dialogs/project-directory', {});
+        document.getElementById('project-path-input').value = result.path;
+    } catch (err) {
+        showToast(err.message, 'error');
+    } finally {
+        button.disabled = false;
+    }
 }
 
 async function addProject() {
     var path = document.getElementById('project-path-input').value.trim();
-    var name = document.getElementById('project-name-input').value.trim();
     if (!path) { showToast(t('proj.pathRequired'), 'error'); return; }
     var button = document.getElementById('btn-confirm-project');
     button.disabled = true;
     try {
-        var project = await api.post('/api/projects', { path: path, name: name });
+        var project = await api.post('/api/projects', { path: path });
         closeModal();
         projectState.selectedID = project.id;
         projectState.agentFilter = 'all';

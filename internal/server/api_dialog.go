@@ -10,12 +10,21 @@ import (
 )
 
 func (s *Server) handleChooseSkillDirectory(w http.ResponseWriter, r *http.Request) {
+	s.chooseDirectory(w, "Select a Skill directory")
+}
+
+func (s *Server) handleChooseProjectDirectory(w http.ResponseWriter, r *http.Request) {
+	s.chooseDirectory(w, "Select a project folder")
+}
+
+func (s *Server) chooseDirectory(w http.ResponseWriter, prompt string) {
 	if runtime.GOOS != "darwin" {
 		writeError(w, http.StatusNotImplemented, fmt.Errorf("native directory selection is currently available on macOS only"))
 		return
 	}
 
-	output, err := exec.Command("osascript", "-e", `POSIX path of (choose folder with prompt "Select a Skill directory")`).Output()
+	script := fmt.Sprintf(`POSIX path of (choose folder with prompt %q)`, prompt)
+	output, err := exec.Command("osascript", "-e", script).Output()
 	if err != nil {
 		writeError(w, http.StatusBadRequest, fmt.Errorf("directory selection was cancelled"))
 		return

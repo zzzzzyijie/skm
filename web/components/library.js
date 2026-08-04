@@ -96,7 +96,7 @@ function skillCard(skill) {
     var agents = libraryState.enabled[skill.id] || {};
     var hasActivation = Boolean(agents.claude || agents.codex);
     return '<article class="card skill-card"><div class="skill-header"><div><div class="skill-name">' + escapeHtml(skill.name) +
-        '</div><div class="skill-id mono">' + escapeHtml(skill.id) + '</div></div><span class="badge badge-source">' + escapeHtml(skill.source || 'local') +
+        '</div><div class="skill-id mono">' + escapeHtml(skill.id) + '</div></div><span class="badge badge-source">' + escapeHtml(displaySource(skill.source || 'local')) +
         '</span></div><p class="skill-desc">' + escapeHtml(skill.description || 'No description') + '</p><div class="tag-list">' + tags +
         '</div><div class="skill-meta"><span>' + shortHash(skill.hash) + '</span><span>' + formatDate(skill.addedAt) + '</span></div>' +
         agentControls(skill.id, agents) + '<div class="skill-actions"><button class="btn btn-ghost btn-sm btn-details-skill" type="button" data-id="' +
@@ -219,7 +219,7 @@ function showSkillDetails(skill) {
     var sourceDetails = source ? '<div><dt>' + t('lib.gitUrl') + '</dt><dd class="mono detail-path">' + escapeHtml(source.url) + '</dd></div><div><dt>' +
         t('lib.gitRef') + '</dt><dd>' + escapeHtml(source.ref || 'default') + '</dd></div>' : '';
     var content = '<div class="detail-hero"><div><div class="detail-name">' + escapeHtml(skill.name) + '</div><div class="mono muted">' + escapeHtml(skill.id) +
-        '</div></div><span class="badge badge-source">' + escapeHtml(skill.source || 'local') + '</span></div><dl class="detail-list"><div><dt>' +
+        '</div></div><span class="badge badge-source">' + escapeHtml(displaySource(skill.source || 'local')) + '</span></div><dl class="detail-list"><div><dt>' +
         t('lib.description') + '</dt><dd>' + escapeHtml(skill.description || '-') + '</dd></div><div><dt>' + t('lib.path') + '</dt><dd class="mono detail-path">' +
         escapeHtml(skill.path) + '</dd></div><div><dt>' + t('dash.hash') + '</dt><dd class="mono">' + escapeHtml(skill.hash) + '</dd></div><div><dt>' +
         t('lib.revision') + '</dt><dd class="mono">' + shortRevision(skill.revision) + '</dd></div>' + sourceDetails + '<div><dt>' + t('dash.added') +

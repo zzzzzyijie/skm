@@ -23,7 +23,7 @@ var translations = {
         'lib.confirmRemoveNote': 'The Skill must be disabled first.',
         'lib.addedSuccess': 'Skill added successfully', 'lib.pathRequired': 'Path is required', 'lib.loadFailed': 'Failed to load Library',
         'lib.addSkillTitle': 'Add Skill to Library', 'lib.enabled': 'Enabled', 'lib.disabled': 'Disabled', 'lib.removed': 'Removed',
-        'lib.details': 'Skill details', 'lib.description': 'Description', 'lib.source': 'Source', 'lib.location': 'Location',
+        'lib.details': 'Skill details', 'lib.description': 'Description', 'lib.source': 'Source', 'lib.local': 'Local', 'lib.location': 'Location',
         'lib.path': 'Stored path', 'lib.revision': 'Revision', 'lib.addTag': 'Add tag', 'lib.tagName': 'Tag name',
         'lib.tagAdded': 'Tag added', 'lib.tagRemoved': 'Tag removed', 'lib.renameTag': 'Rename tag',
         'lib.newTagName': 'New tag name', 'lib.renamedTag': 'Tag renamed', 'lib.noTags': 'No tags yet',
@@ -42,7 +42,7 @@ var translations = {
         'loading': 'Loading...', 'loadingSKM': 'Loading SKM...',
         'proj.title': 'Projects', 'proj.add': 'Add project', 'proj.empty': 'No projects registered',
         'proj.emptyDesc': 'Register a local project to deploy Library Skills into its Agent directories.',
-        'proj.path': 'Project path', 'proj.name': 'Project name', 'proj.nameHint': 'Optional. Defaults to the project root folder name.',
+        'proj.path': 'Project path', 'proj.chooseProjectPath': 'Choose a project folder in Finder',
         'proj.register': 'Register project', 'proj.registered': 'Project registered', 'proj.list': 'Registered projects',
         'proj.ready': 'Ready', 'proj.missing': 'Missing', 'proj.activations': 'Activations', 'proj.skills': 'Skills', 'proj.skill': 'Skill',
         'proj.agents': 'Agents', 'proj.claudeCode': 'Claude Code', 'proj.codex': 'Codex', 'proj.allAgents': 'All agents', 'proj.mode': 'Mode', 'proj.actions': 'Actions', 'proj.deploy': 'Deploy Skill',
@@ -81,7 +81,7 @@ var translations = {
         'lib.confirmRemoveNote': '必须先禁用该 Skill。',
         'lib.addedSuccess': 'Skill 添加成功', 'lib.pathRequired': '路径不能为空', 'lib.loadFailed': '加载 Skill 库失败',
         'lib.addSkillTitle': '添加 Skill 到库', 'lib.enabled': '已启用', 'lib.disabled': '已禁用', 'lib.removed': '已移除',
-        'lib.details': 'Skill 详情', 'lib.description': '描述', 'lib.source': '来源', 'lib.location': '位置',
+        'lib.details': 'Skill 详情', 'lib.description': '描述', 'lib.source': '来源', 'lib.local': '本地', 'lib.location': '位置',
         'lib.path': '存储路径', 'lib.revision': '版本', 'lib.addTag': '添加标签', 'lib.tagName': '标签名称',
         'lib.tagAdded': '标签已添加', 'lib.tagRemoved': '标签已移除', 'lib.renameTag': '重命名标签',
         'lib.newTagName': '新标签名称', 'lib.renamedTag': '标签已重命名', 'lib.noTags': '暂无标签',
@@ -98,10 +98,10 @@ var translations = {
         'act.linkMode': '链接模式', 'act.modeAuto': '自动', 'act.modeSymlink': '软链接', 'act.modeCopy': '复制',
         'act.summary': '{0} 个激活操作', 'act.noChanges': '当前状态已是最新',
         'loading': '加载中...', 'loadingSKM': '正在加载 SKM...',
-        'proj.title': '项目', 'proj.add': '添加项目', 'proj.empty': '暂无登记项目',
+        'proj.title': '项目', 'proj.add': '添加项目', 'proj.empty': '暂无项目',
         'proj.emptyDesc': '登记本机项目后，可将 Skill 库中的 Skill 部署到项目 Agent 目录。',
-        'proj.path': '项目路径', 'proj.name': '项目名称', 'proj.nameHint': '可选。不填写时默认使用项目根文件夹名称。',
-        'proj.register': '登记项目', 'proj.registered': '项目已登记', 'proj.list': '已登记项目',
+        'proj.path': '项目路径', 'proj.chooseProjectPath': '在 Finder 中选择项目文件夹',
+        'proj.register': '添加项目', 'proj.registered': '项目已添加', 'proj.list': '项目列表',
         'proj.ready': '可用', 'proj.missing': '不存在', 'proj.activations': '激活数', 'proj.skills': '个 Skill', 'proj.skill': 'Skill',
         'proj.agents': 'Agent', 'proj.claudeCode': 'Claude Code', 'proj.codex': 'Codex', 'proj.allAgents': '全部 Agent', 'proj.mode': '模式', 'proj.actions': '操作', 'proj.deploy': '部署 Skill',
         'proj.deployDesc': '将 Library 中的 Skill 添加到项目，并选择它可以被哪些 Agent 使用。',
@@ -152,6 +152,10 @@ function updateNavLabels() {
 
 function displayTag(tag) {
     return tag === 'general' ? t('tag.general') : tag;
+}
+
+function displaySource(source) {
+    return source === 'local' ? t('lib.local') : source;
 }
 
 // ===== Version =====

@@ -110,6 +110,18 @@ func TestProjectLifecycleAPI(t *testing.T) {
 	makeProjectSkill(t, projectPath, "codex", "codex-only")
 	makeProjectSkill(t, projectPath, "claude", "shared")
 	makeProjectSkill(t, projectPath, "codex", "shared")
+	for _, agent := range []string{"claude", "codex"} {
+		skillsRoot := filepath.Join(projectPath, "."+agent, "skills")
+		if err := os.WriteFile(filepath.Join(skillsRoot, ".DS_Store"), []byte("finder metadata"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(skillsRoot, "README.md"), []byte("Skill directory notes"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Mkdir(filepath.Join(skillsRoot, "notes"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
 	var details struct {
 		Exists bool `json:"exists"`
 		Scan   struct {
