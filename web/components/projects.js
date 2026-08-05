@@ -43,9 +43,12 @@ async function loadProjectDetail(id, repaint) {
 function paintProjects() {
     if (!isCurrentPage('projects')) return;
     var container = document.getElementById('main-content');
+    var headerActions = '<button class="btn btn-primary" type="button" id="btn-add-project">+ ' + t('proj.add') + '</button>';
+    if (!projectState.projects.length) {
+        headerActions += '<button class="btn btn-secondary" type="button" id="btn-configure-agents">' + t('proj.configureAgents') + '</button>';
+    }
     var html = '<div class="page animate-in"><div class="page-header"><div><h1 class="page-title">' + t('proj.title') +
-        '</h1><p class="page-subtitle">' + t('proj.list') + '</p></div><div class="header-actions"><button class="btn btn-primary" type="button" id="btn-add-project">+ ' +
-        t('proj.add') + '</button><button class="btn btn-secondary" type="button" id="btn-configure-agents">' + t('proj.configureAgents') + '</button></div></div>';
+        '</h1><p class="page-subtitle">' + t('proj.list') + '</p></div><div class="header-actions">' + headerActions + '</div></div>';
     if (!projectState.projects.length) {
         html += '<div class="empty-state"><div class="empty-state-mark">P</div><div class="empty-state-title">' + t('proj.empty') +
             '</div><div class="empty-state-desc">' + t('proj.emptyDesc') + '</div></div></div>';
@@ -59,7 +62,6 @@ function paintProjects() {
     html += '</section><section class="project-detail">' + projectDetailMarkup() + '</section></div></div>';
     container.innerHTML = html;
     document.getElementById('btn-add-project').addEventListener('click', showAddProjectModal);
-    document.getElementById('btn-configure-agents').addEventListener('click', showAgentSettingsModal);
     container.querySelectorAll('[data-project-id]').forEach(function (button) {
         button.addEventListener('click', function () { loadProjectDetail(button.dataset.projectId); });
     });
@@ -72,6 +74,8 @@ function paintProjects() {
 
     var detail = projectState.detail;
     if (!detail) return;
+    var configureAgentsButton = document.getElementById('btn-configure-agents');
+    if (configureAgentsButton) configureAgentsButton.addEventListener('click', showAgentSettingsModal);
     var addSkillButton = document.getElementById('btn-project-add-skill');
     if (addSkillButton) addSkillButton.addEventListener('click', showProjectSkillDeployModal);
     var refreshButton = document.getElementById('btn-project-refresh');
@@ -107,10 +111,10 @@ function projectDetailMarkup() {
     var project = detail.project;
     var html = '<div class="project-detail-header"><div><h2 class="section-title project-detail-name">' + escapeHtml(project.id) +
         '</h2><div class="project-detail-status"><span class="badge ' + (detail.exists ? 'badge-ok' : 'badge-error') + '">' + (detail.exists ? t('proj.ready') : t('proj.missing')) +
-        '</span><span class="mono project-path">' + escapeHtml(project.path) + '</span></div></div><div class="header-actions"><button class="btn btn-secondary btn-sm" type="button" id="btn-project-refresh">' +
+        '</span><span class="mono project-path">' + escapeHtml(project.path) + '</span></div></div><div class="header-actions"><button class="btn btn-secondary btn-sm" type="button" id="btn-configure-agents">' +
+        t('proj.configureAgents') + '</button><button class="btn btn-primary btn-sm" type="button" id="btn-project-add-skill">+ ' + t('proj.addSkill') + '</button><button class="btn btn-secondary btn-sm" type="button" id="btn-project-refresh">' +
         t('proj.scan') + '</button><button class="btn btn-danger btn-sm" type="button" id="btn-project-unregister">' + t('proj.unregister') + '</button></div></div>';
     html += projectScanMarkup(detail);
-    html += '<div class="project-add-skill"><button class="btn btn-primary" type="button" id="btn-project-add-skill">+ ' + t('proj.addSkill') + '</button></div>';
     html += projectPlanMarkup(detail.plan);
     return html;
 }
