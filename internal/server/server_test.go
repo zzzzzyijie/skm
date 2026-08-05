@@ -226,6 +226,50 @@ func TestProjectLifecycleAPI(t *testing.T) {
 	requestJSON(t, handler, http.MethodDelete, "/api/projects/web-project", nil, http.StatusOK, nil)
 }
 
+func TestConfiguredAgentFolderAPI(t *testing.T) {
+	storage := testStore(t)
+	handler := New(storage).Handler()
+	projectPath := filepath.Join(t.TempDir(), "custom-project")
+	if err := os.MkdirAll(projectPath, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	requestJSON(t, handler, http.MethodPost, "/api/agents", map[string]any{
+		"id": "windsurf-custom", "name": "Windsurf Custom", "userPath": "~/.custom-agent/skills", "projectPath": ".custom-agent/skills", "enabled": true,
+	}, http.StatusOK, nil)
+
+	skillPath := filepath.Join(projectPath, ".custom-agent", "skills", "nested-scan")
+	if err := os.MkdirAll(skillPath, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(skillPath, "SKILL.md"), []byte("---\nname: nested-scan\ndescription: nested agent scan\n---\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var project domain.Project
+	requestJSON(t, handler, http.MethodPost, "/api/projects", map[string]any{"path": projectPath}, http.StatusCreated, &project)
+	var details struct {
+		Scan struct {
+			AgentCounts map[string]int `json:"agentCounts"`
+			Skills      []struct {
+				ID     string   `json:"id"`
+				Agents []string `json:"agents"`
+			} `json:"skills"`
+		} `json:"scan"`
+	}
+	requestJSON(t, handler, http.MethodGet, "/api/projects/"+project.ID, nil, http.StatusOK, &details)
+	if details.Scan.AgentCounts["windsurf-custom"] != 1 || len(details.Scan.Skills) != 1 || details.Scan.Skills[0].Agents[0] != "windsurf-custom" {
+		t.Fatalf("custom Agent scan = %#v", details.Scan)
+	}
+
+	sourcePath := makeSkill(t, "custom-deploy")
+	requestJSON(t, handler, http.MethodPost, "/api/skills", map[string]any{"path": sourcePath}, http.StatusCreated, nil)
+	requestJSON(t, handler, http.MethodPost, "/api/projects/"+project.ID+"/link", map[string]any{
+		"skill": "local/custom-deploy", "agents": []string{"windsurf-custom"},
+	}, http.StatusOK, nil)
+	if info, err := os.Lstat(filepath.Join(projectPath, ".custom-agent", "skills", "custom-deploy")); err != nil || info.Mode()&os.ModeSymlink == 0 {
+		t.Fatalf("custom Agent deployment = %v, err=%v", info, err)
+	}
+}
+
 func testStore(t *testing.T) *store.Store {
 	t.Helper()
 	root := t.TempDir()

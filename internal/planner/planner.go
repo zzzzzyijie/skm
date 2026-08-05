@@ -41,7 +41,7 @@ func (e *Engine) Build(skills []domain.Skill, state domain.State) (domain.Plan, 
 			return domain.Plan{}, err
 		}
 		for _, agentName := range activation.Agents {
-			target, err := adapter.Target(agentName, activation.Placement, e.Store.Paths.UserHome, activation.ProjectRoot, value.Name)
+			target, err := e.target(agentName, activation.Placement, activation.ProjectRoot, value.Name)
 			if err != nil {
 				return domain.Plan{}, err
 			}
@@ -205,7 +205,7 @@ func (e *Engine) SetProjectActivations(state *domain.State, projectRoot string, 
 	desiredTargets := make(map[string]struct{})
 	for _, activation := range desired {
 		for _, agentName := range activation.Agents {
-			target, err := adapter.Target(agentName, domain.PlacementProject, e.Store.Paths.UserHome, projectRoot, activation.Name)
+			target, err := e.target(agentName, domain.PlacementProject, projectRoot, activation.Name)
 			if err != nil {
 				return err
 			}
@@ -244,7 +244,7 @@ func (e *Engine) Disable(state *domain.State, skillIDs map[string]struct{}, plac
 			keptDeployments = append(keptDeployments, deployment)
 			continue
 		}
-		expected, err := deploymentTargetIsExpected(deployment, e.Store.Paths.UserHome)
+		expected, err := e.deploymentTargetIsExpected(deployment)
 		if err != nil || !expected {
 			return fmt.Errorf("deployment target failed safety check: %s", deployment.Target)
 		}
@@ -277,19 +277,32 @@ func (e *Engine) Disable(state *domain.State, skillIDs map[string]struct{}, plac
 	return e.Store.SaveState(*state)
 }
 
-func deploymentTargetIsExpected(deployment domain.Deployment, userHome string) (bool, error) {
-	expected, err := adapter.Target(deployment.Agent, deployment.Placement, userHome, deployment.ProjectRoot, deployment.Name)
+func (e *Engine) deploymentTargetIsExpected(deployment domain.Deployment) (bool, error) {
+	expected, err := e.target(deployment.Agent, deployment.Placement, deployment.ProjectRoot, deployment.Name)
 	if err != nil {
 		return false, err
 	}
 	if filepath.Clean(expected) == filepath.Clean(deployment.Target) {
 		return true, nil
 	}
-	legacy, err := adapter.LegacyTarget(deployment.Agent, deployment.Placement, userHome, deployment.ProjectRoot, deployment.Name)
+	legacy, err := adapter.LegacyTarget(deployment.Agent, deployment.Placement, e.Store.Paths.UserHome, deployment.ProjectRoot, deployment.Name)
 	if err != nil {
 		return false, err
 	}
 	return legacy != "" && filepath.Clean(legacy) == filepath.Clean(deployment.Target), nil
+}
+
+func (e *Engine) target(agentName domain.Agent, placement domain.Placement, projectRoot, skillName string) (string, error) {
+	agents, err := e.Store.LoadAgents()
+	if err != nil {
+		return "", err
+	}
+	for _, definition := range agents.Agents {
+		if definition.ID == agentName {
+			return adapter.TargetDirectory(definition, placement, e.Store.Paths.UserHome, projectRoot, skillName)
+		}
+	}
+	return "", fmt.Errorf("unsupported agent %q", agentName)
 }
 
 func targetMatches(path string, info os.FileInfo, mode domain.LinkMode, sourcePath, hash string) (bool, error) {

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/zzzzzyijie/skm/internal/adapter"
 	"github.com/zzzzzyijie/skm/internal/catalog"
 	"github.com/zzzzzyijie/skm/internal/domain"
 	"github.com/zzzzzyijie/skm/internal/planner"
@@ -73,6 +74,102 @@ type projectSkillDocument struct {
 	Hash        string         `json:"hash"`
 }
 
+func (s *Server) handleListAgents(w http.ResponseWriter, r *http.Request) {
+	agents, err := s.store.LoadAgents()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+	if agents.Agents == nil {
+		agents.Agents = []domain.AgentDirectory{}
+	}
+	writeJSON(w, http.StatusOK, agents.Agents)
+}
+
+func (s *Server) handleSaveAgent(w http.ResponseWriter, r *http.Request) {
+	var agent domain.AgentDirectory
+	if err := readJSON(r, &agent); err != nil {
+		writeError(w, http.StatusBadRequest, err)
+		return
+	}
+	agent.ID = domain.Agent(strings.ToLower(strings.TrimSpace(string(agent.ID))))
+	agent.Name = strings.TrimSpace(agent.Name)
+	agent.UserPath = strings.TrimSpace(agent.UserPath)
+	agent.ProjectPath = strings.TrimSpace(agent.ProjectPath)
+	if !agent.ID.Valid() {
+		writeError(w, http.StatusBadRequest, fmt.Errorf("agent id must contain only lowercase letters, numbers, dots, dashes, or underscores"))
+		return
+	}
+	if agent.Name == "" || agent.UserPath == "" || agent.ProjectPath == "" {
+		writeError(w, http.StatusBadRequest, fmt.Errorf("agent name, user path, and project path are required"))
+		return
+	}
+	cleanProjectPath := filepath.Clean(agent.ProjectPath)
+	if filepath.IsAbs(agent.ProjectPath) || cleanProjectPath == ".." || strings.HasPrefix(cleanProjectPath, ".."+string(filepath.Separator)) || strings.HasPrefix(agent.ProjectPath, "~") || strings.HasPrefix(agent.ProjectPath, "$") {
+		writeError(w, http.StatusBadRequest, fmt.Errorf("project path must be a relative path inside the registered project"))
+		return
+	}
+	var saved domain.AgentDirectory
+	err := s.withLock(func() error {
+		agents, err := s.store.LoadAgents()
+		if err != nil {
+			return err
+		}
+		for index := range agents.Agents {
+			if agents.Agents[index].ID != agent.ID {
+				continue
+			}
+			agent.BuiltIn = agents.Agents[index].BuiltIn
+			agents.Agents[index] = agent
+			saved = agent
+			return s.store.SaveAgents(agents)
+		}
+		agent.BuiltIn = false
+		agents.Agents = append(agents.Agents, agent)
+		saved = agent
+		return s.store.SaveAgents(agents)
+	})
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, saved)
+}
+
+func (s *Server) handleDeleteAgent(w http.ResponseWriter, r *http.Request) {
+	id := domain.Agent(strings.ToLower(strings.TrimSpace(r.PathValue("id"))))
+	var removed domain.AgentDirectory
+	err := s.withLock(func() error {
+		agents, err := s.store.LoadAgents()
+		if err != nil {
+			return err
+		}
+		remaining := agents.Agents[:0]
+		found := false
+		for _, agent := range agents.Agents {
+			if agent.ID != id {
+				remaining = append(remaining, agent)
+				continue
+			}
+			if agent.BuiltIn {
+				return fmt.Errorf("built-in agent %q cannot be removed; disable it instead", id)
+			}
+			removed = agent
+			found = true
+		}
+		if !found {
+			return fmt.Errorf("agent %q not found", id)
+		}
+		agents.Agents = remaining
+		return s.store.SaveAgents(agents)
+	})
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, removed)
+}
+
 func (s *Server) handleListProjects(w http.ResponseWriter, r *http.Request) {
 	projects, err := s.store.LoadProjects()
 	if err != nil {
@@ -93,7 +190,7 @@ func (s *Server) handleListProjects(w http.ResponseWriter, r *http.Request) {
 	}
 	for _, project := range projects.Projects {
 		info, statErr := os.Stat(project.Path)
-		scan, scanErr := scanProjectSkills(project.Path)
+		scan, scanErr := s.scanProjectSkills(project.Path)
 		if scanErr != nil {
 			scan = projectScan{AgentCounts: map[string]int{}, Agents: []projectScanAgent{}}
 		}
@@ -185,7 +282,7 @@ func (s *Server) handleShowProjectSkill(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	roots, rootsErr := projectSkillRoots(project.Path)
+	roots, rootsErr := s.projectSkillRoots(project.Path)
 	if rootsErr != nil {
 		writeError(w, http.StatusInternalServerError, rootsErr)
 		return
@@ -253,7 +350,7 @@ func (s *Server) handleProjectDeploy(w http.ResponseWriter, r *http.Request, mod
 		writeError(w, http.StatusBadRequest, fmt.Errorf("skill is required"))
 		return
 	}
-	agents, err := parseAgents(body.Agents)
+	agents, err := s.parseProjectAgents(body.Agents)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err)
 		return
@@ -330,7 +427,7 @@ func (s *Server) handleProjectUnlink(w http.ResponseWriter, r *http.Request) {
 		}
 		agentMap := make(map[domain.Agent]struct{})
 		if len(body.Agents) > 0 {
-			agents, parseErr := parseAgents(body.Agents)
+			agents, parseErr := s.parseProjectAgents(body.Agents)
 			if parseErr != nil {
 				return parseErr
 			}
@@ -345,6 +442,47 @@ func (s *Server) handleProjectUnlink(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"project": project, "skill": body.Skill, "status": "ok"})
+}
+
+func (s *Server) parseProjectAgents(values []string) ([]domain.Agent, error) {
+	agents, err := s.store.LoadAgents()
+	if err != nil {
+		return nil, err
+	}
+	available := make(map[domain.Agent]domain.AgentDirectory)
+	defaults := make([]domain.Agent, 0)
+	for _, definition := range agents.Agents {
+		available[definition.ID] = definition
+		if definition.Enabled {
+			defaults = append(defaults, definition.ID)
+		}
+	}
+	if len(values) == 0 {
+		if len(defaults) == 0 {
+			return nil, fmt.Errorf("at least one Agent folder is enabled")
+		}
+		return defaults, nil
+	}
+	seen := make(map[domain.Agent]struct{})
+	result := make([]domain.Agent, 0, len(values))
+	for _, raw := range values {
+		for _, part := range strings.Split(raw, ",") {
+			agent := domain.Agent(strings.ToLower(strings.TrimSpace(part)))
+			definition, ok := available[agent]
+			if !ok {
+				return nil, fmt.Errorf("unsupported Agent folder %q", part)
+			}
+			if !definition.Enabled {
+				return nil, fmt.Errorf("Agent folder %q is disabled", part)
+			}
+			if _, ok := seen[agent]; ok {
+				continue
+			}
+			seen[agent] = struct{}{}
+			result = append(result, agent)
+		}
+	}
+	return result, nil
 }
 
 func (s *Server) handleUnregisterProject(w http.ResponseWriter, r *http.Request) {
@@ -409,7 +547,7 @@ func (s *Server) projectDetails(project domain.Project) (projectDetails, error) 
 	if err != nil {
 		return projectDetails{}, err
 	}
-	scan, err := scanProjectSkills(project.Path)
+	scan, err := s.scanProjectSkills(project.Path)
 	if err != nil {
 		return projectDetails{}, err
 	}
@@ -434,7 +572,7 @@ func (s *Server) projectDetails(project domain.Project) (projectDetails, error) 
 	}, nil
 }
 
-func scanProjectSkills(projectRoot string) (projectScan, error) {
+func (s *Server) scanProjectSkills(projectRoot string) (projectScan, error) {
 	result := projectScan{
 		ScannedAt:   time.Now().UTC(),
 		AgentCounts: make(map[string]int),
@@ -442,7 +580,7 @@ func scanProjectSkills(projectRoot string) (projectScan, error) {
 		Skills:      make([]projectScanSkill, 0),
 	}
 	byID := make(map[string]int)
-	roots, rootsErr := projectSkillRoots(projectRoot)
+	roots, rootsErr := s.projectSkillRoots(projectRoot)
 	if rootsErr != nil {
 		result.Errors = append(result.Errors, rootsErr.Error())
 		return result, nil
@@ -517,7 +655,7 @@ type projectSkillRoot struct {
 
 // projectSkillRoots discovers Agent directories using the shared convention
 // <project>/.<agent>/skills. This keeps scanning independent of deploy support.
-func projectSkillRoots(projectRoot string) ([]projectSkillRoot, error) {
+func (s *Server) projectSkillRoots(projectRoot string) ([]projectSkillRoot, error) {
 	entries, err := os.ReadDir(projectRoot)
 	if os.IsNotExist(err) {
 		return []projectSkillRoot{}, nil
@@ -526,6 +664,21 @@ func projectSkillRoots(projectRoot string) ([]projectSkillRoot, error) {
 		return nil, err
 	}
 	roots := make([]projectSkillRoot, 0)
+	byPath := make(map[string]int)
+	addRoot := func(id, label, skillsPath string) {
+		path := filepath.Clean(skillsPath)
+		if index, ok := byPath[path]; ok {
+			if id != "" {
+				roots[index].ID = id
+			}
+			if label != "" {
+				roots[index].Label = label
+			}
+			return
+		}
+		byPath[path] = len(roots)
+		roots = append(roots, projectSkillRoot{ID: id, Label: label, Path: path})
+	}
 	for _, entry := range entries {
 		name := entry.Name()
 		if !strings.HasPrefix(name, ".") || len(name) == 1 {
@@ -542,7 +695,25 @@ func projectSkillRoots(projectRoot string) ([]projectSkillRoot, error) {
 			continue
 		}
 		id := strings.TrimPrefix(name, ".")
-		roots = append(roots, projectSkillRoot{ID: id, Label: projectAgentLabel(id), Path: skillsPath})
+		addRoot(id, projectAgentLabel(id), skillsPath)
+	}
+	agents, agentsErr := s.store.LoadAgents()
+	if agentsErr != nil {
+		return nil, agentsErr
+	}
+	for _, agent := range agents.Agents {
+		if !agent.Enabled || agent.ProjectPath == "" {
+			continue
+		}
+		skillsPath, resolveErr := adapter.ResolvePath(agent.ProjectPath, s.store.Paths.UserHome, projectRoot, domain.PlacementProject)
+		if resolveErr != nil {
+			continue
+		}
+		info, statErr := os.Stat(skillsPath)
+		if statErr != nil || !info.IsDir() {
+			continue
+		}
+		addRoot(string(agent.ID), agent.Name, skillsPath)
 	}
 	sort.Slice(roots, func(i, j int) bool { return roots[i].ID < roots[j].ID })
 	return roots, nil

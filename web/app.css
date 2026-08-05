@@ -361,6 +361,7 @@ button.tag { font-family: var(--font-sans); }
 .check-option span { display: flex; min-width: 0; flex-direction: column; }
 .check-option strong { color: var(--text); font-size: 12px; }
 .check-option small { margin-top: 2px; color: var(--text-muted); font-size: 9px; overflow-wrap: anywhere; }
+.check-option .btn-agent-edit { width: 28px; height: 28px; margin-left: auto; flex: 0 0 28px; color: var(--text-muted); font-size: 14px; }
 
 .modal-overlay {
     position: fixed;

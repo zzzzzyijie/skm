@@ -1,14 +1,15 @@
 /* global api, showToast, showModal, closeModal, escapeHtml, statusBadgeClass, formatDate, isCurrentPage, t */
 
-var projectState = { projects: [], skills: [], selectedID: '', detail: null, agentFilter: 'all' };
+var projectState = { projects: [], skills: [], agents: [], selectedID: '', detail: null, agentFilter: 'all' };
 
 async function renderProjects() {
     var container = document.getElementById('main-content');
     try {
-        var results = await Promise.all([api.get('/api/projects'), api.get('/api/skills')]);
+        var results = await Promise.all([api.get('/api/projects'), api.get('/api/skills'), api.get('/api/agents')]);
         if (!isCurrentPage('projects')) return;
         projectState.projects = results[0] || [];
         projectState.skills = results[1] || [];
+        projectState.agents = results[2] || [];
         if (!projectState.projects.length) {
             projectState.selectedID = '';
             projectState.detail = null;
@@ -44,12 +45,13 @@ function paintProjects() {
     var container = document.getElementById('main-content');
     var html = '<div class="page animate-in"><div class="page-header"><div><h1 class="page-title">' + t('proj.title') +
         '</h1><p class="page-subtitle">' + t('proj.list') + '</p></div><div class="header-actions"><button class="btn btn-primary" type="button" id="btn-add-project">+ ' +
-        t('proj.add') + '</button></div></div>';
+        t('proj.add') + '</button><button class="btn btn-secondary" type="button" id="btn-configure-agents">' + t('proj.configureAgents') + '</button></div></div>';
     if (!projectState.projects.length) {
         html += '<div class="empty-state"><div class="empty-state-mark">P</div><div class="empty-state-title">' + t('proj.empty') +
             '</div><div class="empty-state-desc">' + t('proj.emptyDesc') + '</div></div></div>';
         container.innerHTML = html;
         document.getElementById('btn-add-project').addEventListener('click', showAddProjectModal);
+        document.getElementById('btn-configure-agents').addEventListener('click', showAgentSettingsModal);
         return;
     }
     html += '<div class="project-layout"><section class="project-list" aria-label="' + t('proj.list') + '">';
@@ -57,6 +59,7 @@ function paintProjects() {
     html += '</section><section class="project-detail">' + projectDetailMarkup() + '</section></div></div>';
     container.innerHTML = html;
     document.getElementById('btn-add-project').addEventListener('click', showAddProjectModal);
+    document.getElementById('btn-configure-agents').addEventListener('click', showAgentSettingsModal);
     container.querySelectorAll('[data-project-id]').forEach(function (button) {
         button.addEventListener('click', function () { loadProjectDetail(button.dataset.projectId); });
     });
@@ -173,8 +176,9 @@ function showProjectSkillDeployModal() {
         content += '<option value="' + escapeHtml(skill.id) + '">' + escapeHtml(skill.id) + '</option>';
     });
     content += '</select></div><div class="form-group"><span class="form-label">' + t('proj.agents') + '</span><div class="choice-grid">' +
-        '<label class="check-option"><input type="checkbox" name="project-agent" value="claude" checked><span>' + projectAgentName('claude') + '</span></label>' +
-        '<label class="check-option"><input type="checkbox" name="project-agent" value="codex" checked><span>' + projectAgentName('codex') + '</span></label></div></div>' +
+        projectState.agents.filter(function (agent) { return agent.enabled; }).map(function (agent) {
+            return '<label class="check-option"><input type="checkbox" name="project-agent" value="' + escapeHtml(agent.id) + '" checked><span>' + escapeHtml(agent.name || projectAgentName(agent.id)) + '</span></label>';
+        }).join('') + '</div></div>' +
         '<div class="form-group"><span class="form-label">' + t('proj.mode') + '</span><div class="import-mode project-mode"><button class="import-mode-option active" type="button" data-project-mode="link">' +
         t('proj.link') + '</button><button class="import-mode-option" type="button" data-project-mode="copy">' + t('proj.copy') + '</button></div></div>';
     showModal(t('proj.addSkill'), content, '<button class="btn btn-ghost" type="button" data-close-modal>' + t('lib.cancel') + '</button><button class="btn btn-primary" type="button" id="btn-confirm-project-deploy">' + t('proj.addSkill') + '</button>');
@@ -211,6 +215,8 @@ function projectActivationFor(skill, activations) {
 }
 
 function projectAgentName(agent) {
+    var configured = projectState.agents.find(function (item) { return item.id === agent; });
+    if (configured && configured.name) return configured.name;
     if (agent === 'claude') return t('proj.claudeCode');
     if (agent === 'codex') return t('proj.codex');
     if (agent === 'cursor') return 'Cursor';
@@ -249,6 +255,88 @@ function showAddProjectModal() {
     showModal(t('proj.register'), content, '<button class="btn btn-ghost" type="button" data-close-modal>' + t('lib.cancel') + '</button><button class="btn btn-primary" type="button" id="btn-confirm-project">' + t('proj.register') + '</button>');
     document.getElementById('btn-choose-project-path').addEventListener('click', chooseProjectDirectory);
     document.getElementById('btn-confirm-project').addEventListener('click', addProject);
+}
+
+function showAgentSettingsModal() {
+    var agents = projectState.agents || [];
+    var content = '<p class="form-hint" style="margin:0 0 14px">' + t('proj.agentFoldersDesc') + '</p><div class="selection-list">';
+    content += agents.map(function (agent) {
+        return '<label class="check-option"><input type="checkbox" data-agent-enabled="' + escapeHtml(agent.id) + '"' + (agent.enabled ? ' checked' : '') + '><span><strong>' + escapeHtml(agent.name || agent.id) + '</strong><small>' + escapeHtml(agent.userPath) + ' &middot; ' + escapeHtml(agent.projectPath) + '</small></span><button class="icon-btn btn-agent-edit" type="button" data-agent-edit="' + escapeHtml(agent.id) + '" aria-label="' + escapeHtml(t('proj.editAgent')) + '">&#9998;</button></label>';
+    }).join('');
+    content += '</div>';
+    var actions = '<button class="btn btn-secondary" type="button" id="btn-add-agent">+ ' + t('proj.addAgent') + '</button><button class="btn btn-ghost" type="button" data-close-modal>' + t('lib.cancel') + '</button><button class="btn btn-primary" type="button" id="btn-save-agent-settings">' + t('proj.save') + '</button>';
+    showModal(t('proj.agentFolders'), content, actions);
+    document.getElementById('btn-add-agent').addEventListener('click', function () { showAgentEditor(null); });
+    document.getElementById('btn-save-agent-settings').addEventListener('click', saveAgentSettings);
+    document.querySelectorAll('[data-agent-edit]').forEach(function (button) {
+        button.addEventListener('click', function (event) {
+            event.preventDefault();
+            showAgentEditor(projectState.agents.find(function (agent) { return agent.id === button.dataset.agentEdit; }));
+        });
+    });
+}
+
+async function saveAgentSettings() {
+    var button = document.getElementById('btn-save-agent-settings');
+    button.disabled = true;
+    try {
+        var updates = projectState.agents.map(function (agent) {
+            var checkbox = document.querySelector('[data-agent-enabled="' + agent.id + '"]');
+            return api.post('/api/agents', { id: agent.id, name: agent.name, userPath: agent.userPath, projectPath: agent.projectPath, enabled: Boolean(checkbox && checkbox.checked) });
+        });
+        await Promise.all(updates);
+        closeModal();
+        showToast(t('proj.agentSaved'));
+        await renderProjects();
+    } catch (err) {
+        button.disabled = false;
+        showToast(err.message, 'error');
+    }
+}
+
+function showAgentEditor(agent) {
+    agent = agent || { id: '', name: '', userPath: '~/.', projectPath: '.', enabled: true, builtIn: false };
+    var content = '<div class="form-group"><label class="form-label" for="agent-id-input">' + t('proj.agentID') + '</label><input class="input" id="agent-id-input" value="' + escapeHtml(agent.id) + '"' + (agent.builtIn ? ' readonly' : '') + ' placeholder="cursor-like-id"></div>' +
+        '<div class="form-group"><label class="form-label" for="agent-name-input">' + t('proj.agentName') + '</label><input class="input" id="agent-name-input" value="' + escapeHtml(agent.name) + '"></div>' +
+        '<div class="form-group"><label class="form-label" for="agent-user-path-input">' + t('proj.userPath') + '</label><input class="input mono" id="agent-user-path-input" value="' + escapeHtml(agent.userPath) + '"></div>' +
+        '<div class="form-group"><label class="form-label" for="agent-project-path-input">' + t('proj.projectPath') + '</label><input class="input mono" id="agent-project-path-input" value="' + escapeHtml(agent.projectPath) + '"><p class="form-hint">' + t('proj.agentPathHint') + '</p></div>';
+    var actions = '<button class="btn btn-ghost" type="button" data-close-modal>' + t('lib.cancel') + '</button>' + (agent.id && !agent.builtIn ? '<button class="btn btn-danger" type="button" id="btn-remove-agent">' + t('lib.remove') + '</button>' : '') + '<button class="btn btn-primary" type="button" id="btn-save-agent">' + t('proj.save') + '</button>';
+    showModal(agent.id ? t('proj.editAgent') : t('proj.addAgent'), content, actions);
+    document.getElementById('btn-save-agent').addEventListener('click', function () { saveAgent(agent); });
+    var removeButton = document.getElementById('btn-remove-agent');
+    if (removeButton) removeButton.addEventListener('click', function () { removeAgent(agent); });
+}
+
+async function saveAgent(previous) {
+    var id = document.getElementById('agent-id-input').value.trim().toLowerCase();
+    var name = document.getElementById('agent-name-input').value.trim();
+    var userPath = document.getElementById('agent-user-path-input').value.trim();
+    var projectPath = document.getElementById('agent-project-path-input').value.trim();
+    if (!id || !name || !userPath || !projectPath) { showToast(t('proj.agentRequired'), 'error'); return; }
+    var button = document.getElementById('btn-save-agent');
+    button.disabled = true;
+    try {
+        await api.post('/api/agents', { id: id, name: name, userPath: userPath, projectPath: projectPath, enabled: previous ? previous.enabled : true });
+        closeModal();
+        showToast(t('proj.agentSaved'));
+        await renderProjects();
+    } catch (err) {
+        button.disabled = false;
+        showToast(err.message, 'error');
+    }
+}
+
+function removeAgent(agent) {
+    showModal(t('lib.remove'), '<p class="confirm-copy">' + t('proj.confirmRemoveAgent') + '</p>', '<button class="btn btn-ghost" type="button" data-close-modal>' + t('lib.cancel') + '</button><button class="btn btn-danger" type="button" id="btn-confirm-remove-agent">' + t('lib.remove') + '</button>');
+    document.getElementById('btn-confirm-remove-agent').addEventListener('click', async function () {
+        this.disabled = true;
+        try {
+            await api.del('/api/agents/' + encodeURIComponent(agent.id));
+            closeModal();
+            showToast(t('proj.agentRemoved'));
+            await renderProjects();
+        } catch (err) { this.disabled = false; showToast(err.message, 'error'); }
+    });
 }
 
 async function chooseProjectDirectory() {

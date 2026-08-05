@@ -39,3 +39,17 @@ func TestLegacyCodexTargetPaths(t *testing.T) {
 		t.Fatalf("legacy project target = %s, err=%v", project, err)
 	}
 }
+
+func TestConfiguredAgentTargetPaths(t *testing.T) {
+	definition := domain.AgentDirectory{
+		ID: "windsurf", UserPath: "~/.codeium/windsurf/skills", ProjectPath: ".codeium/windsurf/skills",
+	}
+	user, err := TargetDirectory(definition, domain.PlacementUser, "/users/test", "/repo", "review")
+	if err != nil || user != filepath.Join("/users/test", ".codeium", "windsurf", "skills", "review") {
+		t.Fatalf("configured user target = %s, err=%v", user, err)
+	}
+	project, err := TargetDirectory(definition, domain.PlacementProject, "/users/test", "/repo", "review")
+	if err != nil || project != filepath.Join("/repo", ".codeium", "windsurf", "skills", "review") {
+		t.Fatalf("configured project target = %s, err=%v", project, err)
+	}
+}

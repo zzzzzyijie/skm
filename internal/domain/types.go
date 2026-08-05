@@ -1,6 +1,10 @@
 package domain
 
-import "time"
+import (
+	"regexp"
+	"strings"
+	"time"
+)
 
 const SchemaVersion = 2
 
@@ -33,7 +37,43 @@ const (
 	AgentCodex  Agent = "codex"
 )
 
-func (a Agent) Valid() bool { return a == AgentClaude || a == AgentCodex }
+type AgentDirectory struct {
+	ID          Agent  `yaml:"id" json:"id"`
+	Name        string `yaml:"name" json:"name"`
+	UserPath    string `yaml:"userPath" json:"userPath"`
+	ProjectPath string `yaml:"projectPath" json:"projectPath"`
+	Enabled     bool   `yaml:"enabled" json:"enabled"`
+	BuiltIn     bool   `yaml:"builtIn" json:"builtIn"`
+}
+
+type AgentDirectories struct {
+	Version int              `yaml:"version" json:"version"`
+	Agents  []AgentDirectory `yaml:"agents" json:"agents"`
+}
+
+var agentIDPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9._-]*$`)
+
+func (a Agent) Valid() bool {
+	return agentIDPattern.MatchString(strings.ToLower(strings.TrimSpace(string(a))))
+}
+
+func DefaultAgentDirectories() AgentDirectories {
+	return AgentDirectories{
+		Version: SchemaVersion,
+		Agents: []AgentDirectory{
+			{ID: AgentClaude, Name: "Claude Code", UserPath: "~/.claude/skills", ProjectPath: ".claude/skills", Enabled: true, BuiltIn: true},
+			{ID: AgentCodex, Name: "Codex", UserPath: "~/.codex/skills", ProjectPath: ".codex/skills", Enabled: true, BuiltIn: true},
+			{ID: "cursor", Name: "Cursor", UserPath: "~/.cursor/skills", ProjectPath: ".cursor/skills", Enabled: true, BuiltIn: true},
+			{ID: "windsurf", Name: "Windsurf", UserPath: "~/.codeium/windsurf/skills", ProjectPath: ".codeium/windsurf/skills", Enabled: true, BuiltIn: true},
+			{ID: "copilot", Name: "Copilot", UserPath: "~/.copilot/skills", ProjectPath: ".copilot/skills", Enabled: true, BuiltIn: true},
+			{ID: "amp", Name: "Amp", UserPath: "$XDG_CONFIG/amp/skills", ProjectPath: ".amp/skills", Enabled: true, BuiltIn: true},
+			{ID: "opencode", Name: "OpenCode", UserPath: "$XDG_CONFIG/opencode/skills", ProjectPath: ".opencode/skills", Enabled: true, BuiltIn: true},
+			{ID: "roo-code", Name: "Roo Code", UserPath: "~/.roo/skills", ProjectPath: ".roo/skills", Enabled: true, BuiltIn: true},
+			{ID: "pi", Name: "Pi", UserPath: "~/.pi/agent/skills", ProjectPath: ".pi/agent/skills", Enabled: true, BuiltIn: true},
+			{ID: "antigravity", Name: "Antigravity", UserPath: "~/.gemini/antigravity/skills", ProjectPath: ".gemini/antigravity/skills", Enabled: true, BuiltIn: true},
+		},
+	}
+}
 
 type LinkMode string
 

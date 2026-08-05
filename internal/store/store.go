@@ -148,6 +148,26 @@ func (s *Store) SaveConfig(config domain.Config) error {
 	return saveYAML(filepath.Join(s.Paths.Home, "config.yaml"), config)
 }
 
+func (s *Store) LoadAgents() (domain.AgentDirectories, error) {
+	agents := domain.DefaultAgentDirectories()
+	path := filepath.Join(s.Paths.Home, "agents.yaml")
+	if !exists(path) {
+		return agents, nil
+	}
+	if err := loadYAML(path, &agents); err != nil {
+		return domain.AgentDirectories{}, err
+	}
+	return agents, nil
+}
+
+func (s *Store) SaveAgents(agents domain.AgentDirectories) error {
+	agents.Version = domain.SchemaVersion
+	sort.Slice(agents.Agents, func(i, j int) bool {
+		return agents.Agents[i].ID < agents.Agents[j].ID
+	})
+	return saveYAML(filepath.Join(s.Paths.Home, "agents.yaml"), agents)
+}
+
 func (s *Store) LoadCatalog() (domain.Catalog, error) {
 	catalog := domain.Catalog{Version: domain.SchemaVersion}
 	if err := loadYAML(filepath.Join(s.Paths.Home, "catalog.yaml"), &catalog); err != nil {

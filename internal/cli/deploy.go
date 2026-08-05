@@ -407,7 +407,7 @@ func parseAgents(values []string, defaults []domain.Agent) ([]domain.Agent, erro
 		for _, part := range strings.Split(raw, ",") {
 			value := domain.Agent(strings.ToLower(strings.TrimSpace(part)))
 			if !value.Valid() {
-				return nil, fmt.Errorf("unsupported agent %q: use claude or codex", part)
+				return nil, fmt.Errorf("unsupported agent %q: use a configured Agent ID", part)
 			}
 			if _, ok := seen[value]; ok {
 				continue
