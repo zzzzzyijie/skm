@@ -76,7 +76,7 @@ function paintProjects() {
     var unregisterButton = document.getElementById('btn-project-unregister');
     if (unregisterButton) unregisterButton.addEventListener('click', unregisterProject);
     container.querySelectorAll('[data-unlink-skill]').forEach(function (button) {
-        button.addEventListener('click', function () { unlinkProjectSkill(button.dataset.unlinkSkill); });
+        button.addEventListener('click', function () { showConfirmUnlinkModal(button.dataset.unlinkSkill); });
     });
     container.querySelectorAll('[data-project-skill-details]').forEach(function (button) {
         button.addEventListener('click', function () { showProjectSkillDetails(button.dataset.projectSkillDetails); });
@@ -136,7 +136,7 @@ function projectScanMarkup(detail) {
     if (!visible.length) {
         html += '<div class="inline-empty">' + (skills.length ? t('proj.noFilteredSkills') : t('proj.noScannedSkills')) + '</div>';
     } else {
-        html += '<div class="project-skill-list">' + visible.map(function (skill) { return projectScanSkillRow(skill, detail); }).join('') + '</div>';
+        html += '<div class="project-skill-list">' + visible.map(function (skill) { return projectScanSkillRow(skill, detail, filter); }).join('') + '</div>';
     }
     return html + '</section>';
 }
@@ -150,12 +150,12 @@ function projectAgentFilterButton(agent, label, active) {
         '" data-project-agent-filter="' + agent + '">' + escapeHtml(label) + '</button>';
 }
 
-function projectScanSkillRow(skill, detail) {
+function projectScanSkillRow(skill, detail, filter) {
     var activation = projectActivationFor(skill, detail.activations || []);
     var agents = (skill.agents || []).map(function (agent) { return projectAgentBadge(agent); }).join('');
     var statusLabel = projectScanStatusLabel(skill.status);
     var managed = activation ? '<span class="badge badge-source">' + escapeHtml(t('proj.managed')) + '</span>' : '<span class="badge badge-muted">' + escapeHtml(t('proj.external')) + '</span>';
-    var action = '<button class="btn btn-ghost btn-sm" type="button" data-project-skill-details="' + escapeHtml(skill.id) + '">' + t('proj.viewDetails') + '</button>' +
+    var action = (filter !== 'all' ? '<button class="btn btn-ghost btn-sm" type="button" data-project-skill-details="' + escapeHtml(skill.id) + '">' + t('proj.viewDetails') + '</button>' : '') +
         (activation ? '<button class="btn btn-danger btn-sm" type="button" data-unlink-skill="' + escapeHtml(activation.skillId) + '">' + t('proj.unlink') + '</button>' : '');
     var issue = (skill.issues || []).map(function (message) { return '<div class="project-skill-issue">' + escapeHtml(message) + '</div>'; }).join('');
     return '<article class="project-skill-row"><div class="project-skill-main"><div class="project-skill-title"><strong>' + escapeHtml(skill.name || skill.id) +
@@ -218,13 +218,12 @@ function projectAgentName(agent) {
     if (agent === 'cursor') return 'Cursor';
     if (agent === 'agent') return 'Agent';
     if (agent === 'agents') return 'Agents';
-    return '.' + agent;
+    return agent;
 }
 
 function projectAgentBadge(agent) {
-    var logo = agent === 'claude' ? '/assets/claude.svg' : (agent === 'codex' ? '/assets/codex.svg' : '');
     var agentClass = agent === 'claude' || agent === 'codex' ? ' project-agent-' + agent : '';
-    return '<span class="project-agent-badge' + agentClass + '">' + (logo ? '<img src="' + logo + '" alt="">' : '') + '<span>' + escapeHtml(projectAgentName(agent)) + '</span></span>';
+    return '<span class="project-agent-badge' + agentClass + '">' + escapeHtml(projectAgentName(agent)) + '</span>';
 }
 
 function projectScanStatusLabel(status) {
@@ -235,15 +234,55 @@ function projectScanStatusLabel(status) {
 
 function projectPlanMarkup(plan) {
     var operations = (plan && plan.operations) || [];
+    var groups = projectOperationGroups(operations);
     var html = '<section class="project-section"><div class="section-heading"><div><h3 class="section-title">' + t('proj.statusTitle') + '</h3><p class="section-caption">' +
         t('proj.statusDesc') + '</p></div></div>';
-    if (!operations.length) return html + '<div class="inline-empty">' + t('proj.statusEmpty') + '</div></section>';
-    html += '<div class="table-wrap"><table><thead><tr><th>' + t('proj.skill') + '</th><th>' + t('proj.target') + '</th><th>' + t('proj.mode') + '</th><th>' + t('proj.statusTitle') + '</th></tr></thead><tbody>';
-    operations.forEach(function (operation) {
-        html += '<tr><td>' + escapeHtml(operation.skillId) + '</td><td class="mono cell-path" title="' + escapeHtml(operation.target) + '">' + escapeHtml(operation.target) +
-            '</td><td>' + escapeHtml(operation.mode) + '</td><td><span class="badge ' + statusBadgeClass(operation.status) + '">' + escapeHtml(operation.status) + '</span></td></tr>';
+    if (!groups.length) return html + '<div class="inline-empty">' + t('proj.statusEmpty') + '</div></section>';
+    html += '<div class="table-wrap"><table class="project-deployment-table"><thead><tr><th>' + t('proj.skill') + '</th><th>' + t('proj.agents') + '</th><th>' + t('proj.mode') + '</th><th>' + t('proj.statusTitle') + '</th></tr></thead><tbody>';
+    groups.forEach(function (group) {
+        var agents = group.agents.map(function (agent) { return projectAgentBadge(agent); }).join('');
+        var modes = group.modes.map(function (mode) { return '<span class="badge badge-muted">' + escapeHtml(projectModeLabel(mode)) + '</span>'; }).join('');
+        var statuses = group.statuses.map(function (status) { return '<span class="badge ' + statusBadgeClass(status) + '">' + escapeHtml(projectDeploymentStatusLabel(status)) + '</span>'; }).join('');
+        html += '<tr><td><strong>' + escapeHtml(group.name || group.skillId) + '</strong></td><td><div class="project-skill-agents">' + agents + '</div></td><td><div class="project-skill-badges">' + modes + '</div></td><td><div class="project-skill-badges">' + statuses + '</div></td></tr>';
     });
     return html + '</tbody></table></div></section>';
+}
+
+function projectOperationGroups(operations) {
+    var groups = [];
+    var bySkill = Object.create(null);
+    operations.forEach(function (operation) {
+        var key = operation.skillId || operation.name;
+        if (!bySkill[key]) {
+            bySkill[key] = { skillId: operation.skillId, name: operation.name, agents: [], modes: [], statuses: [] };
+            groups.push(bySkill[key]);
+        }
+        projectPushUnique(bySkill[key].agents, operation.agent);
+        projectPushUnique(bySkill[key].modes, operation.mode);
+        projectPushUnique(bySkill[key].statuses, operation.status);
+    });
+    return groups;
+}
+
+function projectPushUnique(values, value) {
+    if (value && values.indexOf(value) < 0) values.push(value);
+}
+
+function projectModeLabel(mode) {
+    if (mode === 'symlink') return t('proj.symlink');
+    if (mode === 'copy') return t('proj.copied');
+    return mode;
+}
+
+function projectDeploymentStatusLabel(status) {
+    var labels = {
+        'create': 'proj.statusCreate',
+        'unchanged': 'proj.statusUnchanged',
+        'replace-managed': 'proj.statusReplaceManaged',
+        'conflict-unmanaged': 'proj.statusConflictUnmanaged',
+        'broken': 'proj.statusBroken'
+    };
+    return labels[status] ? t(labels[status]) : status;
 }
 
 function showAddProjectModal() {
@@ -318,6 +357,19 @@ async function unlinkProjectSkill(skill, force) {
         showToast(err.message, 'error');
         return false;
     }
+}
+
+function showConfirmUnlinkModal(skill) {
+    var content = '<p class="confirm-copy">' + t('proj.confirmUnlinkDesc').replace('{0}', escapeHtml(skill)) + '</p>';
+    var actions = '<button class="btn btn-ghost" type="button" data-close-modal>' + t('lib.cancel') + '</button>' +
+        '<button class="btn btn-danger" type="button" id="btn-confirm-unlink">' + t('proj.confirmUnlink') + '</button>';
+    showModal(t('proj.confirmUnlinkTitle'), content, actions);
+    document.getElementById('btn-confirm-unlink').addEventListener('click', async function () {
+        this.disabled = true;
+        var removed = await unlinkProjectSkill(skill, false);
+        if (removed) closeModal();
+        else if (document.getElementById('btn-confirm-unlink')) this.disabled = false;
+    });
 }
 
 function showForceUnlinkModal(skill) {

@@ -8,8 +8,14 @@ import (
 
 	"github.com/zzzzzyijie/skm/internal/catalog"
 	"github.com/zzzzzyijie/skm/internal/domain"
+	"github.com/zzzzzyijie/skm/internal/skill"
 	"github.com/zzzzzyijie/skm/internal/tags"
 )
+
+type librarySkillDetails struct {
+	domain.Skill
+	Body string `json:"body"`
+}
 
 func (s *Server) handleListSkills(w http.ResponseWriter, r *http.Request) {
 	tagValues := r.URL.Query()["tag"]
@@ -28,7 +34,12 @@ func (s *Server) handleShowSkill(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, value)
+	document, err := skill.Validate(value.Path)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, librarySkillDetails{Skill: value, Body: document.Body})
 }
 
 func (s *Server) handleAddSkill(w http.ResponseWriter, r *http.Request) {

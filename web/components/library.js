@@ -73,7 +73,7 @@ function paintLibrary() {
         button.addEventListener('click', function () { libraryState.activeTag = button.dataset.tag; renderLibrary(); });
     });
     container.querySelectorAll('.btn-details-skill').forEach(function (button) {
-        button.addEventListener('click', function () { showSkillDetails(findSkill(button.dataset.id)); });
+        button.addEventListener('click', function () { openSkillDetails(button.dataset.id); });
     });
     container.querySelectorAll('.agent-toggle').forEach(function (button) {
         button.addEventListener('click', function () { toggleSkillAgent(button.dataset.id, button.dataset.agent, button); });
@@ -81,10 +81,6 @@ function paintLibrary() {
     container.querySelectorAll('.btn-remove-skill').forEach(function (button) {
         button.addEventListener('click', function () { confirmRemoveSkill(button.dataset.id); });
     });
-}
-
-function findSkill(id) {
-    return libraryState.skills.find(function (skill) { return skill.id === id; });
 }
 
 function isGitSkill(skill) {
@@ -208,13 +204,22 @@ async function doImportGitSource() {
     } catch (err) { button.disabled = false; showToast(err.message, 'error'); }
 }
 
+async function openSkillDetails(id) {
+    try {
+        var skill = await api.get('/api/skills/' + encodeURIComponent(id));
+        showSkillDetails(skill);
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
+}
+
 function showSkillDetails(skill) {
     if (!skill) return;
     var source = libraryState.gitSources[skill.source];
     var skillTags = skill.tags || [];
     var tags = skillTags.map(function (tag) {
-        var remove = skillTags.length > 1 ? '<button type="button" class="tag-remove" data-remove-tag="' + escapeHtml(tag) + '" aria-label="Remove ' + escapeHtml(displayTag(tag)) + '">&times;</button>' : '';
-        return '<span class="tag' + (remove ? ' removable' : '') + '">' + escapeHtml(displayTag(tag)) + remove + '</span>';
+        var remove = '<button type="button" class="tag-remove" data-remove-tag="' + escapeHtml(tag) + '" aria-label="' + t('lib.remove') + ' ' + escapeHtml(displayTag(tag)) + '">&times;</button>';
+        return '<span class="tag removable">' + escapeHtml(displayTag(tag)) + remove + '</span>';
     }).join('') || '<span class="muted">' + t('lib.noTags') + '</span>';
     var sourceDetails = source ? '<div><dt>' + t('lib.gitUrl') + '</dt><dd class="mono detail-path">' + escapeHtml(source.url) + '</dd></div><div><dt>' +
         t('lib.gitRef') + '</dt><dd>' + escapeHtml(source.ref || 'default') + '</dd></div>' : '';
@@ -223,11 +228,14 @@ function showSkillDetails(skill) {
         t('lib.description') + '</dt><dd>' + escapeHtml(skill.description || '-') + '</dd></div><div><dt>' + t('lib.path') + '</dt><dd class="mono detail-path">' +
         escapeHtml(skill.path) + '</dd></div><div><dt>' + t('dash.hash') + '</dt><dd class="mono">' + escapeHtml(skill.hash) + '</dd></div><div><dt>' +
         t('lib.revision') + '</dt><dd class="mono">' + shortRevision(skill.revision) + '</dd></div>' + sourceDetails + '<div><dt>' + t('dash.added') +
-        '</dt><dd>' + formatDate(skill.addedAt) + '</dd></div></dl><div class="form-group"><label class="form-label">' + t('dash.tags') +
-        '</label><div class="tag-list detail-tags">' + tags + '</div></div><div class="inline-form"><input class="input" id="detail-new-tag" placeholder="' + t('lib.tagName') + '"><button class="btn btn-secondary" type="button" id="btn-add-tag">' + t('lib.addTag') + '</button></div>';
+        '</dt><dd>' + formatDate(skill.addedAt) + '</dd></div></dl><section class="skill-detail-section"><div class="form-group"><label class="form-label">' + t('dash.tags') +
+        '</label><div class="tag-list detail-tags">' + tags + '</div></div><div class="inline-form"><input class="input" id="detail-new-tag" placeholder="' + t('lib.tagName') + '"><button class="btn btn-secondary" type="button" id="btn-add-tag">' + t('lib.addTag') + '</button></div></section>' +
+        '<section class="skill-detail-section skill-content-section"><div class="skill-detail-section-heading"><span class="form-label">' + t('lib.content') + '</span><span class="mono muted">SKILL.md</span></div>' +
+        (skill.body ? '<pre class="skill-detail-content">' + escapeHtml(skill.body) + '</pre>' : '<div class="inline-empty">' + t('lib.noContent') + '</div>') + '</section>';
     var actions = '<button class="btn btn-ghost" type="button" data-close-modal>' + t('lib.close') + '</button>' +
         (source ? '<button class="btn btn-primary" type="button" id="btn-update-source">' + t('lib.updateSource') + '</button>' : '');
     showModal(t('lib.details'), content, actions);
+    document.querySelector('.modal').classList.add('skill-detail-modal');
     document.getElementById('btn-add-tag').addEventListener('click', function () { addSkillTag(skill.id); });
     document.querySelectorAll('[data-remove-tag]').forEach(function (button) {
         button.addEventListener('click', function () { removeSkillTag(skill.id, button.dataset.removeTag); });
@@ -252,24 +260,28 @@ async function addSkillTag(id) {
     var tag = input.value.trim();
     if (!tag) return;
     try {
-        var updated = await api.post('/api/skill-tags/add', { skill: id, tags: [tag] });
-        replaceSkill(updated);
+        await api.post('/api/skill-tags/add', { skill: id, tags: [tag] });
+        await refreshLibraryAfterTagChange();
         showToast(t('lib.tagAdded'));
-        showSkillDetails(updated);
+        await openSkillDetails(id);
     } catch (err) { showToast(err.message, 'error'); }
 }
 
 async function removeSkillTag(id, tag) {
     try {
-        var updated = await api.post('/api/skill-tags/remove', { skill: id, tag: tag });
-        replaceSkill(updated);
+        await api.post('/api/skill-tags/remove', { skill: id, tag: tag });
+        await refreshLibraryAfterTagChange();
         showToast(t('lib.tagRemoved'));
-        showSkillDetails(updated);
+        await openSkillDetails(id);
     } catch (err) { showToast(err.message, 'error'); }
 }
 
-function replaceSkill(updated) {
-    libraryState.skills = libraryState.skills.map(function (skill) { return skill.id === updated.id ? updated : skill; });
+async function refreshLibraryAfterTagChange() {
+    var url = '/api/skills' + (libraryState.activeTag ? '?tag=' + encodeURIComponent(libraryState.activeTag) : '');
+    var results = await Promise.all([api.get(url), api.get('/api/tags')]);
+    libraryState.skills = results[0] || [];
+    libraryState.tags = results[1] || [];
+    paintLibrary();
 }
 
 function showManageTagsModal() {

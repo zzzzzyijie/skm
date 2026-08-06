@@ -42,6 +42,11 @@ func TestLibraryTagAndActivationLifecycle(t *testing.T) {
 	if created.ID != "local/review" {
 		t.Fatalf("created Skill ID = %q", created.ID)
 	}
+	var details librarySkillDetails
+	requestJSON(t, handler, http.MethodGet, "/api/skills/local/review", nil, http.StatusOK, &details)
+	if details.ID != created.ID || !strings.Contains(details.Body, "Follow the review workflow.") {
+		t.Fatalf("Skill details = %#v", details)
+	}
 
 	requestJSON(t, handler, http.MethodPost, "/api/skill-tags/add", map[string]any{
 		"skill": created.ID, "tags": []string{"quality"},
@@ -267,7 +272,7 @@ func makeSkill(t *testing.T, name string) string {
 	if err := os.MkdirAll(directory, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	content := "---\nname: " + name + "\ndescription: Review changes safely\n---\n"
+	content := "---\nname: " + name + "\ndescription: Review changes safely\n---\n\nFollow the review workflow.\n"
 	if err := os.WriteFile(filepath.Join(directory, "SKILL.md"), []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}
