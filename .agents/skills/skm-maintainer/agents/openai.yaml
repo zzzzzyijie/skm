@@ -1,0 +1,4 @@
+interface:
+  display_name: "SKM Maintainer"
+  short_description: "Maintain and verify the skm Go project"
+  default_prompt: "Use $skm-maintainer to implement and verify a change in this skm repository."

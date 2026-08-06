@@ -1,0 +1,4 @@
+# Project-scoped Codex defaults for this trusted repository.
+# Keep permissions, providers, and authentication in the user's global config.
+project_root_markers = [".git", ".skm"]
+web_search = "cached"
