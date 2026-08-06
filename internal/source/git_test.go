@@ -59,6 +59,45 @@ func TestGitSourceCustomPathAndUpdate(t *testing.T) {
 	}
 }
 
+func TestGitSourceSelectsSkillsByNameAndPersistsPaths(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git is not installed")
+	}
+	repository := t.TempDir()
+	run(t, repository, "git", "init", "-b", "main")
+	writeRepoSkill(t, repository, "skills/one", "one", "version one")
+	writeRepoSkill(t, repository, "catalog/design/two", "two", "version two")
+	commitAll(t, repository, "initial")
+
+	storage := sourceStore(t)
+	manager := NewGitManager(storage, catalog.New(storage))
+	bound, imported, err := manager.AddSelected(domain.Source{
+		Name: "market", URL: repository,
+	}, []string{"two"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(imported) != 1 || imported[0].ID != "market/two" {
+		t.Fatalf("imported Skills = %#v", imported)
+	}
+	if !reflect.DeepEqual(bound.Paths, []string{"catalog/design/two"}) {
+		t.Fatalf("bound paths = %#v", bound.Paths)
+	}
+	sources, err := storage.LoadSources()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(sources.Sources) != 1 || !reflect.DeepEqual(sources.Sources[0].Paths, bound.Paths) {
+		t.Fatalf("stored sources = %#v", sources.Sources)
+	}
+	if _, err := catalog.New(storage).ResolveLibrary("market/one"); err == nil {
+		t.Fatal("unselected Skill was imported")
+	}
+	if _, _, err := manager.AddSelected(domain.Source{Name: "missing", URL: repository}, []string{"unknown"}); err == nil {
+		t.Fatal("missing requested Skill should fail")
+	}
+}
+
 func TestGitSourceRejectsCredentialURL(t *testing.T) {
 	storage := sourceStore(t)
 	_, _, err := NewGitManager(storage, catalog.New(storage)).Add(domain.Source{

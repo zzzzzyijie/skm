@@ -42,6 +42,10 @@ func NewGitManager(storage *store.Store, catalogManager *catalog.Manager) *GitMa
 }
 
 func (m *GitManager) Add(value domain.Source) (domain.Source, []domain.Skill, error) {
+	return m.AddSelected(value, nil)
+}
+
+func (m *GitManager) AddSelected(value domain.Source, skillNames []string) (domain.Source, []domain.Skill, error) {
 	if err := validateSource(&value); err != nil {
 		return domain.Source{}, nil, err
 	}
@@ -62,7 +66,7 @@ func (m *GitManager) Add(value domain.Source) (domain.Source, []domain.Skill, er
 			return domain.Source{}, nil, fmt.Errorf("source %q already exists", value.Name)
 		}
 	}
-	updated, imported, err := m.syncOne(value)
+	updated, imported, err := m.fetchSelected(value, true, skillNames)
 	if err != nil {
 		return domain.Source{}, nil, err
 	}
@@ -199,6 +203,10 @@ func (m *GitManager) syncOne(value domain.Source) (domain.Source, []domain.Skill
 }
 
 func (m *GitManager) fetch(value domain.Source, persist bool) (domain.Source, []domain.Skill, error) {
+	return m.fetchSelected(value, persist, nil)
+}
+
+func (m *GitManager) fetchSelected(value domain.Source, persist bool, requestedSkills []string) (domain.Source, []domain.Skill, error) {
 	if _, err := exec.LookPath(m.GitPath); err != nil {
 		return domain.Source{}, nil, fmt.Errorf("git executable not found")
 	}
@@ -236,6 +244,12 @@ func (m *GitManager) fetch(value domain.Source, persist bool) (domain.Source, []
 			return domain.Source{}, nil, fmt.Errorf("validate %s: %w", directory, err)
 		}
 		documents = append(documents, document)
+	}
+	if len(requestedSkills) > 0 {
+		documents, value.Paths, err = selectDocuments(checkout, documents, requestedSkills)
+		if err != nil {
+			return domain.Source{}, nil, err
+		}
 	}
 	existingCatalog, err := m.Store.LoadCatalog()
 	if err != nil {
@@ -282,6 +296,52 @@ func (m *GitManager) fetch(value domain.Source, persist bool) (domain.Source, []
 	value.Revision = revision
 	value.UpdatedAt = m.Now().UTC()
 	return value, imported, nil
+}
+
+func selectDocuments(root string, documents []skill.Document, requestedSkills []string) ([]skill.Document, []string, error) {
+	requested := make(map[string]struct{}, len(requestedSkills))
+	for _, name := range requestedSkills {
+		name = strings.TrimSpace(name)
+		if name == "" {
+			return nil, nil, fmt.Errorf("requested Skill name cannot be empty")
+		}
+		requested[name] = struct{}{}
+	}
+
+	available := make([]string, 0, len(documents))
+	found := make(map[string]string, len(requested))
+	selected := make([]skill.Document, 0, len(requested))
+	paths := make([]string, 0, len(requested))
+	for _, document := range documents {
+		available = append(available, document.Name)
+		if _, ok := requested[document.Name]; !ok {
+			continue
+		}
+		relative, err := filepath.Rel(root, document.Path)
+		if err != nil {
+			return nil, nil, err
+		}
+		relative = filepath.ToSlash(relative)
+		if existing, ok := found[document.Name]; ok {
+			return nil, nil, fmt.Errorf("Skill %q appears more than once in source (%s and %s)", document.Name, existing, relative)
+		}
+		found[document.Name] = relative
+		selected = append(selected, document)
+		paths = append(paths, relative)
+	}
+
+	var missing []string
+	for name := range requested {
+		if _, ok := found[name]; !ok {
+			missing = append(missing, name)
+		}
+	}
+	if len(missing) > 0 {
+		sort.Strings(missing)
+		sort.Strings(available)
+		return nil, nil, fmt.Errorf("requested Skill(s) not found: %s; available: %s", strings.Join(missing, ", "), strings.Join(available, ", "))
+	}
+	return selected, paths, nil
 }
 
 func validateSource(value *domain.Source) error {

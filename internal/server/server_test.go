@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -79,6 +80,44 @@ func TestLibraryTagAndActivationLifecycle(t *testing.T) {
 	if dashboard.SkillCount != 0 || dashboard.ActivatedCount != 0 {
 		t.Fatalf("dashboard after removal = %#v", dashboard)
 	}
+}
+
+func TestAddSourceFromSkillsCommand(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git is not installed")
+	}
+	repository := filepath.Join(t.TempDir(), "market repo")
+	if err := os.MkdirAll(repository, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	runGitTest(t, repository, "init", "-b", "main")
+	makeRepositorySkill(t, repository, "skills/better-ui", "better-ui")
+	makeRepositorySkill(t, repository, "skills/better-colors", "better-colors")
+	runGitTest(t, repository, "add", ".")
+	runGitTest(t, repository, "-c", "user.name=skm-test", "-c", "user.email=skm@example.invalid", "commit", "-m", "initial")
+
+	storage := testStore(t)
+	handler := New(storage).Handler()
+	var result struct {
+		Source domain.Source  `json:"source"`
+		Skills []domain.Skill `json:"skills"`
+	}
+	requestJSON(t, handler, http.MethodPost, "/api/sources", map[string]any{
+		"input": `npx skills@latest add "` + repository + `" --skill better-ui`,
+		"tags":  []string{"design"},
+	}, http.StatusCreated, &result)
+	if result.Source.Name != "market-repo" || result.Source.URL != repository {
+		t.Fatalf("source = %#v", result.Source)
+	}
+	if len(result.Source.Paths) != 1 || result.Source.Paths[0] != "skills/better-ui" {
+		t.Fatalf("source paths = %#v", result.Source.Paths)
+	}
+	if len(result.Skills) != 1 || result.Skills[0].ID != "market-repo/better-ui" {
+		t.Fatalf("imported Skills = %#v", result.Skills)
+	}
+	requestJSON(t, handler, http.MethodPost, "/api/sources", map[string]any{
+		"input": "npx skills add owner/repo --agent codex",
+	}, http.StatusBadRequest, nil)
 }
 
 func TestProjectLifecycleAPI(t *testing.T) {
@@ -288,6 +327,27 @@ func makeProjectSkill(t *testing.T, projectPath, agent, name string) {
 	content := "---\nname: " + name + "\ndescription: Project scan test Skill\n---\n\n# " + name + "\n"
 	if err := os.WriteFile(filepath.Join(directory, "SKILL.md"), []byte(content), 0o644); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func makeRepositorySkill(t *testing.T, root, relative, name string) {
+	t.Helper()
+	directory := filepath.Join(root, relative)
+	if err := os.MkdirAll(directory, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	content := "---\nname: " + name + "\ndescription: Repository Skill\n---\n\n# " + name + "\n"
+	if err := os.WriteFile(filepath.Join(directory, "SKILL.md"), []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func runGitTest(t *testing.T, directory string, args ...string) {
+	t.Helper()
+	command := exec.Command("git", args...)
+	command.Dir = directory
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("git %v failed: %v\n%s", args, err, output)
 	}
 }
 

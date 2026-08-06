@@ -134,9 +134,9 @@ function showAddSkillModal() {
         '<div class="import-pane" data-import-pane="local"><div class="form-group"><label class="form-label" for="add-skill-path">' + t('lib.skillPath') +
         '</label><div class="path-picker"><input class="input" id="add-skill-path" readonly placeholder="' + t('lib.chooseSkillPath') + '"><button class="btn btn-secondary" type="button" id="btn-choose-skill-path">' + t('lib.choosePath') + '</button></div></div><div class="form-group"><label class="form-label" for="add-skill-tags">' +
         t('lib.tagsComma') + '</label><input class="input" id="add-skill-tags" placeholder="' + t('lib.skillTagsPlaceholder') + '"></div></div>' +
-        '<div class="import-pane is-hidden" data-import-pane="git"><div class="form-group"><label class="form-label" for="git-source-name">' +
-        t('lib.gitSourceName') + '</label><input class="input" id="git-source-name" placeholder="team-skills"></div><div class="form-group"><label class="form-label" for="git-source-url">' +
-        t('lib.gitUrl') + '</label><input class="input" id="git-source-url" placeholder="git@github.com:org/skills.git"></div><div class="form-group"><label class="form-label" for="git-source-tags">' +
+        '<div class="import-pane is-hidden" data-import-pane="git"><div class="form-group"><label class="form-label" for="git-source-input">' +
+        t('lib.gitInput') + '</label><input class="input mono" id="git-source-input" placeholder="npx skills add jakubkrehel/skills"></div><div class="form-group"><label class="form-label" for="git-source-name">' +
+        t('lib.gitSourceName') + '</label><input class="input" id="git-source-name" placeholder="' + t('lib.gitNamePlaceholder') + '"></div><div class="form-group"><label class="form-label" for="git-source-tags">' +
         t('lib.tagsComma') + '</label><input class="input" id="git-source-tags" placeholder="team, review"></div></div>';
     var actions = '<button class="btn btn-ghost" type="button" data-close-modal>' + t('lib.cancel') + '</button>' +
         '<button class="btn btn-primary" type="button" id="btn-confirm-add">' + t('lib.addSkill') + '</button>';
@@ -190,13 +190,13 @@ async function doAddSkill() {
 
 async function doImportGitSource() {
     var name = document.getElementById('git-source-name').value.trim();
-    var url = document.getElementById('git-source-url').value.trim();
-    if (!name || !url) { showToast(t('lib.gitRequired'), 'error'); return; }
+    var input = document.getElementById('git-source-input').value.trim();
+    if (!input) { showToast(t('lib.gitRequired'), 'error'); return; }
     var button = document.getElementById('btn-confirm-add');
     button.disabled = true;
     try {
         var result = await api.post('/api/sources', {
-            name: name, url: url, ref: '', paths: [], tags: splitList(document.getElementById('git-source-tags').value.trim()),
+            input: input, name: name, ref: '', paths: [], tags: splitList(document.getElementById('git-source-tags').value.trim()),
         });
         closeModal();
         showToast(t('lib.importedSource').replace('{0}', (result.skills || []).length).replace('{1}', result.source.name));

@@ -1,7 +1,9 @@
 package server
 
 import (
+	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/zzzzzyijie/skm/internal/catalog"
 	"github.com/zzzzzyijie/skm/internal/domain"
@@ -20,6 +22,7 @@ func (s *Server) handleListSources(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleAddSource(w http.ResponseWriter, r *http.Request) {
 	var body struct {
+		Input string   `json:"input"`
 		Name  string   `json:"name"`
 		URL   string   `json:"url"`
 		Ref   string   `json:"ref"`
@@ -30,15 +33,33 @@ func (s *Server) handleAddSource(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, err)
 		return
 	}
+	rawInput := strings.TrimSpace(body.Input)
+	if rawInput == "" {
+		rawInput = strings.TrimSpace(body.URL)
+	}
+	parsed, err := gitSource.ParseInstallInput(rawInput)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err)
+		return
+	}
+	if len(parsed.RequestedSkills) > 0 && len(body.Paths) > 0 {
+		writeError(w, http.StatusBadRequest, fmt.Errorf("paths cannot be combined with --skill selections"))
+		return
+	}
+	name := strings.TrimSpace(body.Name)
+	if name == "" {
+		name = parsed.SuggestedName
+	}
 	var result struct {
 		Source domain.Source  `json:"source"`
 		Skills []domain.Skill `json:"skills"`
 	}
-	err := s.withLock(func() error {
+	err = s.withLock(func() error {
 		var err error
-		result.Source, result.Skills, err = gitSource.NewGitManager(s.store, catalog.New(s.store)).Add(domain.Source{
-			Name: body.Name, URL: body.URL, Ref: body.Ref, Paths: body.Paths, Tags: body.Tags,
-		})
+		result.Source, result.Skills, err = gitSource.NewGitManager(s.store, catalog.New(s.store)).AddSelected(
+			domain.Source{Name: name, URL: parsed.URL, Ref: body.Ref, Paths: body.Paths, Tags: body.Tags},
+			parsed.RequestedSkills,
+		)
 		return err
 	})
 	if err != nil {

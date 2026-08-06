@@ -85,6 +85,16 @@ skm ui
 `--no-browser` 只启动服务。Web UI 与 CLI 使用同一份 Library、Project 注册和 Activation
 数据；Projects 页面可完成本机项目登记、Skill 软链/复制、状态检查和解绑。
 
+Library 的仓库导入框支持 Git URL、GitHub `owner/repo` 简写，也可以直接粘贴安装命令：
+
+```text
+npx skills add jakubkrehel/skills
+npx skills add jakubkrehel/skills --skill better-ui
+```
+
+SKM 只解析命令中的来源和 `--skill` 选项，不会执行 `npx`；导入仍由内置的 Git Source
+流程完成并记录 revision。来源名称可留空，由仓库 owner 和名称自动生成。
+
 ### 建立个人 Library
 
 ```bash

@@ -53,7 +53,7 @@
 #### 2. Library 管理
 - Skill 列表（支持按 Tag 筛选）
 - Skill 详情查看
-- 添加 Skill：本地目录导入或 Git 来源导入
+- 添加 Skill：本地目录导入，或通过 Git URL、GitHub 简写、`npx skills add` 命令导入仓库来源
 - 移除 Skill
 - 标签管理（增/删/改名）
 - 每个 Skill 直接切换 Claude / Codex 启用状态
@@ -124,7 +124,7 @@ GET    /api/plan               # 查看 plan
 POST   /api/apply              # 应用 plan
 
 GET    /api/sources            # Source 列表
-POST   /api/sources            # 添加并导入 Git Source {name, url, ref, paths, tags}
+POST   /api/sources            # 添加并导入 Git Source {input, name?, ref, paths, tags}；继续兼容 url
 POST   /api/sources/:name/update  # 更新 Source
 POST   /api/sync               # Sync 所有 Source
 
