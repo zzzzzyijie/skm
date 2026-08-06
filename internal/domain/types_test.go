@@ -12,7 +12,7 @@ func TestLocationAndPlacementValidation(t *testing.T) {
 }
 
 func TestAgentAndModeValidation(t *testing.T) {
-	if !AgentClaude.Valid() || !AgentCodex.Valid() || !Agent("cursor").Valid() || Agent("bad id").Valid() {
+	if !AgentClaude.Valid() || !AgentCodex.Valid() || Agent("cursor").Valid() {
 		t.Fatal("agent validation is incorrect")
 	}
 	if !ModeAuto.Valid() || !ModeSymlink.Valid() || !ModeCopy.Valid() || LinkMode("bad").Valid() {

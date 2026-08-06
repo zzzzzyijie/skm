@@ -85,8 +85,10 @@ func TestProjectLifecycleAPI(t *testing.T) {
 	}
 	linkSkill := makeSkill(t, "web-link")
 	copySkill := makeSkill(t, "web-copy")
+	cursorSkill := makeSkill(t, "web-cursor")
 	requestJSON(t, handler, http.MethodPost, "/api/skills", map[string]any{"path": linkSkill}, http.StatusCreated, nil)
 	requestJSON(t, handler, http.MethodPost, "/api/skills", map[string]any{"path": copySkill}, http.StatusCreated, nil)
+	requestJSON(t, handler, http.MethodPost, "/api/skills", map[string]any{"path": cursorSkill}, http.StatusCreated, nil)
 
 	var project domain.Project
 	requestJSON(t, handler, http.MethodPost, "/api/projects", map[string]any{"path": projectPath}, http.StatusCreated, &project)
@@ -192,12 +194,27 @@ func TestProjectLifecycleAPI(t *testing.T) {
 	if info, err := os.Lstat(linkTarget); err != nil || info.Mode()&os.ModeSymlink == 0 {
 		t.Fatalf("project link target = %v, err=%v", info, err)
 	}
+	requestJSON(t, handler, http.MethodPost, "/api/projects/web-project/link", map[string]any{
+		"skill": "local/web-cursor", "agents": []string{"cursor"},
+	}, http.StatusOK, &deployment)
+	cursorTarget := filepath.Join(projectPath, ".cursor", "skills", "web-cursor")
+	if info, err := os.Lstat(cursorTarget); err != nil || info.Mode()&os.ModeSymlink == 0 {
+		t.Fatalf("project Cursor target = %v, err=%v", info, err)
+	}
+	requestJSON(t, handler, http.MethodPost, "/api/projects/web-project/link", map[string]any{
+		"skill": "local/web-cursor", "agents": []string{"windsurf"},
+	}, http.StatusBadRequest, nil)
 
 	requestJSON(t, handler, http.MethodPost, "/api/projects/web-project/link", map[string]any{
 		"skill": "local/web-link", "agents": []string{"claude"},
 	}, http.StatusOK, &deployment)
-	if len(deployment.Plan.Operations) != 1 || deployment.Plan.Operations[0].Status != domain.StatusUnchanged {
+	if len(deployment.Plan.Operations) != 2 {
 		t.Fatalf("repeated link plan = %#v", deployment.Plan)
+	}
+	for _, operation := range deployment.Plan.Operations {
+		if operation.Status != domain.StatusUnchanged {
+			t.Fatalf("repeated link operation = %#v", operation)
+		}
 	}
 	requestJSON(t, handler, http.MethodPost, "/api/projects/web-project/copy", map[string]any{
 		"skill": "local/web-copy", "agents": []string{"codex"},
@@ -221,53 +238,10 @@ func TestProjectLifecycleAPI(t *testing.T) {
 
 	requestJSON(t, handler, http.MethodDelete, "/api/projects/web-project", nil, http.StatusBadRequest, nil)
 	requestJSON(t, handler, http.MethodPost, "/api/projects/web-project/unlink", map[string]any{"skill": "web-link"}, http.StatusOK, nil)
+	requestJSON(t, handler, http.MethodPost, "/api/projects/web-project/unlink", map[string]any{"skill": "web-cursor"}, http.StatusOK, nil)
 	requestJSON(t, handler, http.MethodPost, "/api/projects/web-project/unlink", map[string]any{"skill": "local/web-copy"}, http.StatusBadRequest, nil)
 	requestJSON(t, handler, http.MethodPost, "/api/projects/web-project/unlink", map[string]any{"skill": "local/web-copy", "force": true}, http.StatusOK, nil)
 	requestJSON(t, handler, http.MethodDelete, "/api/projects/web-project", nil, http.StatusOK, nil)
-}
-
-func TestConfiguredAgentFolderAPI(t *testing.T) {
-	storage := testStore(t)
-	handler := New(storage).Handler()
-	projectPath := filepath.Join(t.TempDir(), "custom-project")
-	if err := os.MkdirAll(projectPath, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	requestJSON(t, handler, http.MethodPost, "/api/agents", map[string]any{
-		"id": "windsurf-custom", "name": "Windsurf Custom", "userPath": "~/.custom-agent/skills", "projectPath": ".custom-agent/skills", "enabled": true,
-	}, http.StatusOK, nil)
-
-	skillPath := filepath.Join(projectPath, ".custom-agent", "skills", "nested-scan")
-	if err := os.MkdirAll(skillPath, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(skillPath, "SKILL.md"), []byte("---\nname: nested-scan\ndescription: nested agent scan\n---\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	var project domain.Project
-	requestJSON(t, handler, http.MethodPost, "/api/projects", map[string]any{"path": projectPath}, http.StatusCreated, &project)
-	var details struct {
-		Scan struct {
-			AgentCounts map[string]int `json:"agentCounts"`
-			Skills      []struct {
-				ID     string   `json:"id"`
-				Agents []string `json:"agents"`
-			} `json:"skills"`
-		} `json:"scan"`
-	}
-	requestJSON(t, handler, http.MethodGet, "/api/projects/"+project.ID, nil, http.StatusOK, &details)
-	if details.Scan.AgentCounts["windsurf-custom"] != 1 || len(details.Scan.Skills) != 1 || details.Scan.Skills[0].Agents[0] != "windsurf-custom" {
-		t.Fatalf("custom Agent scan = %#v", details.Scan)
-	}
-
-	sourcePath := makeSkill(t, "custom-deploy")
-	requestJSON(t, handler, http.MethodPost, "/api/skills", map[string]any{"path": sourcePath}, http.StatusCreated, nil)
-	requestJSON(t, handler, http.MethodPost, "/api/projects/"+project.ID+"/link", map[string]any{
-		"skill": "local/custom-deploy", "agents": []string{"windsurf-custom"},
-	}, http.StatusOK, nil)
-	if info, err := os.Lstat(filepath.Join(projectPath, ".custom-agent", "skills", "custom-deploy")); err != nil || info.Mode()&os.ModeSymlink == 0 {
-		t.Fatalf("custom Agent deployment = %v, err=%v", info, err)
-	}
 }
 
 func testStore(t *testing.T) *store.Store {

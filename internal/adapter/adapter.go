@@ -2,66 +2,43 @@ package adapter
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/zzzzzyijie/skm/internal/domain"
 )
 
 func Target(agent domain.Agent, placement domain.Placement, userHome, projectRoot, skillName string) (string, error) {
-	for _, definition := range domain.DefaultAgentDirectories().Agents {
-		if definition.ID == agent {
-			return TargetDirectory(definition, placement, userHome, projectRoot, skillName)
-		}
-	}
-	return "", fmt.Errorf("unsupported agent %q", agent)
-}
-
-func TargetDirectory(definition domain.AgentDirectory, placement domain.Placement, userHome, projectRoot, skillName string) (string, error) {
-	if !definition.ID.Valid() {
-		return "", fmt.Errorf("unsupported agent %q", definition.ID)
-	}
 	if !placement.Valid() {
 		return "", fmt.Errorf("invalid placement %q", placement)
 	}
-	base := definition.UserPath
+	var base string
 	if placement == domain.PlacementProject {
 		if projectRoot == "" {
 			return "", fmt.Errorf("project root is required for project deployment")
 		}
-		base = definition.ProjectPath
-	}
-	base, err := ResolvePath(base, userHome, projectRoot, placement)
-	if err != nil {
-		return "", err
+		if !agent.ProjectValid() {
+			return "", fmt.Errorf("unsupported project agent %q", agent)
+		}
+		switch agent {
+		case domain.AgentClaude:
+			base = filepath.Join(projectRoot, ".claude", "skills")
+		case domain.AgentCodex:
+			base = filepath.Join(projectRoot, ".codex", "skills")
+		default:
+			base = filepath.Join(projectRoot, "."+string(agent), "skills")
+		}
+	} else {
+		if !agent.Valid() {
+			return "", fmt.Errorf("unsupported agent %q", agent)
+		}
+		switch agent {
+		case domain.AgentClaude:
+			base = filepath.Join(userHome, ".claude", "skills")
+		case domain.AgentCodex:
+			base = filepath.Join(userHome, ".codex", "skills")
+		}
 	}
 	return filepath.Join(base, skillName), nil
-}
-
-func ResolvePath(raw, userHome, projectRoot string, placement domain.Placement) (string, error) {
-	raw = strings.TrimSpace(raw)
-	if raw == "" {
-		return "", fmt.Errorf("agent path is required")
-	}
-	if strings.HasPrefix(raw, "~") {
-		raw = filepath.Join(userHome, strings.TrimPrefix(raw, "~/"))
-	}
-	configHome := os.Getenv("XDG_CONFIG")
-	if configHome == "" {
-		configHome = os.Getenv("XDG_CONFIG_HOME")
-	}
-	if configHome == "" {
-		configHome = filepath.Join(userHome, ".config")
-	}
-	raw = strings.ReplaceAll(raw, "$XDG_CONFIG", configHome)
-	raw = strings.ReplaceAll(raw, "${XDG_CONFIG}", configHome)
-	raw = strings.ReplaceAll(raw, "$HOME", userHome)
-	raw = strings.ReplaceAll(raw, "${HOME}", userHome)
-	if placement == domain.PlacementProject && !filepath.IsAbs(raw) {
-		raw = filepath.Join(projectRoot, raw)
-	}
-	return filepath.Clean(raw), nil
 }
 
 // LegacyTarget returns the pre-.codex target for Codex deployments. It is
