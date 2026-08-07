@@ -48,14 +48,15 @@ type projectScanAgent struct {
 }
 
 type projectScanSkill struct {
-	ID          string            `json:"id"`
-	Name        string            `json:"name"`
-	Description string            `json:"description,omitempty"`
-	Agents      []string          `json:"agents"`
-	Paths       map[string]string `json:"paths"`
-	Hash        string            `json:"hash,omitempty"`
-	Status      string            `json:"status"`
-	Issues      []string          `json:"issues,omitempty"`
+	ID             string            `json:"id"`
+	Name           string            `json:"name"`
+	Description    string            `json:"description,omitempty"`
+	Agents         []string          `json:"agents"`
+	Paths          map[string]string `json:"paths"`
+	Hash           string            `json:"hash,omitempty"`
+	LibrarySkillID string            `json:"librarySkillId,omitempty"`
+	Status         string            `json:"status"`
+	Issues         []string          `json:"issues,omitempty"`
 }
 
 type projectSkillDetails struct {
@@ -597,6 +598,11 @@ func (s *Server) projectDetails(project domain.Project) (projectDetails, error) 
 	if err != nil {
 		return projectDetails{}, err
 	}
+	library, err := s.store.LoadCatalog()
+	if err != nil {
+		return projectDetails{}, err
+	}
+	markProjectLibrarySkills(&scan, library.Skills)
 	plan, err := s.projectPlan(project.Path)
 	if err != nil {
 		return projectDetails{}, err
@@ -616,6 +622,90 @@ func (s *Server) projectDetails(project domain.Project) (projectDetails, error) 
 		Scan:        scan,
 		Plan:        plan,
 	}, nil
+}
+
+func markProjectLibrarySkills(scan *projectScan, library []domain.Skill) {
+	for index := range scan.Skills {
+		item := &scan.Skills[index]
+		for _, value := range library {
+			if value.Name == item.Name || value.Name == item.ID {
+				item.LibrarySkillID = value.ID
+				break
+			}
+		}
+	}
+}
+
+func (s *Server) handleRemoveProjectSkill(w http.ResponseWriter, r *http.Request) {
+	var project domain.Project
+	removedPaths := make([]string, 0)
+	err := s.withLock(func() error {
+		var err error
+		project, err = s.resolveProject(r.PathValue("id"))
+		if err != nil {
+			return err
+		}
+		skillID := r.PathValue("skill")
+		paths, err := projectSkillPaths(project.Path, skillID)
+		if err != nil {
+			return err
+		}
+		state, err := s.store.LoadState()
+		if err != nil {
+			return err
+		}
+		for _, activation := range projectActivations(state, project.Path) {
+			if activation.Name == skillID {
+				return fmt.Errorf("project Skill %s is managed by SKM; unlink it instead", skillID)
+			}
+		}
+		for _, deployment := range state.Deployments {
+			if deployment.Placement != domain.PlacementProject || filepath.Clean(deployment.ProjectRoot) != filepath.Clean(project.Path) {
+				continue
+			}
+			for _, path := range paths {
+				if filepath.Clean(deployment.Target) == filepath.Clean(path) {
+					return fmt.Errorf("project Skill %s is managed by SKM; unlink it instead", skillID)
+				}
+			}
+		}
+		for _, path := range paths {
+			if err := os.RemoveAll(path); err != nil {
+				return fmt.Errorf("remove project Skill %s: %w", path, err)
+			}
+			removedPaths = append(removedPaths, path)
+		}
+		return nil
+	})
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"project": project, "skill": r.PathValue("skill"), "removedPaths": removedPaths,
+	})
+}
+
+func projectSkillPaths(projectRoot, skillID string) ([]string, error) {
+	if skillID == "" || filepath.Base(skillID) != skillID || skillID == "." || skillID == ".." {
+		return nil, fmt.Errorf("invalid project Skill %q", skillID)
+	}
+	roots, err := projectSkillRoots(projectRoot)
+	if err != nil {
+		return nil, err
+	}
+	paths := make([]string, 0, len(roots))
+	for _, root := range roots {
+		path := filepath.Join(root.Path, skillID)
+		_, candidate, _ := projectSkillDirectory(path)
+		if candidate {
+			paths = append(paths, path)
+		}
+	}
+	if len(paths) == 0 {
+		return nil, fmt.Errorf("project Skill %q not found", skillID)
+	}
+	return paths, nil
 }
 
 func scanProjectSkills(projectRoot string) (projectScan, error) {

@@ -84,6 +84,9 @@ function paintProjects() {
     container.querySelectorAll('[data-migrate-project-skill]').forEach(function (button) {
         button.addEventListener('click', function () { showMigrateProjectSkillModal(button.dataset.migrateProjectSkill); });
     });
+    container.querySelectorAll('[data-remove-project-skill]').forEach(function (button) {
+        button.addEventListener('click', function () { showConfirmRemoveProjectSkillModal(button.dataset.removeProjectSkill); });
+    });
 }
 
 function projectListItem(project) {
@@ -159,7 +162,8 @@ function projectScanSkillRow(skill, detail, filter) {
     var statusLabel = projectScanStatusLabel(skill.status);
     var managed = activation ? '<span class="badge badge-source">' + escapeHtml(t('proj.managed')) + '</span>' : '<span class="badge badge-muted">' + escapeHtml(t('proj.external')) + '</span>';
     var action = (filter !== 'all' ? '<button class="btn btn-ghost btn-sm" type="button" data-project-skill-details="' + escapeHtml(skill.id) + '">' + t('proj.viewDetails') + '</button>' : '') +
-        (!activation && skill.status !== 'error' ? '<button class="btn btn-secondary btn-sm" type="button" data-migrate-project-skill="' + escapeHtml(skill.id) + '">' + t('proj.migrate') + '</button>' : '') +
+        (!activation && !skill.librarySkillId && skill.status !== 'error' ? '<button class="btn btn-secondary btn-sm" type="button" data-migrate-project-skill="' + escapeHtml(skill.id) + '">' + t('proj.migrate') + '</button>' : '') +
+        (!activation ? '<button class="btn btn-danger btn-sm" type="button" data-remove-project-skill="' + escapeHtml(skill.id) + '">' + t('proj.removeSkill') + '</button>' : '') +
         (activation ? '<button class="btn btn-danger btn-sm" type="button" data-unlink-skill="' + escapeHtml(activation.skillId) + '">' + t('proj.unlink') + '</button>' : '');
     var issue = (skill.issues || []).map(function (message) { return '<div class="project-skill-issue">' + escapeHtml(message) + '</div>'; }).join('');
     return '<article class="project-skill-row"><div class="project-skill-main"><div class="project-skill-title"><strong>' + escapeHtml(skill.name || skill.id) +
@@ -236,6 +240,26 @@ async function migrateProjectSkill(skillID) {
         button.disabled = false;
         showToast(err.message, 'error');
     }
+}
+
+function showConfirmRemoveProjectSkillModal(skillID) {
+    var content = '<p class="confirm-copy">' + t('proj.confirmRemoveSkillDesc').replace('{0}', escapeHtml(skillID)) + '</p>' +
+        '<p class="migration-mode-description">' + t('proj.confirmRemoveSkillNote') + '</p>';
+    var actions = '<button class="btn btn-ghost" type="button" data-close-modal>' + t('lib.cancel') + '</button>' +
+        '<button class="btn btn-danger" type="button" id="btn-confirm-remove-project-skill">' + t('proj.removeSkill') + '</button>';
+    showModal(t('proj.confirmRemoveSkillTitle'), content, actions);
+    document.getElementById('btn-confirm-remove-project-skill').addEventListener('click', async function () {
+        this.disabled = true;
+        try {
+            await api.del('/api/projects/' + encodeURIComponent(projectState.selectedID) + '/skills/' + encodeURIComponent(skillID));
+            closeModal();
+            showToast(t('proj.projectSkillRemoved'), 'success');
+            await renderProjects();
+        } catch (err) {
+            this.disabled = false;
+            showToast(err.message, 'error');
+        }
+    });
 }
 
 async function showProjectSkillDetails(skillID) {

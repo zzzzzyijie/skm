@@ -293,6 +293,10 @@ func TestProjectLifecycleAPI(t *testing.T) {
 	if info, err := os.Lstat(linkTarget); err != nil || info.Mode()&os.ModeSymlink == 0 {
 		t.Fatalf("project link target = %v, err=%v", info, err)
 	}
+	requestJSON(t, handler, http.MethodDelete, "/api/projects/web-project/skills/web-link", nil, http.StatusBadRequest, nil)
+	if _, err := os.Lstat(linkTarget); err != nil {
+		t.Fatalf("managed project Skill was removed directly: %v", err)
+	}
 	requestJSON(t, handler, http.MethodPost, "/api/projects/web-project/link", map[string]any{
 		"skill": "local/web-cursor", "agents": []string{"cursor"},
 	}, http.StatusOK, &deployment)
@@ -352,6 +356,51 @@ func TestProjectSkillMigrationAPI(t *testing.T) {
 	}
 	requestJSON(t, handler, http.MethodPost, "/api/projects", map[string]any{"path": projectPath}, http.StatusCreated, nil)
 
+	knownLibraryPath := makeSkill(t, "known-project-skill")
+	var knownLibrary domain.Skill
+	requestJSON(t, handler, http.MethodPost, "/api/skills", map[string]any{"path": knownLibraryPath}, http.StatusCreated, &knownLibrary)
+	makeProjectSkill(t, projectPath, "claude", "known-project-skill")
+	makeProjectSkill(t, projectPath, "codex", "known-project-skill")
+	var knownProject struct {
+		Scan struct {
+			Skills []struct {
+				ID             string `json:"id"`
+				Hash           string `json:"hash"`
+				LibrarySkillID string `json:"librarySkillId"`
+			} `json:"skills"`
+		} `json:"scan"`
+	}
+	requestJSON(t, handler, http.MethodGet, "/api/projects/migration-project", nil, http.StatusOK, &knownProject)
+	if len(knownProject.Scan.Skills) != 1 || knownProject.Scan.Skills[0].LibrarySkillID != knownLibrary.ID || knownProject.Scan.Skills[0].Hash == knownLibrary.Hash {
+		t.Fatalf("same-name Library marker = %#v", knownProject.Scan.Skills)
+	}
+	requestJSON(t, handler, http.MethodDelete, "/api/projects/migration-project/skills/known-project-skill", nil, http.StatusOK, nil)
+	for _, agent := range []string{"claude", "codex"} {
+		if _, err := os.Lstat(filepath.Join(projectPath, "."+agent, "skills", "known-project-skill")); !os.IsNotExist(err) {
+			t.Fatalf("%s project Skill was not removed: %v", agent, err)
+		}
+	}
+	if _, err := catalog.New(storage).ResolveLibrary(knownLibrary.ID); err != nil {
+		t.Fatalf("removing project Skill removed Library entry: %v", err)
+	}
+
+	externalSkill := makeSkill(t, "external-linked-skill")
+	externalLinkRoot := filepath.Join(projectPath, ".cursor", "skills")
+	if err := os.MkdirAll(externalLinkRoot, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	externalLink := filepath.Join(externalLinkRoot, "external-linked-skill")
+	if err := os.Symlink(externalSkill, externalLink); err != nil {
+		t.Fatal(err)
+	}
+	requestJSON(t, handler, http.MethodDelete, "/api/projects/migration-project/skills/external-linked-skill", nil, http.StatusOK, nil)
+	if _, err := os.Lstat(externalLink); !os.IsNotExist(err) {
+		t.Fatalf("external project Skill link was not removed: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(externalSkill, "SKILL.md")); err != nil {
+		t.Fatalf("external Skill source was removed with project link: %v", err)
+	}
+
 	makeProjectSkill(t, projectPath, "claude", "linked-project-skill")
 	var linked struct {
 		Skill domain.Skill `json:"skill"`
@@ -366,6 +415,18 @@ func TestProjectSkillMigrationAPI(t *testing.T) {
 	if linked.Skill.ID != "local/linked-project-skill" || linked.Skill.Mode != domain.ModeSymlink || linked.Skill.Path != linkedSource || linked.Skill.SourcePath != linkedSource {
 		t.Fatalf("linked migration = %#v", linked.Skill)
 	}
+	var linkedProject struct {
+		Scan struct {
+			Skills []struct {
+				ID             string `json:"id"`
+				LibrarySkillID string `json:"librarySkillId"`
+			} `json:"skills"`
+		} `json:"scan"`
+	}
+	requestJSON(t, handler, http.MethodGet, "/api/projects/migration-project", nil, http.StatusOK, &linkedProject)
+	if len(linkedProject.Scan.Skills) != 1 || linkedProject.Scan.Skills[0].LibrarySkillID != linked.Skill.ID {
+		t.Fatalf("linked project Library marker = %#v", linkedProject.Scan.Skills)
+	}
 	requestJSON(t, handler, http.MethodPost, "/api/projects/migration-project/skills/linked-project-skill/migrate", map[string]any{
 		"agent": "claude", "mode": "copy",
 	}, http.StatusBadRequest, nil)
@@ -375,7 +436,14 @@ func TestProjectSkillMigrationAPI(t *testing.T) {
 	}
 	var library []domain.Skill
 	requestJSON(t, handler, http.MethodGet, "/api/skills", nil, http.StatusOK, &library)
-	if len(library) != 1 || library[0].Hash == linked.Skill.Hash || library[0].Description != "Updated linked project Skill" {
+	var refreshedLinked domain.Skill
+	for _, value := range library {
+		if value.ID == linked.Skill.ID {
+			refreshedLinked = value
+			break
+		}
+	}
+	if refreshedLinked.ID == "" || refreshedLinked.Hash == linked.Skill.Hash || refreshedLinked.Description != "Updated linked project Skill" {
 		t.Fatalf("refreshed linked Library Skill = %#v", library)
 	}
 	requestJSON(t, handler, http.MethodDelete, "/api/skills/local/linked-project-skill", nil, http.StatusOK, nil)

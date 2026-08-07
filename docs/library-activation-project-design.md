@@ -158,6 +158,10 @@ Projects 页面扫描到的非托管 Skill 可以迁移到个人 Library，迁�
 用户级 Activation 再从 Agent 目录链接到该实时来源。这保留了快照目录只存放真实、不可变
 副本的约束。
 
+Projects 页面也可以移除扫描到的非托管 Skill。移除会删除该 Skill 在项目所有 Agent
+目录中的副本或链接，但不会删除个人 Library 条目或链接指向的外部源目录。SKM 托管的
+项目 Skill 必须使用“解绑”，不能通过外部 Skill 的移除接口绕过 Deployment 安全检查。
+
 ## 5. 项目文件
 
 ```text
