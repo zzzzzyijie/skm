@@ -86,6 +86,58 @@ func (m *Manager) Import(document skill.Document, sourceName, revision string, t
 	return value, nil
 }
 
+// ImportProject adds a Skill discovered in a registered project to the
+// personal Library. Symlink mode keeps the project directory as the live
+// source; copy mode creates the usual immutable Library snapshot.
+func (m *Manager) ImportProject(document skill.Document, projectRoot string, mode domain.LinkMode, tagValues []string) (domain.Skill, error) {
+	if mode != domain.ModeSymlink && mode != domain.ModeCopy {
+		return domain.Skill{}, fmt.Errorf("invalid project import mode %q", mode)
+	}
+	id := "local/" + document.Name
+	library, err := m.Store.LoadCatalog()
+	if err != nil {
+		return domain.Skill{}, err
+	}
+	for _, existing := range library.Skills {
+		if existing.ID == id {
+			return domain.Skill{}, fmt.Errorf("Library Skill %s already exists; remove or rename it first", id)
+		}
+	}
+
+	var value domain.Skill
+	if mode == domain.ModeCopy {
+		value, err = m.Snapshot(document, "local", "", tagValues)
+	} else {
+		config, loadErr := m.Store.LoadConfig()
+		if loadErr != nil {
+			return domain.Skill{}, loadErr
+		}
+		normalizedTags, normalizeErr := tags.Normalize(tagValues, config.Defaults.Tags)
+		if normalizeErr != nil {
+			return domain.Skill{}, normalizeErr
+		}
+		value = domain.Skill{
+			ID:          id,
+			Name:        document.Name,
+			Description: document.Description,
+			Tags:        normalizedTags,
+			Source:      "local",
+			Location:    domain.LocationLibrary,
+			Hash:        document.Hash,
+			Path:        document.Path,
+			Metadata:    document.Metadata,
+			AddedAt:     m.Now().UTC(),
+		}
+	}
+	value.SourcePath = document.Path
+	value.ProjectRoot = projectRoot
+	value.Mode = mode
+	if err := m.Store.UpsertSkill(value); err != nil {
+		return domain.Skill{}, err
+	}
+	return value, nil
+}
+
 func (m *Manager) Vendor(value domain.Skill, agents []domain.Agent, mode domain.LinkMode, tagValues []string) (domain.Skill, error) {
 	if value.Location != domain.LocationLibrary {
 		return domain.Skill{}, fmt.Errorf("only Library Skills can be vendored")

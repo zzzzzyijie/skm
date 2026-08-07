@@ -3,11 +3,12 @@ package adapter
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"github.com/zzzzzyijie/skm/internal/domain"
 )
 
-func Target(agent domain.Agent, placement domain.Placement, userHome, projectRoot, skillName string) (string, error) {
+func Target(agent domain.Agent, placement domain.Placement, userHome, projectRoot, skillName string, customRoots ...map[domain.Agent]string) (string, error) {
 	if !placement.Valid() {
 		return "", fmt.Errorf("invalid placement %q", placement)
 	}
@@ -29,16 +30,62 @@ func Target(agent domain.Agent, placement domain.Placement, userHome, projectRoo
 		}
 	} else {
 		if !agent.Valid() {
-			return "", fmt.Errorf("unsupported agent %q", agent)
+			if len(customRoots) == 0 || customRoots[0][agent] == "" {
+				return "", fmt.Errorf("unsupported agent %q", agent)
+			}
+			var err error
+			base, err = customUserRoot(customRoots[0][agent], userHome)
+			if err != nil {
+				return "", err
+			}
 		}
 		switch agent {
 		case domain.AgentClaude:
 			base = filepath.Join(userHome, ".claude", "skills")
 		case domain.AgentCodex:
 			base = filepath.Join(userHome, ".codex", "skills")
+		case domain.AgentCursor:
+			base = filepath.Join(userHome, ".cursor", "skills")
+		case domain.AgentCopilot:
+			base = filepath.Join(userHome, ".copilot", "skills")
+		case domain.AgentGemini:
+			base = filepath.Join(userHome, ".gemini", "skills")
+		case domain.AgentWindsurf:
+			base = filepath.Join(userHome, ".codeium", "windsurf", "skills")
+		case domain.AgentKiro:
+			base = filepath.Join(userHome, ".kiro", "skills")
+		case domain.AgentCline:
+			base = filepath.Join(userHome, ".agents", "skills")
+		case domain.AgentOpenCode:
+			base = filepath.Join(userHome, ".config", "opencode", "skills")
+		case domain.AgentTrae:
+			base = filepath.Join(userHome, ".trae", "skills")
+		case domain.AgentHermes:
+			base = filepath.Join(userHome, ".hermes", "skills")
+		case domain.AgentOpenClaw:
+			base = filepath.Join(userHome, ".openclaw", "skills")
 		}
 	}
 	return filepath.Join(base, skillName), nil
+}
+
+func CustomRoots(definitions []domain.AgentDefinition) map[domain.Agent]string {
+	result := make(map[domain.Agent]string, len(definitions))
+	for _, definition := range definitions {
+		result[definition.ID] = definition.SkillsPath
+	}
+	return result
+}
+
+func customUserRoot(configuredPath, userHome string) (string, error) {
+	if !strings.HasPrefix(configuredPath, "~/") {
+		return "", fmt.Errorf("custom agent path must start with ~/")
+	}
+	relative := strings.TrimPrefix(configuredPath, "~/")
+	if relative == "" || filepath.Clean(relative) == "." || strings.HasPrefix(filepath.Clean(relative), "..") {
+		return "", fmt.Errorf("invalid custom agent path %q", configuredPath)
+	}
+	return filepath.Join(userHome, filepath.FromSlash(relative)), nil
 }
 
 // LegacyTarget returns the pre-.codex target for Codex deployments. It is
@@ -68,7 +115,20 @@ func DisplayName(agent domain.Agent) string {
 		return "Claude Code"
 	case domain.AgentCodex:
 		return "Codex"
+	case domain.AgentCopilot:
+		return "GitHub Copilot"
+	case domain.AgentGemini:
+		return "Gemini CLI"
+	case domain.AgentKiro:
+		return "Kiro"
+	case domain.AgentOpenCode:
+		return "OpenCode"
+	case domain.AgentHermes:
+		return "Hermes"
+	case domain.AgentOpenClaw:
+		return "OpenClaw"
 	default:
-		return string(agent)
+		name := string(agent)
+		return strings.ToUpper(name[:1]) + name[1:]
 	}
 }

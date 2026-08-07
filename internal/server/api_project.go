@@ -73,6 +73,12 @@ type projectSkillDocument struct {
 	Hash        string         `json:"hash"`
 }
 
+type projectSkillSource struct {
+	Agent    string
+	Path     string
+	Document skill.Document
+}
+
 func (s *Server) handleListProjects(w http.ResponseWriter, r *http.Request) {
 	projects, err := s.store.LoadProjects()
 	if err != nil {
@@ -215,6 +221,141 @@ func (s *Server) handleShowProjectSkill(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	writeJSON(w, http.StatusOK, details)
+}
+
+func (s *Server) handleMigrateProjectSkill(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Agent        string          `json:"agent"`
+		Mode         domain.LinkMode `json:"mode"`
+		RemoveSource bool            `json:"removeSource"`
+		Tags         []string        `json:"tags"`
+	}
+	if err := readJSON(r, &body); err != nil {
+		writeError(w, http.StatusBadRequest, err)
+		return
+	}
+	if body.Mode != domain.ModeSymlink && body.Mode != domain.ModeCopy {
+		writeError(w, http.StatusBadRequest, fmt.Errorf("mode must be symlink or copy"))
+		return
+	}
+	if body.RemoveSource && body.Mode != domain.ModeCopy {
+		writeError(w, http.StatusBadRequest, fmt.Errorf("project source can only be removed after a copy"))
+		return
+	}
+
+	var project domain.Project
+	var imported domain.Skill
+	removedPaths := make([]string, 0)
+	err := s.withLock(func() error {
+		var err error
+		project, err = s.resolveProject(r.PathValue("id"))
+		if err != nil {
+			return err
+		}
+		sources, err := loadProjectSkillSources(project.Path, r.PathValue("skill"))
+		if err != nil {
+			return err
+		}
+		selected, err := selectProjectSkillSource(sources, body.Agent)
+		if err != nil {
+			return err
+		}
+		if body.RemoveSource {
+			if err := s.validateProjectSkillRemoval(project.Path, sources, selected.Document.Hash); err != nil {
+				return err
+			}
+		}
+		imported, err = catalog.New(s.store).ImportProject(selected.Document, project.Path, body.Mode, body.Tags)
+		if err != nil {
+			return err
+		}
+		if body.RemoveSource {
+			for _, source := range sources {
+				if err := os.RemoveAll(source.Path); err != nil {
+					return fmt.Errorf("Skill was copied to %s, but removing project source %s failed: %w", imported.ID, source.Path, err)
+				}
+				removedPaths = append(removedPaths, source.Path)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, map[string]any{
+		"project": project, "skill": imported, "mode": body.Mode,
+		"removedPaths": removedPaths,
+	})
+}
+
+func loadProjectSkillSources(projectRoot, skillID string) ([]projectSkillSource, error) {
+	if skillID == "" || filepath.Base(skillID) != skillID || skillID == "." || skillID == ".." {
+		return nil, fmt.Errorf("invalid project Skill %q", skillID)
+	}
+	roots, err := projectSkillRoots(projectRoot)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]projectSkillSource, 0, len(roots))
+	for _, root := range roots {
+		path := filepath.Join(root.Path, skillID)
+		resolved, candidate, candidateErr := projectSkillDirectory(path)
+		if !candidate {
+			continue
+		}
+		if candidateErr != nil {
+			return nil, fmt.Errorf("read %s Skill %s: %w", root.Label, skillID, candidateErr)
+		}
+		document, validateErr := skill.Validate(resolved)
+		if validateErr != nil {
+			return nil, fmt.Errorf("validate %s Skill %s: %w", root.Label, skillID, validateErr)
+		}
+		result = append(result, projectSkillSource{Agent: root.ID, Path: path, Document: document})
+	}
+	if len(result) == 0 {
+		return nil, fmt.Errorf("readable project Skill %q not found", skillID)
+	}
+	return result, nil
+}
+
+func selectProjectSkillSource(sources []projectSkillSource, agent string) (projectSkillSource, error) {
+	agent = strings.TrimSpace(agent)
+	if agent == "" {
+		if len(sources) == 1 {
+			return sources[0], nil
+		}
+		return projectSkillSource{}, fmt.Errorf("agent is required because the Skill exists in multiple Agent directories")
+	}
+	for _, source := range sources {
+		if source.Agent == agent {
+			return source, nil
+		}
+	}
+	return projectSkillSource{}, fmt.Errorf("project Skill was not found for Agent %q", agent)
+}
+
+func (s *Server) validateProjectSkillRemoval(projectRoot string, sources []projectSkillSource, selectedHash string) error {
+	for _, source := range sources {
+		if source.Document.Hash != selectedHash {
+			return fmt.Errorf("cannot move Skill: Agent copies have different content; copy one source without removing the project originals")
+		}
+	}
+	state, err := s.store.LoadState()
+	if err != nil {
+		return err
+	}
+	for _, deployment := range state.Deployments {
+		if deployment.Placement != domain.PlacementProject || filepath.Clean(deployment.ProjectRoot) != filepath.Clean(projectRoot) {
+			continue
+		}
+		for _, source := range sources {
+			if filepath.Clean(deployment.Target) == filepath.Clean(source.Path) {
+				return fmt.Errorf("cannot move an SKM-managed project Skill; unlink it first or copy it without removing the project source")
+			}
+		}
+	}
+	return nil
 }
 
 func (s *Server) handleProjectStatus(w http.ResponseWriter, r *http.Request) {

@@ -142,6 +142,22 @@ skm project vendor local/code-review --agent claude,codex
 项目副本记录 `forkedFrom` 和 `forkedRevision`，但复制后与个人原版独立演化。
 vendor 不会移动、删除或自动修改个人原版，也不执行隐式双向同步。
 
+### 4.4 从项目迁移到个人 Library
+
+Projects 页面扫描到的非托管 Skill 可以迁移到个人 Library，迁移后的 ID 为
+`local/<name>`。已有同 ID 条目时拒绝迁移，不自动覆盖。
+
+- `关联`：Library 条目直接使用项目 Skill 的真实目录作为来源。项目内修改会立即反映到
+  Library 列表、详情和后续 Activation；项目目录被移动或删除后，该 Library 条目会失效。
+- `复制`：按迁移时的内容创建 `~/.skm/objects/<hash>/<name>` 不可变快照，之后与项目
+  独立演化。
+- `移动`：是“复制成功后移除项目原件”的显式选项。只有所有 Agent 目录中的同名副本
+  内容完全一致，且没有一个是 skm 托管 Deployment 时才允许；复制成功前不会删除来源。
+
+关联不会在 `~/.skm/objects/` 中伪造快照软链接。Library Catalog 会记录项目来源和模式，
+用户级 Activation 再从 Agent 目录链接到该实时来源。这保留了快照目录只存放真实、不可变
+副本的约束。
+
 ## 5. 项目文件
 
 ```text

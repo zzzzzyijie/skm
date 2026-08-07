@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/zzzzzyijie/skm/internal/adapter"
 	"github.com/zzzzzyijie/skm/internal/catalog"
 	"github.com/zzzzzyijie/skm/internal/domain"
 	"github.com/zzzzzyijie/skm/internal/planner"
@@ -50,10 +51,26 @@ func (s *Server) handleEnable(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, fmt.Errorf("invalid mode %q", body.Mode))
 		return
 	}
-	agents, err := parseAgents(body.Agents)
+	config, err := s.store.LoadConfig()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+	agents, err := parseAgents(body.Agents, customAgentSet(config.Agents))
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err)
 		return
+	}
+	availableAgents := configuredAgents(config.Defaults.Agents, config.Agents)
+	if len(body.Agents) == 0 {
+		agents = availableAgents
+	}
+	configured := agentSet(availableAgents)
+	for _, agent := range agents {
+		if !configured[agent] {
+			writeError(w, http.StatusBadRequest, fmt.Errorf("agent %s has not been added", adapter.DisplayName(agent)))
+			return
+		}
 	}
 	var plan domain.Plan
 	err = s.withLock(func() error {
@@ -114,7 +131,11 @@ func (s *Server) handleDisable(w http.ResponseWriter, r *http.Request) {
 		}
 		agentMap := make(map[domain.Agent]struct{})
 		if len(body.Agents) > 0 {
-			parsed, agentErr := parseAgents(body.Agents)
+			config, configErr := s.store.LoadConfig()
+			if configErr != nil {
+				return configErr
+			}
+			parsed, agentErr := parseAgents(body.Agents, customAgentSet(config.Agents))
 			if agentErr != nil {
 				return agentErr
 			}
@@ -180,7 +201,7 @@ func (s *Server) buildCurrentPlan() (domain.Plan, error) {
 	return planner.New(s.store).Build(skills, state)
 }
 
-func parseAgents(values []string) ([]domain.Agent, error) {
+func parseAgents(values []string, custom map[domain.Agent]bool) ([]domain.Agent, error) {
 	if len(values) == 0 {
 		return []domain.Agent{domain.AgentClaude, domain.AgentCodex}, nil
 	}
@@ -189,8 +210,8 @@ func parseAgents(values []string) ([]domain.Agent, error) {
 	for _, raw := range values {
 		for _, part := range strings.Split(raw, ",") {
 			a := domain.Agent(strings.ToLower(strings.TrimSpace(part)))
-			if !a.Valid() {
-				return nil, fmt.Errorf("unsupported agent %q: use claude or codex", part)
+			if !a.Valid() && !custom[a] {
+				return nil, fmt.Errorf("unsupported agent %q", part)
 			}
 			if _, ok := seen[a]; ok {
 				continue

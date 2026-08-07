@@ -27,7 +27,7 @@ func (a *App) newEnableCommand() *cobra.Command {
 	command := &cobra.Command{
 		Use:     "enable [skill...]",
 		Aliases: []string{"link"},
-		Short:   "Enable personal Library Skills for Claude Code or Codex",
+		Short:   "Enable personal Library Skills for supported agents",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			mode := domain.LinkMode(modeValue)
 			if !mode.Valid() {
@@ -91,7 +91,7 @@ func (a *App) newEnableCommand() *cobra.Command {
 			return a.emit("enable", plan, func() error { return printPlan(a.Out, plan) })
 		},
 	}
-	command.Flags().StringSliceVar(&agentValues, "agent", nil, "target agent: claude,codex (defaults to both)")
+	command.Flags().StringSliceVar(&agentValues, "agent", nil, "target agent (defaults to claude,codex)")
 	command.Flags().StringArrayVar(&tagValues, "tag", nil, "select personal Library Skills by tag (repeatable, AND semantics)")
 	command.Flags().StringVar(&modeValue, "mode", string(domain.ModeAuto), "deployment mode: auto, symlink, or copy")
 	command.Flags().BoolVar(&dryRun, "dry-run", false, "show the plan without changing files or state")
@@ -125,7 +125,11 @@ func (a *App) newDisableCommand() *cobra.Command {
 				}
 				agents := make(map[domain.Agent]struct{})
 				if len(agentValues) > 0 {
-					parsed, err := parseAgents(agentValues, nil)
+					config, err := storage.LoadConfig()
+					if err != nil {
+						return err
+					}
+					parsed, err := parseAgents(agentValues, config.Defaults.Agents)
 					if err != nil {
 						return err
 					}
@@ -402,12 +406,20 @@ func parseAgents(values []string, defaults []domain.Agent) ([]domain.Agent, erro
 		return defaults, nil
 	}
 	seen := make(map[domain.Agent]struct{})
+	configured := make(map[domain.Agent]struct{}, len(defaults))
+	for _, agent := range defaults {
+		configured[agent] = struct{}{}
+	}
 	var result []domain.Agent
 	for _, raw := range values {
 		for _, part := range strings.Split(raw, ",") {
 			value := domain.Agent(strings.ToLower(strings.TrimSpace(part)))
-			if !value.Valid() {
-				return nil, fmt.Errorf("unsupported agent %q: use claude or codex", part)
+			if len(defaults) > 0 {
+				if _, ok := configured[value]; !ok {
+					return nil, fmt.Errorf("agent %q has not been added to agent management", part)
+				}
+			} else if !value.Valid() {
+				return nil, fmt.Errorf("unsupported agent %q", part)
 			}
 			if _, ok := seen[value]; ok {
 				continue

@@ -12,6 +12,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/zzzzzyijie/skm/internal/catalog"
 	"github.com/zzzzzyijie/skm/internal/domain"
 	"github.com/zzzzzyijie/skm/internal/store"
 )
@@ -79,6 +80,60 @@ func TestLibraryTagAndActivationLifecycle(t *testing.T) {
 	requestJSON(t, handler, http.MethodGet, "/api/dashboard", nil, http.StatusOK, &dashboard)
 	if dashboard.SkillCount != 0 || dashboard.ActivatedCount != 0 {
 		t.Fatalf("dashboard after removal = %#v", dashboard)
+	}
+}
+
+func TestAgentManagementControlsAvailableActivationTargets(t *testing.T) {
+	storage := testStore(t)
+	handler := New(storage).Handler()
+
+	var agents []agentDescriptor
+	requestJSON(t, handler, http.MethodGet, "/api/agents", nil, http.StatusOK, &agents)
+	configured := make(map[domain.Agent]bool)
+	for _, agent := range agents {
+		configured[agent.ID] = agent.Configured
+	}
+	if !configured[domain.AgentClaude] || !configured[domain.AgentCodex] || configured[domain.AgentCursor] {
+		t.Fatalf("default managed agents = %#v", configured)
+	}
+
+	skillPath := makeSkill(t, "managed-agent")
+	var created domain.Skill
+	requestJSON(t, handler, http.MethodPost, "/api/skills", map[string]any{"path": skillPath}, http.StatusCreated, &created)
+	requestJSON(t, handler, http.MethodPost, "/api/enable", map[string]any{
+		"skills": []string{created.ID}, "agents": []string{"cursor"}, "mode": "auto",
+	}, http.StatusBadRequest, nil)
+
+	requestJSON(t, handler, http.MethodPut, "/api/agents", map[string]any{
+		"agents": []string{"claude", "codex", "cursor"},
+	}, http.StatusOK, &agents)
+	requestJSON(t, handler, http.MethodPost, "/api/enable", map[string]any{
+		"skills": []string{created.ID}, "agents": []string{"cursor"}, "mode": "auto",
+	}, http.StatusOK, nil)
+	requestJSON(t, handler, http.MethodPut, "/api/agents", map[string]any{
+		"agents": []string{"claude", "codex"},
+	}, http.StatusBadRequest, nil)
+	requestJSON(t, handler, http.MethodPost, "/api/disable", map[string]any{
+		"skills": []string{created.ID}, "agents": []string{"cursor"},
+	}, http.StatusOK, nil)
+	requestJSON(t, handler, http.MethodPut, "/api/agents", map[string]any{
+		"agents": []string{"claude", "codex"},
+	}, http.StatusOK, &agents)
+	requestJSON(t, handler, http.MethodPost, "/api/agents/custom", map[string]any{
+		"id": "local-agent", "name": "Local Agent", "skillsPath": "~/.local-agent/skills",
+	}, http.StatusOK, &agents)
+	requestJSON(t, handler, http.MethodPost, "/api/enable", map[string]any{
+		"skills": []string{created.ID}, "agents": []string{"local-agent"}, "mode": "auto",
+	}, http.StatusOK, nil)
+	requestJSON(t, handler, http.MethodDelete, "/api/agents/local-agent", nil, http.StatusBadRequest, nil)
+	requestJSON(t, handler, http.MethodPost, "/api/disable", map[string]any{
+		"skills": []string{created.ID}, "agents": []string{"local-agent"},
+	}, http.StatusOK, nil)
+	requestJSON(t, handler, http.MethodDelete, "/api/agents/local-agent", nil, http.StatusOK, nil)
+
+	config, err := storage.LoadConfig()
+	if err != nil || len(config.Defaults.Agents) != 2 {
+		t.Fatalf("saved agent config = %#v, err=%v", config, err)
 	}
 }
 
@@ -286,6 +341,81 @@ func TestProjectLifecycleAPI(t *testing.T) {
 	requestJSON(t, handler, http.MethodPost, "/api/projects/web-project/unlink", map[string]any{"skill": "local/web-copy"}, http.StatusBadRequest, nil)
 	requestJSON(t, handler, http.MethodPost, "/api/projects/web-project/unlink", map[string]any{"skill": "local/web-copy", "force": true}, http.StatusOK, nil)
 	requestJSON(t, handler, http.MethodDelete, "/api/projects/web-project", nil, http.StatusOK, nil)
+}
+
+func TestProjectSkillMigrationAPI(t *testing.T) {
+	storage := testStore(t)
+	handler := New(storage).Handler()
+	projectPath := filepath.Join(t.TempDir(), "migration-project")
+	if err := os.MkdirAll(projectPath, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	requestJSON(t, handler, http.MethodPost, "/api/projects", map[string]any{"path": projectPath}, http.StatusCreated, nil)
+
+	makeProjectSkill(t, projectPath, "claude", "linked-project-skill")
+	var linked struct {
+		Skill domain.Skill `json:"skill"`
+	}
+	requestJSON(t, handler, http.MethodPost, "/api/projects/migration-project/skills/linked-project-skill/migrate", map[string]any{
+		"agent": "claude", "mode": "symlink",
+	}, http.StatusCreated, &linked)
+	linkedSource, err := filepath.EvalSymlinks(filepath.Join(projectPath, ".claude", "skills", "linked-project-skill"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if linked.Skill.ID != "local/linked-project-skill" || linked.Skill.Mode != domain.ModeSymlink || linked.Skill.Path != linkedSource || linked.Skill.SourcePath != linkedSource {
+		t.Fatalf("linked migration = %#v", linked.Skill)
+	}
+	requestJSON(t, handler, http.MethodPost, "/api/projects/migration-project/skills/linked-project-skill/migrate", map[string]any{
+		"agent": "claude", "mode": "copy",
+	}, http.StatusBadRequest, nil)
+	linkedDocument := filepath.Join(linkedSource, "SKILL.md")
+	if err := os.WriteFile(linkedDocument, []byte("---\nname: linked-project-skill\ndescription: Updated linked project Skill\n---\n\nUpdated body.\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var library []domain.Skill
+	requestJSON(t, handler, http.MethodGet, "/api/skills", nil, http.StatusOK, &library)
+	if len(library) != 1 || library[0].Hash == linked.Skill.Hash || library[0].Description != "Updated linked project Skill" {
+		t.Fatalf("refreshed linked Library Skill = %#v", library)
+	}
+	requestJSON(t, handler, http.MethodDelete, "/api/skills/local/linked-project-skill", nil, http.StatusOK, nil)
+	if _, err := os.Stat(linkedDocument); err != nil {
+		t.Fatalf("removing linked Library entry removed project source: %v", err)
+	}
+
+	makeProjectSkill(t, projectPath, "claude", "moved-project-skill")
+	makeProjectSkill(t, projectPath, "codex", "moved-project-skill")
+	var moved struct {
+		Skill        domain.Skill `json:"skill"`
+		RemovedPaths []string     `json:"removedPaths"`
+	}
+	requestJSON(t, handler, http.MethodPost, "/api/projects/migration-project/skills/moved-project-skill/migrate", map[string]any{
+		"agent": "codex", "mode": "copy", "removeSource": true,
+	}, http.StatusCreated, &moved)
+	if moved.Skill.ID != "local/moved-project-skill" || moved.Skill.Mode != domain.ModeCopy || len(moved.RemovedPaths) != 2 {
+		t.Fatalf("moved migration = %#v", moved)
+	}
+	if _, err := os.Stat(filepath.Join(moved.Skill.Path, "SKILL.md")); err != nil {
+		t.Fatalf("copied Library snapshot: %v", err)
+	}
+	for _, agent := range []string{"claude", "codex"} {
+		if _, err := os.Lstat(filepath.Join(projectPath, "."+agent, "skills", "moved-project-skill")); !os.IsNotExist(err) {
+			t.Fatalf("%s project source still exists: %v", agent, err)
+		}
+	}
+
+	makeProjectSkill(t, projectPath, "claude", "diverged-project-skill")
+	makeProjectSkill(t, projectPath, "codex", "diverged-project-skill")
+	diverged := filepath.Join(projectPath, ".codex", "skills", "diverged-project-skill", "SKILL.md")
+	if err := os.WriteFile(diverged, []byte("---\nname: diverged-project-skill\ndescription: Different project copy\n---\n\nDifferent body.\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	requestJSON(t, handler, http.MethodPost, "/api/projects/migration-project/skills/diverged-project-skill/migrate", map[string]any{
+		"agent": "claude", "mode": "copy", "removeSource": true,
+	}, http.StatusBadRequest, nil)
+	if _, err := catalog.New(storage).ResolveLibrary("local/diverged-project-skill"); err == nil {
+		t.Fatal("diverged Skill was imported despite rejected move")
+	}
 }
 
 func testStore(t *testing.T) *store.Store {

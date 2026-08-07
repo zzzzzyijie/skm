@@ -33,6 +33,10 @@ func (s *Server) Handler() http.Handler {
 	// API routes
 	mux.HandleFunc("GET /api/dashboard", s.handleDashboard)
 	mux.HandleFunc("GET /api/version", s.handleVersion)
+	mux.HandleFunc("GET /api/agents", s.handleListAgents)
+	mux.HandleFunc("PUT /api/agents", s.handleUpdateAgents)
+	mux.HandleFunc("POST /api/agents/custom", s.handleSaveCustomAgent)
+	mux.HandleFunc("DELETE /api/agents/{id}", s.handleDeleteCustomAgent)
 	mux.HandleFunc("GET /api/skills", s.handleListSkills)
 	mux.HandleFunc("GET /api/skills/{id...}", s.handleShowSkill)
 	mux.HandleFunc("POST /api/skills", s.handleAddSkill)
@@ -57,6 +61,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /api/projects", s.handleAddProject)
 	mux.HandleFunc("GET /api/projects/{id}/status", s.handleProjectStatus)
 	mux.HandleFunc("GET /api/projects/{id}/skills/{skill}", s.handleShowProjectSkill)
+	mux.HandleFunc("POST /api/projects/{id}/skills/{skill}/migrate", s.handleMigrateProjectSkill)
 	mux.HandleFunc("GET /api/projects/{id}", s.handleShowProject)
 	mux.HandleFunc("POST /api/projects/{id}/link", s.handleProjectLink)
 	mux.HandleFunc("POST /api/projects/{id}/copy", s.handleProjectCopy)

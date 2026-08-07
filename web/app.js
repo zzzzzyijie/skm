@@ -3,12 +3,12 @@
 // ===== i18n =====
 var translations = {
     en: {
-        'nav.dashboard': 'Dashboard', 'nav.library': 'Library', 'nav.projects': 'Projects',
+        'nav.dashboard': 'Dashboard', 'nav.library': 'My Skills', 'nav.projects': 'Projects',
         'dash.title': 'Dashboard', 'dash.totalSkills': 'Total Skills', 'dash.enabled': 'Enabled', 'dash.gitSources': 'Git Sources',
         'dash.recentlyAdded': 'Recently Added', 'dash.id': 'ID', 'dash.tags': 'Tags', 'dash.added': 'Added', 'dash.hash': 'Hash',
         'dash.loadFailed': 'Failed to load dashboard',
         'dash.noRecent': 'No Skills have been added yet.',
-        'lib.title': 'Skill Library', 'lib.addSkill': 'Add Skill', 'lib.all': 'All', 'lib.search': 'Search Skills',
+        'lib.title': 'My Skills', 'lib.addSkill': 'Add Skill', 'lib.manageAgents': 'Agent management', 'lib.addAgentTitle': 'Agent management', 'lib.saveAgents': 'Save', 'lib.all': 'All', 'lib.search': 'Search Skills',
         'lib.searchPlaceholder': 'Search by name, ID, description, or source', 'lib.manageTags': 'Manage tags',
         'lib.noSkills': 'No Skills found', 'lib.noSkillsDesc': 'Add a Skill to your personal Library with the button above.',
         'lib.skillPath': 'Skill Path', 'lib.tagsComma': 'Tags (comma-separated)',
@@ -18,7 +18,7 @@ var translations = {
         'lib.gitUrl': 'Git repository URL', 'lib.gitRef': 'Ref (branch, tag, or commit)', 'lib.import': 'Import',
         'lib.importedSource': 'Imported {0} Skill(s) from {1}', 'lib.updateSource': 'Update source',
         'lib.updatingSource': 'Updating source...', 'lib.gitRequired': 'Repository or install command is required',
-        'lib.agentClaude': 'Claude', 'lib.agentCodex': 'Codex',
+        'lib.agentClaude': 'Claude Code', 'lib.agentCodex': 'Codex', 'lib.agentsUpdated': 'Agents updated', 'lib.fixedAgent': 'Fixed', 'lib.customAgent': 'Custom Agent', 'lib.addCustomAgent': 'Add custom Agent', 'lib.agentId': 'Agent ID', 'lib.agentName': 'Display name', 'lib.agentPath': 'User Skill directory', 'lib.agentIcon': 'Icon (optional)', 'lib.chooseIcon': 'Choose icon', 'lib.deleteAgent': 'Delete Agent',
         'lib.cancel': 'Cancel', 'lib.remove': 'Remove',
         'lib.confirmRemoveTitle': 'Remove Skill', 'lib.confirmRemove': 'Are you sure you want to remove',
         'lib.confirmRemoveNote': 'The Skill must be disabled first.',
@@ -60,14 +60,15 @@ var translations = {
         'proj.deployed': 'Skill deployed', 'proj.unlinked': 'Skill unlinked', 'proj.confirmUnregister': 'Remove this project? Managed Skills must be unlinked first.',
         'proj.noProjects': 'No projects', 'proj.pathRequired': 'Project path is required', 'proj.statusTitle': 'Deployment status', 'proj.statusDesc': 'Managed deployment operations for this project.',
         'proj.statusEmpty': 'No deployment operations', 'proj.statusCreate': 'Pending creation', 'proj.statusUnchanged': 'Deployed', 'proj.statusReplaceManaged': 'Update required', 'proj.statusConflictUnmanaged': 'Conflict', 'proj.statusBroken': 'Broken', 'proj.target': 'Target', 'proj.source': 'Source', 'proj.viewDetails': 'View details', 'proj.skillDetails': 'Project Skill details', 'proj.skillPath': 'Skill path', 'proj.metadata': 'Metadata', 'proj.content': 'Skill content', 'proj.noContent': 'No Skill content',
+        'proj.migrate': 'Add to My Skills', 'proj.migrateTitle': 'Add project Skill to My Skills', 'proj.migrateSource': 'Source Agent', 'proj.migrateLink': 'Link', 'proj.migrateCopy': 'Copy', 'proj.migrateLinkDesc': 'Keep the project directory as the live source. Changes made in the project are immediately visible from My Skills.', 'proj.migrateCopyDesc': 'Create an independent snapshot in My Skills. Later project changes will not affect it.', 'proj.removeAfterCopy': 'Remove the project originals after copying (move)', 'proj.removeAfterCopyNote': 'All Agent copies must be identical and unmanaged. This cannot be undone.', 'proj.migrateConfirm': 'Add to My Skills', 'proj.migrated': 'Skill added to My Skills',
     },
     zh: {
-        'nav.dashboard': '仪表盘', 'nav.library': 'Skill 库', 'nav.projects': '项目',
+        'nav.dashboard': '仪表盘', 'nav.library': '我的 skill', 'nav.projects': '项目',
         'dash.title': '仪表盘', 'dash.totalSkills': 'Skill 总数', 'dash.enabled': '已启用', 'dash.gitSources': 'Git 来源',
         'dash.recentlyAdded': '最近添加', 'dash.id': 'ID', 'dash.tags': '标签', 'dash.added': '添加时间', 'dash.hash': '哈希',
         'dash.loadFailed': '加载仪表盘失败',
         'dash.noRecent': '尚未添加任何 Skill。',
-        'lib.title': 'Skill 库', 'lib.addSkill': '添加 Skill', 'lib.all': '全部', 'lib.search': '搜索 Skill',
+        'lib.title': '我的 skill', 'lib.addSkill': '添加 Skill', 'lib.manageAgents': 'Agent 管理', 'lib.addAgentTitle': 'Agent 管理', 'lib.saveAgents': '保存', 'lib.all': '全部', 'lib.search': '搜索 Skill',
         'lib.searchPlaceholder': '按名称、ID、描述或来源搜索', 'lib.manageTags': '管理标签',
         'lib.noSkills': '暂无 Skill', 'lib.noSkillsDesc': '点击上方按钮将 Skill 添加到个人库。',
         'lib.skillPath': 'Skill 路径', 'lib.tagsComma': '标签（逗号分隔）',
@@ -77,7 +78,7 @@ var translations = {
         'lib.gitUrl': 'Git 仓库地址', 'lib.gitRef': '引用（分支、Tag 或提交）', 'lib.import': '导入',
         'lib.importedSource': '已从 {1} 导入 {0} 个 Skill', 'lib.updateSource': '更新来源',
         'lib.updatingSource': '正在更新来源...', 'lib.gitRequired': '请填写仓库地址或安装命令',
-        'lib.agentClaude': 'Claude', 'lib.agentCodex': 'Codex',
+        'lib.agentClaude': 'Claude Code', 'lib.agentCodex': 'Codex', 'lib.agentsUpdated': 'Agent 已更新', 'lib.fixedAgent': '固定', 'lib.customAgent': '自定义 Agent', 'lib.addCustomAgent': '添加自定义 Agent', 'lib.agentId': 'Agent ID', 'lib.agentName': '显示名称', 'lib.agentPath': '用户级 Skill 目录', 'lib.agentIcon': '图标（可选）', 'lib.chooseIcon': '选择图标', 'lib.deleteAgent': '删除 Agent',
         'lib.cancel': '取消', 'lib.remove': '移除',
         'lib.confirmRemoveTitle': '移除 Skill', 'lib.confirmRemove': '确定要移除',
         'lib.confirmRemoveNote': '必须先禁用该 Skill。',
@@ -119,6 +120,7 @@ var translations = {
         'proj.deployed': 'Skill 已部署', 'proj.unlinked': 'Skill 已解绑', 'proj.confirmUnregister': '确认移除该项目？必须先解绑已管理的 Skill。',
         'proj.noProjects': '暂无项目', 'proj.pathRequired': '项目路径不能为空', 'proj.statusTitle': '部署状态', 'proj.statusDesc': 'SKM 管理的项目部署操作。',
         'proj.statusEmpty': '没有部署操作', 'proj.statusCreate': '待创建', 'proj.statusUnchanged': '已部署', 'proj.statusReplaceManaged': '待更新', 'proj.statusConflictUnmanaged': '存在冲突', 'proj.statusBroken': '已损坏', 'proj.target': '目标', 'proj.source': '来源', 'proj.viewDetails': '查看详情', 'proj.skillDetails': '项目 Skill 详情', 'proj.skillPath': 'Skill 路径', 'proj.metadata': '元数据', 'proj.content': 'Skill 内容', 'proj.noContent': '暂无 Skill 内容',
+        'proj.migrate': '迁移到我的 skill', 'proj.migrateTitle': '迁移项目 Skill', 'proj.migrateSource': '来源 Agent', 'proj.migrateLink': '关联', 'proj.migrateCopy': '复制', 'proj.migrateLinkDesc': '以项目目录为实时来源；项目内的修改会立即反映到“我的 skill”。', 'proj.migrateCopyDesc': '在“我的 skill”中创建独立快照，之后不再跟随项目修改。', 'proj.removeAfterCopy': '复制成功后移除项目原件（移动）', 'proj.removeAfterCopyNote': '仅当所有 Agent 副本内容一致且未由 SKM 托管时可用，此操作不可撤销。', 'proj.migrateConfirm': '添加到我的 skill', 'proj.migrated': '已添加到我的 skill',
     }
 };
 
@@ -186,6 +188,7 @@ var api = {
     },
     get: function (url) { return this.request('GET', url); },
     post: function (url, data) { return this.request('POST', url, data); },
+    put: function (url, data) { return this.request('PUT', url, data); },
     del: function (url) { return this.request('DELETE', url); },
 };
 

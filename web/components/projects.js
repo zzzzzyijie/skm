@@ -81,6 +81,9 @@ function paintProjects() {
     container.querySelectorAll('[data-project-skill-details]').forEach(function (button) {
         button.addEventListener('click', function () { showProjectSkillDetails(button.dataset.projectSkillDetails); });
     });
+    container.querySelectorAll('[data-migrate-project-skill]').forEach(function (button) {
+        button.addEventListener('click', function () { showMigrateProjectSkillModal(button.dataset.migrateProjectSkill); });
+    });
 }
 
 function projectListItem(project) {
@@ -156,6 +159,7 @@ function projectScanSkillRow(skill, detail, filter) {
     var statusLabel = projectScanStatusLabel(skill.status);
     var managed = activation ? '<span class="badge badge-source">' + escapeHtml(t('proj.managed')) + '</span>' : '<span class="badge badge-muted">' + escapeHtml(t('proj.external')) + '</span>';
     var action = (filter !== 'all' ? '<button class="btn btn-ghost btn-sm" type="button" data-project-skill-details="' + escapeHtml(skill.id) + '">' + t('proj.viewDetails') + '</button>' : '') +
+        (!activation && skill.status !== 'error' ? '<button class="btn btn-secondary btn-sm" type="button" data-migrate-project-skill="' + escapeHtml(skill.id) + '">' + t('proj.migrate') + '</button>' : '') +
         (activation ? '<button class="btn btn-danger btn-sm" type="button" data-unlink-skill="' + escapeHtml(activation.skillId) + '">' + t('proj.unlink') + '</button>' : '');
     var issue = (skill.issues || []).map(function (message) { return '<div class="project-skill-issue">' + escapeHtml(message) + '</div>'; }).join('');
     return '<article class="project-skill-row"><div class="project-skill-main"><div class="project-skill-title"><strong>' + escapeHtml(skill.name || skill.id) +
@@ -186,6 +190,52 @@ function showProjectSkillDeployModal() {
         });
     });
     document.getElementById('btn-confirm-project-deploy').addEventListener('click', deployProjectSkill);
+}
+
+function showMigrateProjectSkillModal(skillID) {
+    var scan = (projectState.detail && projectState.detail.scan) || {};
+    var skill = (scan.skills || []).find(function (item) { return item.id === skillID; });
+    if (!skill) return;
+    var agents = skill.agents || [];
+    var sourceControl = agents.length === 1
+        ? '<input type="hidden" id="project-migrate-agent" value="' + escapeHtml(agents[0]) + '"><div class="migration-source-value">' + escapeHtml(projectAgentName(agents[0])) + '</div>'
+        : '<select class="select" id="project-migrate-agent">' + agents.map(function (agent) { return '<option value="' + escapeHtml(agent) + '">' + escapeHtml(projectAgentName(agent)) + '</option>'; }).join('') + '</select>';
+    var content = '<div class="form-group"><label class="form-label" for="project-migrate-agent">' + t('proj.migrateSource') + '</label>' + sourceControl + '</div>' +
+        '<div class="form-group"><span class="form-label">' + t('proj.mode') + '</span><div class="import-mode project-mode"><button class="import-mode-option active" type="button" data-migrate-mode="symlink">' + t('proj.migrateLink') + '</button><button class="import-mode-option" type="button" data-migrate-mode="copy">' + t('proj.migrateCopy') + '</button></div>' +
+        '<p class="migration-mode-description" id="migration-mode-description">' + t('proj.migrateLinkDesc') + '</p></div>' +
+        '<label class="check-option migration-remove-option" id="migration-remove-option" hidden><input type="checkbox" id="project-migrate-remove"><span><strong>' + t('proj.removeAfterCopy') + '</strong><small>' + t('proj.removeAfterCopyNote') + '</small></span></label>';
+    var actions = '<button class="btn btn-ghost" type="button" data-close-modal>' + t('lib.cancel') + '</button><button class="btn btn-primary" type="button" id="btn-confirm-project-migrate">' + t('proj.migrateConfirm') + '</button>';
+    showModal(t('proj.migrateTitle'), content, actions);
+    document.querySelectorAll('[data-migrate-mode]').forEach(function (button) {
+        button.addEventListener('click', function () {
+            document.querySelectorAll('[data-migrate-mode]').forEach(function (item) { item.classList.toggle('active', item === button); });
+            var copying = button.dataset.migrateMode === 'copy';
+            document.getElementById('migration-mode-description').textContent = t(copying ? 'proj.migrateCopyDesc' : 'proj.migrateLinkDesc');
+            document.getElementById('migration-remove-option').hidden = !copying;
+            if (!copying) document.getElementById('project-migrate-remove').checked = false;
+        });
+    });
+    document.getElementById('btn-confirm-project-migrate').addEventListener('click', function () { migrateProjectSkill(skillID); });
+}
+
+async function migrateProjectSkill(skillID) {
+    var button = document.getElementById('btn-confirm-project-migrate');
+    var active = document.querySelector('[data-migrate-mode].active');
+    var mode = active ? active.dataset.migrateMode : 'symlink';
+    button.disabled = true;
+    try {
+        await api.post('/api/projects/' + encodeURIComponent(projectState.selectedID) + '/skills/' + encodeURIComponent(skillID) + '/migrate', {
+            agent: document.getElementById('project-migrate-agent').value,
+            mode: mode,
+            removeSource: mode === 'copy' && document.getElementById('project-migrate-remove').checked
+        });
+        closeModal();
+        showToast(t('proj.migrated'), 'success');
+        await renderProjects();
+    } catch (err) {
+        button.disabled = false;
+        showToast(err.message, 'error');
+    }
 }
 
 async function showProjectSkillDetails(skillID) {

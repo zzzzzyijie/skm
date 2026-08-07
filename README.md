@@ -16,6 +16,7 @@ Project     项目引用或独立维护哪些 Skill
 - Git Source：导入和更新个人或团队 Skill 仓库。
 - Agent Activation：用受控软链接启用到 Claude Code 和 Codex。
 - 本机项目部署：登记多个项目，并将 Library Skill 软链或复制到项目 Agent 目录。
+- 项目 Skill 迁移：将项目中发现的外部 Skill 关联或复制到个人 Library，可安全移动一致的非托管副本。
 - Project Require：记录 Git 来源、revision 和 hash，可在其他机器恢复。
 - Project Vendor：复制成项目独立版本，个人原版继续保留。
 - 安全部署：不覆盖未知目标，检测被修改的链接或副本。

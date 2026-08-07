@@ -24,6 +24,9 @@ func (s *Server) handleListSkills(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err)
 		return
 	}
+	for index := range skills {
+		refreshLinkedLibrarySkill(&skills[index])
+	}
 	writeJSON(w, http.StatusOK, skills)
 }
 
@@ -39,7 +42,23 @@ func (s *Server) handleShowSkill(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err)
 		return
 	}
+	value.Hash = document.Hash
+	value.Description = document.Description
+	value.Metadata = document.Metadata
 	writeJSON(w, http.StatusOK, librarySkillDetails{Skill: value, Body: document.Body})
+}
+
+func refreshLinkedLibrarySkill(value *domain.Skill) {
+	if value.Mode != domain.ModeSymlink || value.ProjectRoot == "" {
+		return
+	}
+	document, err := skill.Validate(value.Path)
+	if err != nil {
+		return
+	}
+	value.Hash = document.Hash
+	value.Description = document.Description
+	value.Metadata = document.Metadata
 }
 
 func (s *Server) handleAddSkill(w http.ResponseWriter, r *http.Request) {

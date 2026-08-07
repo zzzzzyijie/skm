@@ -1,15 +1,25 @@
 /* global api, showToast, showModal, closeModal, displayTag, formatDate, shortHash, shortRevision, escapeHtml, isCurrentPage, t */
 
-var libraryState = { skills: [], tags: [], activeTag: '', query: '', enabled: {}, gitSources: {} };
+var libraryState = { skills: [], tags: [], agents: [], activeTag: '', query: '', enabled: {}, gitSources: {} };
+var agentIcons = {
+    claude: 'claude.svg', codex: 'codex.svg', cursor: 'cursor.svg', copilot: 'copilot.svg', gemini: 'gemini.svg',
+    windsurf: 'windsurf.svg', kiro: 'kiro.svg', cline: 'cline.svg', opencode: 'opencode.svg', trae: 'trae.svg',
+    hermes: 'hermes.svg', openclaw: 'openclaw.svg'
+};
+
+function agentIconSource(agent) {
+    return agent.icon || ('/assets/' + (agentIcons[agent.id] || 'codex.svg'));
+}
 
 async function renderLibrary() {
     var container = document.getElementById('main-content');
     try {
         var url = '/api/skills' + (libraryState.activeTag ? '?tag=' + encodeURIComponent(libraryState.activeTag) : '');
-        var results = await Promise.all([api.get(url), api.get('/api/tags'), api.get('/api/status'), api.get('/api/sources')]);
+        var results = await Promise.all([api.get(url), api.get('/api/tags'), api.get('/api/status'), api.get('/api/sources'), api.get('/api/agents')]);
         if (!isCurrentPage('library')) return;
         libraryState.skills = results[0] || [];
         libraryState.tags = results[1] || [];
+        libraryState.agents = results[4] || [];
         libraryState.enabled = {};
         libraryState.gitSources = {};
         (results[2].operations || []).forEach(function (operation) {
@@ -38,6 +48,8 @@ function paintLibrary() {
         '<button class="btn btn-secondary" type="button" id="btn-manage-tags">' + t('lib.manageTags') + '</button>' +
         '<button class="btn btn-primary" type="button" id="btn-add-skill">+ ' + t('lib.addSkill') + '</button></div></div>';
 
+    html += agentManagementBand();
+
     html += '<div class="library-tools"><label class="search-box"><span class="sr-only">' + t('lib.search') + '</span>' +
         '<span class="search-mark" aria-hidden="true">/</span><input class="input" id="skill-search" value="' + escapeHtml(libraryState.query) +
         '" placeholder="' + t('lib.searchPlaceholder') + '"></label>';
@@ -62,6 +74,7 @@ function paintLibrary() {
 
     document.getElementById('btn-add-skill').addEventListener('click', showAddSkillModal);
     document.getElementById('btn-manage-tags').addEventListener('click', showManageTagsModal);
+    document.getElementById('btn-manage-agents').addEventListener('click', showAgentManager);
     document.getElementById('skill-search').addEventListener('input', function (event) {
         libraryState.query = event.target.value;
         paintLibrary();
@@ -90,7 +103,7 @@ function isGitSkill(skill) {
 function skillCard(skill) {
     var tags = (skill.tags || []).map(function (tag) { return '<span class="tag">' + escapeHtml(displayTag(tag)) + '</span>'; }).join('');
     var agents = libraryState.enabled[skill.id] || {};
-    var hasActivation = Boolean(agents.claude || agents.codex);
+    var hasActivation = Object.keys(agents).some(function (agent) { return agents[agent]; });
     return '<article class="card skill-card"><div class="skill-header"><div><div class="skill-name">' + escapeHtml(skill.name) +
         '</div><div class="skill-id mono">' + escapeHtml(skill.id) + '</div></div><span class="badge badge-source">' + escapeHtml(displaySource(skill.source || 'local')) +
         '</span></div><p class="skill-desc">' + escapeHtml(skill.description || 'No description') + '</p><div class="tag-list">' + tags +
@@ -101,11 +114,119 @@ function skillCard(skill) {
 }
 
 function agentControls(skillID, agents) {
-    return '<div class="agent-controls" aria-label="Agent activation"><button class="agent-toggle' + (agents.codex ? ' active' : '') +
-        '" type="button" data-id="' + escapeHtml(skillID) + '" data-agent="codex" aria-pressed="' + Boolean(agents.codex) + '">' +
-        '<img class="agent-logo" src="/assets/codex.svg" alt=""><span>' + t('lib.agentCodex') + '</span></button><button class="agent-toggle' +
-        (agents.claude ? ' active' : '') + '" type="button" data-id="' + escapeHtml(skillID) + '" data-agent="claude" aria-pressed="' +
-        Boolean(agents.claude) + '"><img class="agent-logo" src="/assets/claude.svg" alt=""><span>' + t('lib.agentClaude') + '</span></button></div>';
+    var visible = libraryState.agents.filter(function (agent) { return agent.configured && agent.supported; });
+    var controls = visible.map(function (agent) {
+        return '<button class="agent-toggle' + (agents[agent.id] ? ' active' : '') + '" type="button" data-id="' + escapeHtml(skillID) +
+            '" data-agent="' + agent.id + '" aria-pressed="' + Boolean(agents[agent.id]) + '"><img class="agent-logo" src="' +
+            agentIconSource(agent) + '" alt=""><span>' + escapeHtml(agent.name) + '</span></button>';
+    }).join('');
+    return '<div class="agent-controls" aria-label="Agent activation">' + controls + '</div>';
+}
+
+function agentManagementBand() {
+    var configured = libraryState.agents.filter(function (agent) { return agent.configured; });
+    return '<section class="agent-manager"><div class="agent-manager-main"><span class="agent-manager-label">' + t('lib.manageAgents') +
+        '</span><div class="managed-agent-list">' + configured.map(function (agent) {
+            return '<span class="managed-agent"><img class="agent-logo" src="' + agentIconSource(agent) + '" alt=""><span>' +
+                escapeHtml(agent.name) + '</span></span>';
+        }).join('') + '</div></div><button class="btn btn-secondary" type="button" id="btn-manage-agents">' + t('lib.manageAgents') + '</button></section>';
+}
+
+function showAgentManager() {
+    var content = '<div class="agent-manager-actions"><button class="btn btn-secondary" type="button" id="btn-new-custom-agent">+ ' + t('lib.addCustomAgent') + '</button></div><div class="agent-picker">' + libraryState.agents.map(function (agent) {
+        var disabled = agent.required || !agent.supported;
+        var meta = agent.path + ' · ' + agent.format;
+        return '<label class="agent-picker-option"><input type="checkbox" name="managed-agent" value="' + agent.id + '"' +
+            (agent.configured ? ' checked' : '') + (disabled ? ' disabled' : '') + '><img class="agent-logo" src="' + agentIconSource(agent) +
+            '" alt=""><span><strong>' + escapeHtml(agent.name) + (agent.required ? ' · ' + t('lib.fixedAgent') : '') + '</strong><small class="mono">' +
+            escapeHtml(meta) + '</small></span>' + (agent.custom ? '<button class="agent-edit" type="button" data-edit-custom-agent="' + agent.id + '" aria-label="' + t('lib.customAgent') + '">•••</button>' : '') + '</label>';
+    }).join('') + '</div>';
+    var actions = '<button class="btn btn-ghost" type="button" data-close-modal>' + t('lib.cancel') + '</button>' +
+        '<button class="btn btn-primary" type="button" id="btn-save-agents">' + t('lib.saveAgents') + '</button>';
+    showModal(t('lib.addAgentTitle'), content, actions);
+    document.getElementById('btn-save-agents').addEventListener('click', saveManagedAgents);
+    document.getElementById('btn-new-custom-agent').addEventListener('click', function () { showCustomAgentEditor(null); });
+    document.querySelectorAll('[data-edit-custom-agent]').forEach(function (button) {
+        button.addEventListener('click', function (event) {
+            event.preventDefault();
+            showCustomAgentEditor(libraryState.agents.find(function (agent) { return agent.id === button.dataset.editCustomAgent; }));
+        });
+    });
+}
+
+async function saveManagedAgents() {
+    var button = document.getElementById('btn-save-agents');
+    var selected = [];
+    document.querySelectorAll('input[name="managed-agent"]:checked').forEach(function (input) { selected.push(input.value); });
+    button.disabled = true;
+    try {
+        await api.put('/api/agents', { agents: selected });
+        closeModal();
+        showToast(t('lib.agentsUpdated'), 'success');
+        renderLibrary();
+    } catch (err) {
+        button.disabled = false;
+        showToast(err.message, 'error');
+    }
+}
+
+function showCustomAgentEditor(agent) {
+    agent = agent || {};
+    var content = '<div class="form-group"><label class="form-label" for="custom-agent-id">' + t('lib.agentId') + '</label><input class="input mono" id="custom-agent-id" value="' + escapeHtml(agent.id || '') + '" placeholder="my-agent"' + (agent.id ? ' readonly' : '') + '></div>' +
+        '<div class="form-group"><label class="form-label" for="custom-agent-name">' + t('lib.agentName') + '</label><input class="input" id="custom-agent-name" value="' + escapeHtml(agent.name || '') + '" placeholder="My Agent"></div>' +
+        '<div class="form-group"><label class="form-label" for="custom-agent-path">' + t('lib.agentPath') + '</label><input class="input mono" id="custom-agent-path" value="' + escapeHtml((agent.path || '').replace(/\/<skill-name>$/, '')) + '" placeholder="~/.my-agent/skills"></div>' +
+        '<div class="form-group"><span class="form-label">' + t('lib.agentIcon') + '</span><div class="custom-icon-row"><img class="custom-icon-preview" id="custom-agent-icon-preview" src="' + agentIconSource(agent) + '" alt=""><input class="sr-only" type="file" id="custom-agent-icon" accept="image/png,image/jpeg,image/webp,image/svg+xml"><button class="btn btn-secondary" type="button" id="btn-choose-agent-icon">' + t('lib.chooseIcon') + '</button></div></div>';
+    var actions = (agent.id ? '<button class="btn btn-danger" type="button" id="btn-delete-custom-agent">' + t('lib.deleteAgent') + '</button><div class="action-spacer"></div>' : '') +
+        '<button class="btn btn-ghost" type="button" data-close-modal>' + t('lib.cancel') + '</button><button class="btn btn-primary" type="button" id="btn-save-custom-agent">' + t('lib.saveAgents') + '</button>';
+    showModal(t('lib.customAgent'), content, actions);
+    var iconValue = agent.icon || '';
+    var fileInput = document.getElementById('custom-agent-icon');
+    document.getElementById('btn-choose-agent-icon').addEventListener('click', function () { fileInput.click(); });
+    fileInput.addEventListener('change', function () {
+        var file = fileInput.files[0];
+        if (!file) return;
+        var reader = new FileReader();
+        reader.addEventListener('load', function () {
+            iconValue = String(reader.result || '');
+            document.getElementById('custom-agent-icon-preview').src = iconValue;
+        });
+        reader.readAsDataURL(file);
+    });
+    document.getElementById('btn-save-custom-agent').addEventListener('click', function () { saveCustomAgent(iconValue); });
+    if (agent.id) document.getElementById('btn-delete-custom-agent').addEventListener('click', function () { deleteCustomAgent(agent.id); });
+}
+
+async function saveCustomAgent(icon) {
+    var button = document.getElementById('btn-save-custom-agent');
+    button.disabled = true;
+    try {
+        await api.post('/api/agents/custom', {
+            id: document.getElementById('custom-agent-id').value.trim(),
+            name: document.getElementById('custom-agent-name').value.trim(),
+            skillsPath: document.getElementById('custom-agent-path').value.trim(),
+            icon: icon
+        });
+        closeModal();
+        showToast(t('lib.agentsUpdated'));
+        renderLibrary();
+    } catch (err) {
+        button.disabled = false;
+        showToast(err.message, 'error');
+    }
+}
+
+async function deleteCustomAgent(id) {
+    var button = document.getElementById('btn-delete-custom-agent');
+    button.disabled = true;
+    try {
+        await api.del('/api/agents/' + encodeURIComponent(id));
+        closeModal();
+        showToast(t('lib.agentsUpdated'));
+        renderLibrary();
+    } catch (err) {
+        button.disabled = false;
+        showToast(err.message, 'error');
+    }
 }
 
 async function toggleSkillAgent(skillID, agent, button) {

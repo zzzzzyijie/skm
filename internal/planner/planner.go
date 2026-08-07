@@ -26,6 +26,11 @@ func New(storage *store.Store) *Engine {
 }
 
 func (e *Engine) Build(skills []domain.Skill, state domain.State) (domain.Plan, error) {
+	config, err := e.Store.LoadConfig()
+	if err != nil {
+		return domain.Plan{}, err
+	}
+	customRoots := adapter.CustomRoots(config.Agents)
 	byID := make(map[string]domain.Skill, len(skills))
 	for _, value := range skills {
 		byID[value.ID] = value
@@ -41,7 +46,7 @@ func (e *Engine) Build(skills []domain.Skill, state domain.State) (domain.Plan, 
 			return domain.Plan{}, err
 		}
 		for _, agentName := range activation.Agents {
-			target, err := adapter.Target(agentName, activation.Placement, e.Store.Paths.UserHome, activation.ProjectRoot, value.Name)
+			target, err := adapter.Target(agentName, activation.Placement, e.Store.Paths.UserHome, activation.ProjectRoot, value.Name, customRoots)
 			if err != nil {
 				return domain.Plan{}, err
 			}
@@ -238,13 +243,18 @@ func (e *Engine) SetProjectActivations(state *domain.State, projectRoot string, 
 }
 
 func (e *Engine) Disable(state *domain.State, skillIDs map[string]struct{}, placement domain.Placement, projectRoot string, agents map[domain.Agent]struct{}, force bool) error {
+	config, err := e.Store.LoadConfig()
+	if err != nil {
+		return err
+	}
+	customRoots := adapter.CustomRoots(config.Agents)
 	keptDeployments := state.Deployments[:0]
 	for _, deployment := range state.Deployments {
 		if !matchesSelection(deployment.SkillID, deployment.Placement, deployment.ProjectRoot, deployment.Agent, skillIDs, placement, projectRoot, agents) {
 			keptDeployments = append(keptDeployments, deployment)
 			continue
 		}
-		expected, err := deploymentTargetIsExpected(deployment, e.Store.Paths.UserHome)
+		expected, err := deploymentTargetIsExpected(deployment, e.Store.Paths.UserHome, customRoots)
 		if err != nil || !expected {
 			return fmt.Errorf("deployment target failed safety check: %s", deployment.Target)
 		}
@@ -277,8 +287,8 @@ func (e *Engine) Disable(state *domain.State, skillIDs map[string]struct{}, plac
 	return e.Store.SaveState(*state)
 }
 
-func deploymentTargetIsExpected(deployment domain.Deployment, userHome string) (bool, error) {
-	expected, err := adapter.Target(deployment.Agent, deployment.Placement, userHome, deployment.ProjectRoot, deployment.Name)
+func deploymentTargetIsExpected(deployment domain.Deployment, userHome string, customRoots map[domain.Agent]string) (bool, error) {
+	expected, err := adapter.Target(deployment.Agent, deployment.Placement, userHome, deployment.ProjectRoot, deployment.Name, customRoots)
 	if err != nil {
 		return false, err
 	}

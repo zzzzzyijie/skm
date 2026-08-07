@@ -32,11 +32,30 @@ func (p Placement) Valid() bool {
 type Agent string
 
 const (
-	AgentClaude Agent = "claude"
-	AgentCodex  Agent = "codex"
+	AgentClaude   Agent = "claude"
+	AgentCodex    Agent = "codex"
+	AgentCursor   Agent = "cursor"
+	AgentCopilot  Agent = "copilot"
+	AgentGemini   Agent = "gemini"
+	AgentWindsurf Agent = "windsurf"
+	AgentKiro     Agent = "kiro"
+	AgentCline    Agent = "cline"
+	AgentOpenCode Agent = "opencode"
+	AgentTrae     Agent = "trae"
+	AgentHermes   Agent = "hermes"
+	AgentOpenClaw Agent = "openclaw"
 )
 
-func (a Agent) Valid() bool { return a == AgentClaude || a == AgentCodex }
+func (a Agent) Valid() bool {
+	switch a {
+	case AgentClaude, AgentCodex, AgentCursor, AgentCopilot, AgentGemini,
+		AgentWindsurf, AgentKiro, AgentCline, AgentOpenCode, AgentTrae,
+		AgentHermes, AgentOpenClaw:
+		return true
+	default:
+		return false
+	}
+}
 
 var projectAgentIDPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
 
@@ -66,8 +85,16 @@ func (m LinkMode) Effective() LinkMode {
 }
 
 type Config struct {
-	Version  int      `yaml:"version" json:"version"`
-	Defaults Defaults `yaml:"defaults" json:"defaults"`
+	Version  int               `yaml:"version" json:"version"`
+	Defaults Defaults          `yaml:"defaults" json:"defaults"`
+	Agents   []AgentDefinition `yaml:"agents,omitempty" json:"agents,omitempty"`
+}
+
+type AgentDefinition struct {
+	ID         Agent  `yaml:"id" json:"id"`
+	Name       string `yaml:"name" json:"name"`
+	SkillsPath string `yaml:"skillsPath" json:"skillsPath"`
+	Icon       string `yaml:"icon,omitempty" json:"icon,omitempty"`
 }
 
 type Defaults struct {

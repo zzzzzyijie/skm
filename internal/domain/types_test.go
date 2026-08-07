@@ -12,8 +12,18 @@ func TestLocationAndPlacementValidation(t *testing.T) {
 }
 
 func TestAgentAndModeValidation(t *testing.T) {
-	if !AgentClaude.Valid() || !AgentCodex.Valid() || Agent("cursor").Valid() {
-		t.Fatal("agent validation is incorrect")
+	agents := []Agent{
+		AgentClaude, AgentCodex, AgentCursor, AgentCopilot, AgentGemini,
+		AgentWindsurf, AgentKiro, AgentCline, AgentOpenCode, AgentTrae,
+		AgentHermes, AgentOpenClaw,
+	}
+	for _, agent := range agents {
+		if !agent.Valid() {
+			t.Fatalf("agent %q should be valid", agent)
+		}
+	}
+	if Agent("bad").Valid() {
+		t.Fatal("unknown agent should be invalid")
 	}
 	if !ModeAuto.Valid() || !ModeSymlink.Valid() || !ModeCopy.Valid() || LinkMode("bad").Valid() {
 		t.Fatal("mode validation is incorrect")
