@@ -89,7 +89,7 @@ func (m *Manager) Import(document skill.Document, sourceName, revision string, t
 // ImportProject adds a Skill discovered in a registered project to the
 // personal Library. Symlink mode keeps the project directory as the live
 // source; copy mode creates the usual immutable Library snapshot.
-func (m *Manager) ImportProject(document skill.Document, projectRoot string, mode domain.LinkMode, tagValues []string) (domain.Skill, error) {
+func (m *Manager) ImportProject(document skill.Document, projectRoot string, agent domain.Agent, mode domain.LinkMode, tagValues []string) (domain.Skill, error) {
 	if mode != domain.ModeSymlink && mode != domain.ModeCopy {
 		return domain.Skill{}, fmt.Errorf("invalid project import mode %q", mode)
 	}
@@ -108,6 +108,10 @@ func (m *Manager) ImportProject(document skill.Document, projectRoot string, mod
 	if mode == domain.ModeCopy {
 		value, err = m.Snapshot(document, "local", "", tagValues)
 	} else {
+		fallback, snapshotErr := m.Snapshot(document, "local", "", tagValues)
+		if snapshotErr != nil {
+			return domain.Skill{}, snapshotErr
+		}
 		config, loadErr := m.Store.LoadConfig()
 		if loadErr != nil {
 			return domain.Skill{}, loadErr
@@ -117,21 +121,61 @@ func (m *Manager) ImportProject(document skill.Document, projectRoot string, mod
 			return domain.Skill{}, normalizeErr
 		}
 		value = domain.Skill{
-			ID:          id,
-			Name:        document.Name,
-			Description: document.Description,
-			Tags:        normalizedTags,
-			Source:      "local",
-			Location:    domain.LocationLibrary,
-			Hash:        document.Hash,
-			Path:        document.Path,
-			Metadata:    document.Metadata,
-			AddedAt:     m.Now().UTC(),
+			ID:           id,
+			Name:         document.Name,
+			Description:  document.Description,
+			Tags:         normalizedTags,
+			Source:       "local",
+			Location:     domain.LocationLibrary,
+			Hash:         document.Hash,
+			Path:         document.Path,
+			SnapshotPath: fallback.Path,
+			Metadata:     document.Metadata,
+			AddedAt:      m.Now().UTC(),
 		}
 	}
 	value.SourcePath = document.Path
 	value.ProjectRoot = projectRoot
+	value.ProjectAgent = agent
+	if relative, relativeErr := filepath.Rel(projectRoot, document.Path); relativeErr == nil && !strings.HasPrefix(relative, ".."+string(filepath.Separator)) && relative != ".." {
+		value.ProjectPath = filepath.ToSlash(relative)
+	}
 	value.Mode = mode
+	if err := m.Store.UpsertSkill(value); err != nil {
+		return domain.Skill{}, err
+	}
+	return value, nil
+}
+
+// DetachProjectLink converts a live project-backed Library entry into an
+// independent immutable snapshot while retaining its origin metadata.
+func (m *Manager) DetachProjectLink(query string) (domain.Skill, error) {
+	value, err := m.ResolveLibrary(query)
+	if err != nil {
+		return domain.Skill{}, err
+	}
+	if value.Mode != domain.ModeSymlink || value.ProjectRoot == "" {
+		return domain.Skill{}, fmt.Errorf("Library Skill %s is not following a project", value.ID)
+	}
+	source := value.Path
+	document, err := skill.Validate(source)
+	if err != nil && value.SnapshotPath != "" {
+		source = value.SnapshotPath
+		document, err = skill.Validate(source)
+	}
+	if err != nil {
+		return domain.Skill{}, fmt.Errorf("no usable live source or fallback snapshot for %s: %w", value.ID, err)
+	}
+	snapshot, err := m.Snapshot(document, value.Source, value.Revision, value.Tags)
+	if err != nil {
+		return domain.Skill{}, err
+	}
+	value.Path = snapshot.Path
+	value.SnapshotPath = ""
+	value.Hash = snapshot.Hash
+	value.Description = snapshot.Description
+	value.Metadata = snapshot.Metadata
+	value.Mode = domain.ModeCopy
 	if err := m.Store.UpsertSkill(value); err != nil {
 		return domain.Skill{}, err
 	}

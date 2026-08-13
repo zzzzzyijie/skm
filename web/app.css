@@ -296,6 +296,8 @@ button.tag { font-family: var(--font-sans); }
 .skill-name, .source-name, .detail-name { color: var(--text); font-size: 16px; font-weight: 700; overflow-wrap: anywhere; }
 .skill-id { margin-top: 3px; color: var(--text-muted); font-size: 10px; overflow-wrap: anywhere; }
 .skill-desc { color: var(--text-secondary); font-size: 13px; line-height: 1.55; display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 3; }
+.skill-health { display: flex; min-height: 22px; flex-wrap: wrap; align-items: center; gap: 6px; }
+.skill-fallback { color: var(--warning); font-size: 11px; font-weight: 650; }
 .skill-meta { display: flex; flex-wrap: wrap; gap: 14px; margin-top: auto; color: var(--text-muted); font-family: var(--font-mono); font-size: 10px; }
 .agent-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
 .agent-toggle {

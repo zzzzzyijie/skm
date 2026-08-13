@@ -159,6 +159,7 @@ func (s *Store) objectReferences() (map[string][]string, error) {
 			add(s.ObjectPath(value.Hash, value.Name), "library:"+value.ID)
 		}
 		add(value.Path, "library:"+value.ID)
+		add(value.SnapshotPath, "library-fallback:"+value.ID)
 	}
 
 	state, err := s.LoadState()

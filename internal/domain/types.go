@@ -104,24 +104,27 @@ type Defaults struct {
 }
 
 type Skill struct {
-	ID          string         `yaml:"id" json:"id"`
-	Name        string         `yaml:"name" json:"name"`
-	Description string         `yaml:"description" json:"description"`
-	Tags        []string       `yaml:"tags" json:"tags"`
-	Source      string         `yaml:"source" json:"source"`
-	Location    SkillLocation  `yaml:"location" json:"location"`
-	Revision    string         `yaml:"revision,omitempty" json:"revision,omitempty"`
-	Hash        string         `yaml:"hash" json:"hash"`
-	Path        string         `yaml:"path" json:"path"`
-	SourcePath  string         `yaml:"sourcePath,omitempty" json:"sourcePath,omitempty"`
-	ProjectRoot string         `yaml:"projectRoot,omitempty" json:"projectRoot,omitempty"`
-	ForkedFrom  string         `yaml:"forkedFrom,omitempty" json:"forkedFrom,omitempty"`
-	ForkedAt    string         `yaml:"forkedRevision,omitempty" json:"forkedRevision,omitempty"`
-	Agents      []Agent        `yaml:"agents,omitempty" json:"agents,omitempty"`
-	Mode        LinkMode       `yaml:"mode,omitempty" json:"mode,omitempty"`
-	Metadata    map[string]any `yaml:"metadata,omitempty" json:"metadata,omitempty"`
-	AddedAt     time.Time      `yaml:"addedAt" json:"addedAt"`
-	LegacyScope string         `yaml:"scope,omitempty" json:"-"`
+	ID           string         `yaml:"id" json:"id"`
+	Name         string         `yaml:"name" json:"name"`
+	Description  string         `yaml:"description" json:"description"`
+	Tags         []string       `yaml:"tags" json:"tags"`
+	Source       string         `yaml:"source" json:"source"`
+	Location     SkillLocation  `yaml:"location" json:"location"`
+	Revision     string         `yaml:"revision,omitempty" json:"revision,omitempty"`
+	Hash         string         `yaml:"hash" json:"hash"`
+	Path         string         `yaml:"path" json:"path"`
+	SourcePath   string         `yaml:"sourcePath,omitempty" json:"sourcePath,omitempty"`
+	SnapshotPath string         `yaml:"snapshotPath,omitempty" json:"snapshotPath,omitempty"`
+	ProjectRoot  string         `yaml:"projectRoot,omitempty" json:"projectRoot,omitempty"`
+	ProjectPath  string         `yaml:"projectPath,omitempty" json:"projectPath,omitempty"`
+	ProjectAgent Agent          `yaml:"projectAgent,omitempty" json:"projectAgent,omitempty"`
+	ForkedFrom   string         `yaml:"forkedFrom,omitempty" json:"forkedFrom,omitempty"`
+	ForkedAt     string         `yaml:"forkedRevision,omitempty" json:"forkedRevision,omitempty"`
+	Agents       []Agent        `yaml:"agents,omitempty" json:"agents,omitempty"`
+	Mode         LinkMode       `yaml:"mode,omitempty" json:"mode,omitempty"`
+	Metadata     map[string]any `yaml:"metadata,omitempty" json:"metadata,omitempty"`
+	AddedAt      time.Time      `yaml:"addedAt" json:"addedAt"`
+	LegacyScope  string         `yaml:"scope,omitempty" json:"-"`
 }
 
 type Catalog struct {

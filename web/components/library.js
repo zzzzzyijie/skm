@@ -104,13 +104,25 @@ function skillCard(skill) {
     var tags = (skill.tags || []).map(function (tag) { return '<span class="tag">' + escapeHtml(displayTag(tag)) + '</span>'; }).join('');
     var agents = libraryState.enabled[skill.id] || {};
     var hasActivation = Object.keys(agents).some(function (agent) { return agents[agent]; });
+    var health = skillHealthMarkup(skill);
     return '<article class="card skill-card"><div class="skill-header"><div><div class="skill-name">' + escapeHtml(skill.name) +
         '</div><div class="skill-id mono">' + escapeHtml(skill.id) + '</div></div><span class="badge badge-source">' + escapeHtml(displaySource(skill.source || 'local')) +
-        '</span></div><p class="skill-desc">' + escapeHtml(skill.description || 'No description') + '</p><div class="tag-list">' + tags +
+        '</span></div>' + health + '<p class="skill-desc">' + escapeHtml(skill.description || 'No description') + '</p><div class="tag-list">' + tags +
         '</div><div class="skill-meta"><span>' + shortHash(skill.hash) + '</span><span>' + formatDate(skill.addedAt) + '</span></div>' +
         agentControls(skill.id, agents) + '<div class="skill-actions"><button class="btn btn-ghost btn-sm btn-details-skill" type="button" data-id="' +
         escapeHtml(skill.id) + '">' + t('lib.viewDetails') + '</button><div class="action-spacer"></div><button class="btn btn-danger btn-sm btn-remove-skill" type="button" data-id="' +
         escapeHtml(skill.id) + '"' + (hasActivation ? ' disabled' : '') + '>' + t('lib.remove') + '</button></div></article>';
+}
+
+function skillHealthMarkup(skill) {
+    var health = skill.health || 'available';
+    var linked = skill.mode === 'symlink' && skill.projectRoot;
+    if (!linked && health === 'available') return '';
+    var labels = { available: 'lib.healthAvailable', changed: 'lib.healthChanged', missing: 'lib.healthMissing', unreachable: 'lib.healthUnreachable', invalid: 'lib.healthInvalid' };
+    var badgeClass = health === 'available' ? 'badge-ok' : (health === 'changed' ? 'badge-warning' : 'badge-error');
+    return '<div class="skill-health"><span class="badge ' + badgeClass + '">' + escapeHtml(t(labels[health] || labels.invalid)) + '</span>' +
+        (linked ? '<span class="badge badge-muted">' + escapeHtml(t('lib.followingProject')) + '</span>' : '') +
+        (skill.usingFallback ? '<span class="skill-fallback">' + escapeHtml(t('lib.usingFallback')) + '</span>' : '') + '</div>';
 }
 
 function agentControls(skillID, agents) {
@@ -344,16 +356,21 @@ function showSkillDetails(skill) {
     }).join('') || '<span class="muted">' + t('lib.noTags') + '</span>';
     var sourceDetails = source ? '<div><dt>' + t('lib.gitUrl') + '</dt><dd class="mono detail-path">' + escapeHtml(source.url) + '</dd></div><div><dt>' +
         t('lib.gitRef') + '</dt><dd>' + escapeHtml(source.ref || 'default') + '</dd></div>' : '';
+    var linked = skill.mode === 'symlink' && skill.projectRoot;
+    var health = skillHealthMarkup(skill);
+    var originDetails = linked ? '<div><dt>' + t('lib.source') + '</dt><dd class="mono detail-path">' + escapeHtml(skill.sourcePath || skill.path) + '</dd></div>' +
+        '<div><dt>' + t('lib.effectivePath') + '</dt><dd class="mono detail-path">' + escapeHtml(skill.effectivePath || skill.path) + '</dd></div>' : '';
     var content = '<div class="detail-hero"><div><div class="detail-name">' + escapeHtml(skill.name) + '</div><div class="mono muted">' + escapeHtml(skill.id) +
         '</div></div><span class="badge badge-source">' + escapeHtml(displaySource(skill.source || 'local')) + '</span></div><dl class="detail-list"><div><dt>' +
         t('lib.description') + '</dt><dd>' + escapeHtml(skill.description || '-') + '</dd></div><div><dt>' + t('lib.path') + '</dt><dd class="mono detail-path">' +
         escapeHtml(skill.path) + '</dd></div><div><dt>' + t('dash.hash') + '</dt><dd class="mono">' + escapeHtml(skill.hash) + '</dd></div><div><dt>' +
-        t('lib.revision') + '</dt><dd class="mono">' + shortRevision(skill.revision) + '</dd></div>' + sourceDetails + '<div><dt>' + t('dash.added') +
+        t('lib.revision') + '</dt><dd class="mono">' + shortRevision(skill.revision) + '</dd></div>' + originDetails + sourceDetails + '<div><dt>' + t('dash.added') +
         '</dt><dd>' + formatDate(skill.addedAt) + '</dd></div></dl><section class="skill-detail-section"><div class="form-group"><label class="form-label">' + t('dash.tags') +
         '</label><div class="tag-list detail-tags">' + tags + '</div></div><div class="inline-form"><input class="input" id="detail-new-tag" placeholder="' + t('lib.tagName') + '"><button class="btn btn-secondary" type="button" id="btn-add-tag">' + t('lib.addTag') + '</button></div></section>' +
-        '<section class="skill-detail-section skill-content-section"><div class="skill-detail-section-heading"><span class="form-label">' + t('lib.content') + '</span><span class="mono muted">SKILL.md</span></div>' +
+        health + '<section class="skill-detail-section skill-content-section"><div class="skill-detail-section-heading"><span class="form-label">' + t('lib.content') + '</span><span class="mono muted">SKILL.md</span></div>' +
         (skill.body ? '<pre class="skill-detail-content">' + escapeHtml(skill.body) + '</pre>' : '<div class="inline-empty">' + t('lib.noContent') + '</div>') + '</section>';
     var actions = '<button class="btn btn-ghost" type="button" data-close-modal>' + t('lib.close') + '</button>' +
+        (linked ? '<button class="btn btn-primary" type="button" id="btn-detach-skill">' + t('lib.detach') + '</button>' : '') +
         (source ? '<button class="btn btn-primary" type="button" id="btn-update-source">' + t('lib.updateSource') + '</button>' : '');
     showModal(t('lib.details'), content, actions);
     document.querySelector('.modal').classList.add('skill-detail-modal');
@@ -362,6 +379,19 @@ function showSkillDetails(skill) {
         button.addEventListener('click', function () { removeSkillTag(skill.id, button.dataset.removeTag); });
     });
     if (source) document.getElementById('btn-update-source').addEventListener('click', function () { updateGitSource(source.name); });
+    if (linked) document.getElementById('btn-detach-skill').addEventListener('click', function () { detachLibrarySkill(skill.id); });
+}
+
+async function detachLibrarySkill(id) {
+    if (!window.confirm(t('lib.detachConfirm'))) return;
+    try {
+        await api.post('/api/skills/detach', { skill: id });
+        closeModal();
+        showToast(t('lib.detached'), 'success');
+        await renderLibrary();
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
 }
 
 async function updateGitSource(name) {

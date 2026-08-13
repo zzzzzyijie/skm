@@ -13,6 +13,7 @@ import (
 	"github.com/zzzzzyijie/skm/internal/adapter"
 	"github.com/zzzzzyijie/skm/internal/domain"
 	"github.com/zzzzzyijie/skm/internal/fsx"
+	"github.com/zzzzzyijie/skm/internal/skill"
 	"github.com/zzzzzyijie/skm/internal/store"
 )
 
@@ -149,6 +150,21 @@ func (e *Engine) resolveActivation(activation domain.Activation, byID map[string
 		value, ok := byID[activation.SkillID]
 		if !ok {
 			return domain.Skill{}, fmt.Errorf("enabled skill %q is missing from Library", activation.SkillID)
+		}
+		if value.Mode == domain.ModeSymlink && value.ProjectRoot != "" {
+			if document, liveErr := skill.Validate(value.Path); liveErr == nil {
+				value.Hash = document.Hash
+				return value, nil
+			}
+			if value.SnapshotPath == "" {
+				return domain.Skill{}, fmt.Errorf("project source for enabled Skill %s is unavailable and no fallback snapshot exists", value.ID)
+			}
+			document, snapshotErr := skill.Validate(value.SnapshotPath)
+			if snapshotErr != nil {
+				return domain.Skill{}, fmt.Errorf("read fallback snapshot for enabled Skill %s: %w", value.ID, snapshotErr)
+			}
+			value.Path = value.SnapshotPath
+			value.Hash = document.Hash
 		}
 		return value, nil
 	}

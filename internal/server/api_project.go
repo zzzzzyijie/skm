@@ -266,7 +266,7 @@ func (s *Server) handleMigrateProjectSkill(w http.ResponseWriter, r *http.Reques
 				return err
 			}
 		}
-		imported, err = catalog.New(s.store).ImportProject(selected.Document, project.Path, body.Mode, body.Tags)
+		imported, err = catalog.New(s.store).ImportProject(selected.Document, project.Path, domain.Agent(selected.Agent), body.Mode, body.Tags)
 		if err != nil {
 			return err
 		}

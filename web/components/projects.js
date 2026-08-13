@@ -205,9 +205,9 @@ function showMigrateProjectSkillModal(skillID) {
         ? '<input type="hidden" id="project-migrate-agent" value="' + escapeHtml(agents[0]) + '"><div class="migration-source-value">' + escapeHtml(projectAgentName(agents[0])) + '</div>'
         : '<select class="select" id="project-migrate-agent">' + agents.map(function (agent) { return '<option value="' + escapeHtml(agent) + '">' + escapeHtml(projectAgentName(agent)) + '</option>'; }).join('') + '</select>';
     var content = '<div class="form-group"><label class="form-label" for="project-migrate-agent">' + t('proj.migrateSource') + '</label>' + sourceControl + '</div>' +
-        '<div class="form-group"><span class="form-label">' + t('proj.mode') + '</span><div class="import-mode project-mode"><button class="import-mode-option active" type="button" data-migrate-mode="symlink">' + t('proj.migrateLink') + '</button><button class="import-mode-option" type="button" data-migrate-mode="copy">' + t('proj.migrateCopy') + '</button></div>' +
-        '<p class="migration-mode-description" id="migration-mode-description">' + t('proj.migrateLinkDesc') + '</p></div>' +
-        '<label class="check-option migration-remove-option" id="migration-remove-option" hidden><input type="checkbox" id="project-migrate-remove"><span><strong>' + t('proj.removeAfterCopy') + '</strong><small>' + t('proj.removeAfterCopyNote') + '</small></span></label>';
+        '<div class="form-group"><span class="form-label">' + t('proj.mode') + '</span><div class="import-mode project-mode"><button class="import-mode-option" type="button" data-migrate-mode="symlink">' + t('proj.migrateLink') + '</button><button class="import-mode-option active" type="button" data-migrate-mode="copy">' + t('proj.migrateCopy') + '</button></div>' +
+        '<p class="migration-mode-description" id="migration-mode-description">' + t('proj.migrateCopyDesc') + '</p></div>' +
+        '<label class="check-option migration-remove-option" id="migration-remove-option"><input type="checkbox" id="project-migrate-remove"><span><strong>' + t('proj.removeAfterCopy') + '</strong><small>' + t('proj.removeAfterCopyNote') + '</small></span></label>';
     var actions = '<button class="btn btn-ghost" type="button" data-close-modal>' + t('lib.cancel') + '</button><button class="btn btn-primary" type="button" id="btn-confirm-project-migrate">' + t('proj.migrateConfirm') + '</button>';
     showModal(t('proj.migrateTitle'), content, actions);
     document.querySelectorAll('[data-migrate-mode]').forEach(function (button) {
@@ -225,7 +225,7 @@ function showMigrateProjectSkillModal(skillID) {
 async function migrateProjectSkill(skillID) {
     var button = document.getElementById('btn-confirm-project-migrate');
     var active = document.querySelector('[data-migrate-mode].active');
-    var mode = active ? active.dataset.migrateMode : 'symlink';
+    var mode = active ? active.dataset.migrateMode : 'copy';
     button.disabled = true;
     try {
         await api.post('/api/projects/' + encodeURIComponent(projectState.selectedID) + '/skills/' + encodeURIComponent(skillID) + '/migrate', {

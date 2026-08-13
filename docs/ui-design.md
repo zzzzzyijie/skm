@@ -109,6 +109,7 @@ GET    /api/version            # 版本信息
 GET    /api/skills             # 列出所有 Skill（?tag=xxx 筛选）
 GET    /api/skills/:id         # Skill 详情
 POST   /api/skills             # 添加 Skill {path, tags, source}
+POST   /api/skills/detach      # 将项目跟随条目转为独立副本 {skill}
 POST   /api/dialogs/skill-directory # 打开 macOS Finder 选择本地 Skill 目录
 DELETE /api/skills/:id         # 移除 Skill
 

@@ -412,8 +412,11 @@ func TestProjectSkillMigrationAPI(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if linked.Skill.ID != "local/linked-project-skill" || linked.Skill.Mode != domain.ModeSymlink || linked.Skill.Path != linkedSource || linked.Skill.SourcePath != linkedSource {
+	if linked.Skill.ID != "local/linked-project-skill" || linked.Skill.Mode != domain.ModeSymlink || linked.Skill.Path != linkedSource || linked.Skill.SourcePath != linkedSource || linked.Skill.SnapshotPath == "" || linked.Skill.ProjectAgent != domain.AgentClaude {
 		t.Fatalf("linked migration = %#v", linked.Skill)
+	}
+	if _, err := os.Stat(filepath.Join(linked.Skill.SnapshotPath, "SKILL.md")); err != nil {
+		t.Fatalf("linked migration fallback snapshot: %v", err)
 	}
 	var linkedProject struct {
 		Scan struct {
@@ -446,10 +449,39 @@ func TestProjectSkillMigrationAPI(t *testing.T) {
 	if refreshedLinked.ID == "" || refreshedLinked.Hash == linked.Skill.Hash || refreshedLinked.Description != "Updated linked project Skill" {
 		t.Fatalf("refreshed linked Library Skill = %#v", library)
 	}
-	requestJSON(t, handler, http.MethodDelete, "/api/skills/local/linked-project-skill", nil, http.StatusOK, nil)
-	if _, err := os.Stat(linkedDocument); err != nil {
-		t.Fatalf("removing linked Library entry removed project source: %v", err)
+	if err := os.RemoveAll(linkedSource); err != nil {
+		t.Fatal(err)
 	}
+	var fallbackDetails librarySkillDetails
+	requestJSON(t, handler, http.MethodGet, "/api/skills/local/linked-project-skill", nil, http.StatusOK, &fallbackDetails)
+	if fallbackDetails.Health != "missing" || !fallbackDetails.UsingFallback || fallbackDetails.EffectivePath != linked.Skill.SnapshotPath || !strings.Contains(fallbackDetails.Body, "# linked-project-skill") {
+		t.Fatalf("missing linked Skill details = %#v", fallbackDetails)
+	}
+	requestJSON(t, handler, http.MethodPost, "/api/enable", map[string]any{
+		"skills": []string{linked.Skill.ID}, "agents": []string{"codex"}, "mode": "auto",
+	}, http.StatusOK, nil)
+	userLink := filepath.Join(filepath.Dir(storage.Paths.Home), ".codex", "skills", "linked-project-skill")
+	resolvedFallback, err := filepath.EvalSymlinks(userLink)
+	expectedFallback, fallbackErr := filepath.EvalSymlinks(linked.Skill.SnapshotPath)
+	if err != nil || fallbackErr != nil || filepath.Clean(resolvedFallback) != filepath.Clean(expectedFallback) {
+		t.Fatalf("fallback deployment = %q, err=%v", resolvedFallback, err)
+	}
+	var detached struct {
+		Skill domain.Skill `json:"skill"`
+	}
+	requestJSON(t, handler, http.MethodPost, "/api/skills/detach", map[string]any{"skill": linked.Skill.ID}, http.StatusOK, &detached)
+	if detached.Skill.Mode != domain.ModeCopy || detached.Skill.SnapshotPath != "" || detached.Skill.ProjectRoot == "" || detached.Skill.ProjectPath == "" {
+		t.Fatalf("detached linked Skill = %#v", detached.Skill)
+	}
+	resolvedDetached, err := filepath.EvalSymlinks(userLink)
+	expectedDetached, detachedErr := filepath.EvalSymlinks(detached.Skill.Path)
+	if err != nil || detachedErr != nil || filepath.Clean(resolvedDetached) != filepath.Clean(expectedDetached) {
+		t.Fatalf("detached deployment = %q, err=%v", resolvedDetached, err)
+	}
+	requestJSON(t, handler, http.MethodPost, "/api/disable", map[string]any{
+		"skills": []string{linked.Skill.ID}, "agents": []string{"codex"},
+	}, http.StatusOK, nil)
+	requestJSON(t, handler, http.MethodDelete, "/api/skills/local/linked-project-skill", nil, http.StatusOK, nil)
 
 	makeProjectSkill(t, projectPath, "claude", "moved-project-skill")
 	makeProjectSkill(t, projectPath, "codex", "moved-project-skill")

@@ -3,18 +3,28 @@ package server
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"sort"
 	"strings"
 
 	"github.com/zzzzzyijie/skm/internal/catalog"
 	"github.com/zzzzzyijie/skm/internal/domain"
+	"github.com/zzzzzyijie/skm/internal/planner"
 	"github.com/zzzzzyijie/skm/internal/skill"
 	"github.com/zzzzzyijie/skm/internal/tags"
 )
 
 type librarySkillDetails struct {
-	domain.Skill
+	librarySkillView
 	Body string `json:"body"`
+}
+
+type librarySkillView struct {
+	domain.Skill
+	Health        string `json:"health"`
+	HealthDetail  string `json:"healthDetail,omitempty"`
+	UsingFallback bool   `json:"usingFallback,omitempty"`
+	EffectivePath string `json:"effectivePath"`
 }
 
 func (s *Server) handleListSkills(w http.ResponseWriter, r *http.Request) {
@@ -24,10 +34,11 @@ func (s *Server) handleListSkills(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err)
 		return
 	}
+	result := make([]librarySkillView, len(skills))
 	for index := range skills {
-		refreshLinkedLibrarySkill(&skills[index])
+		result[index], _ = inspectLibrarySkill(skills[index])
 	}
-	writeJSON(w, http.StatusOK, skills)
+	writeJSON(w, http.StatusOK, result)
 }
 
 func (s *Server) handleShowSkill(w http.ResponseWriter, r *http.Request) {
@@ -37,28 +48,90 @@ func (s *Server) handleShowSkill(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, err)
 		return
 	}
-	document, err := skill.Validate(value.Path)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err)
-		return
+	view, document := inspectLibrarySkill(value)
+	body := ""
+	if document != nil {
+		body = document.Body
 	}
-	value.Hash = document.Hash
-	value.Description = document.Description
-	value.Metadata = document.Metadata
-	writeJSON(w, http.StatusOK, librarySkillDetails{Skill: value, Body: document.Body})
+	writeJSON(w, http.StatusOK, librarySkillDetails{librarySkillView: view, Body: body})
 }
 
-func refreshLinkedLibrarySkill(value *domain.Skill) {
-	if value.Mode != domain.ModeSymlink || value.ProjectRoot == "" {
-		return
-	}
+func inspectLibrarySkill(value domain.Skill) (librarySkillView, *skill.Document) {
+	view := librarySkillView{Skill: value, Health: "available", EffectivePath: value.Path}
 	document, err := skill.Validate(value.Path)
-	if err != nil {
+	if err == nil {
+		if value.Mode == domain.ModeSymlink && value.ProjectRoot != "" && document.Hash != value.Hash {
+			view.Health = "changed"
+		}
+		view.Hash = document.Hash
+		view.Description = document.Description
+		view.Metadata = document.Metadata
+		return view, &document
+	}
+	if value.Mode != domain.ModeSymlink || value.ProjectRoot == "" {
+		view.Health = "invalid"
+		view.HealthDetail = err.Error()
+		return view, nil
+	}
+	if _, rootErr := os.Stat(value.ProjectRoot); rootErr != nil {
+		view.Health = "unreachable"
+	} else if _, sourceErr := os.Stat(value.Path); os.IsNotExist(sourceErr) {
+		view.Health = "missing"
+	} else {
+		view.Health = "invalid"
+	}
+	view.HealthDetail = err.Error()
+	if value.SnapshotPath != "" {
+		fallback, fallbackErr := skill.Validate(value.SnapshotPath)
+		if fallbackErr == nil {
+			view.EffectivePath = value.SnapshotPath
+			view.Hash = fallback.Hash
+			view.Description = fallback.Description
+			view.Metadata = fallback.Metadata
+			view.UsingFallback = true
+			return view, &fallback
+		}
+		view.HealthDetail += "; fallback snapshot: " + fallbackErr.Error()
+	}
+	return view, nil
+}
+
+func (s *Server) handleDetachSkill(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Skill string `json:"skill"`
+	}
+	if err := readJSON(r, &body); err != nil {
+		writeError(w, http.StatusBadRequest, err)
 		return
 	}
-	value.Hash = document.Hash
-	value.Description = document.Description
-	value.Metadata = document.Metadata
+	var detached domain.Skill
+	var plan domain.Plan
+	err := s.withLock(func() error {
+		var err error
+		detached, err = catalog.New(s.store).DetachProjectLink(body.Skill)
+		if err != nil {
+			return err
+		}
+		state, err := s.store.LoadState()
+		if err != nil {
+			return err
+		}
+		skills, err := s.store.LoadAllSkills()
+		if err != nil {
+			return err
+		}
+		engine := planner.New(s.store)
+		plan, err = engine.Build(skills, state)
+		if err != nil {
+			return err
+		}
+		return engine.Apply(plan, &state)
+	})
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"skill": detached, "plan": plan})
 }
 
 func (s *Server) handleAddSkill(w http.ResponseWriter, r *http.Request) {
