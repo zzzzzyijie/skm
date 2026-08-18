@@ -1,4 +1,4 @@
-/* global api, showToast, showModal, closeModal, escapeHtml, statusBadgeClass, formatDate, isCurrentPage, t */
+/* global api, showToast, showModal, closeModal, escapeHtml, statusBadgeClass, formatDate, isCurrentPage, t, uiIcon */
 
 var projectState = { projects: [], skills: [], selectedID: '', detail: null, agentFilter: 'all' };
 
@@ -42,11 +42,11 @@ async function loadProjectDetail(id, repaint) {
 function paintProjects() {
     if (!isCurrentPage('projects')) return;
     var container = document.getElementById('main-content');
-    var html = '<div class="page animate-in"><div class="page-header"><div><h1 class="page-title">' + t('proj.title') +
-        '</h1><p class="page-subtitle">' + t('proj.list') + '</p></div><div class="header-actions"><button class="btn btn-primary" type="button" id="btn-add-project">+ ' +
+    var html = '<div class="page"><div class="page-header"><div><h1 class="page-title">' + t('proj.title') +
+        '</h1><p class="page-subtitle">' + t('proj.list') + '</p></div><div class="header-actions"><button class="btn btn-primary" type="button" id="btn-add-project">' + uiIcon('plus') +
         t('proj.add') + '</button></div></div>';
     if (!projectState.projects.length) {
-        html += '<div class="empty-state"><div class="empty-state-mark">P</div><div class="empty-state-title">' + t('proj.empty') +
+        html += '<div class="empty-state"><div class="empty-state-mark">' + uiIcon('folder') + '</div><div class="empty-state-title">' + t('proj.empty') +
             '</div><div class="empty-state-desc">' + t('proj.emptyDesc') + '</div></div></div>';
         container.innerHTML = html;
         document.getElementById('btn-add-project').addEventListener('click', showAddProjectModal);
@@ -110,8 +110,8 @@ function projectDetailMarkup() {
     var project = detail.project;
     var html = '<div class="project-detail-header"><div><h2 class="section-title project-detail-name">' + escapeHtml(project.id) +
         '</h2><div class="project-detail-status"><span class="badge ' + (detail.exists ? 'badge-ok' : 'badge-error') + '">' + (detail.exists ? t('proj.ready') : t('proj.missing')) +
-        '</span><span class="mono project-path">' + escapeHtml(project.path) + '</span></div></div><div class="header-actions"><button class="btn btn-primary btn-sm" type="button" id="btn-project-add-skill">+ ' + t('proj.addSkill') + '</button><button class="btn btn-secondary btn-sm" type="button" id="btn-project-refresh">' +
-        t('proj.scan') + '</button><button class="btn btn-danger btn-sm" type="button" id="btn-project-unregister">' + t('proj.unregister') + '</button></div></div>';
+        '</span><span class="mono project-path">' + escapeHtml(project.path) + '</span></div></div><div class="header-actions"><button class="btn btn-primary btn-sm" type="button" id="btn-project-add-skill">' + uiIcon('plus') + t('proj.addSkill') + '</button><button class="btn btn-secondary btn-sm" type="button" id="btn-project-refresh">' +
+        uiIcon('refresh') + t('proj.scan') + '</button><button class="btn btn-danger btn-sm" type="button" id="btn-project-unregister">' + uiIcon('trash') + t('proj.unregister') + '</button></div></div>';
     html += projectScanMarkup(detail);
     html += projectPlanMarkup(detail.plan);
     return html;

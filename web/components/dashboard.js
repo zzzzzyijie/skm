@@ -1,4 +1,4 @@
-/* global api, showToast, formatDate, shortHash, escapeHtml, displayTag, isCurrentPage, t */
+/* global api, showToast, formatDate, shortHash, escapeHtml, displayTag, isCurrentPage, t, uiIcon */
 
 async function renderDashboard() {
     var container = document.getElementById('main-content');
@@ -6,12 +6,12 @@ async function renderDashboard() {
         var data = await api.get('/api/dashboard');
         if (!isCurrentPage('dashboard')) return;
 
-        var html = '<div class="page animate-in">';
+        var html = '<div class="page">';
         html += '<div class="page-header"><div><h1 class="page-title">' + t('dash.title') + '</h1></div></div>';
         html += '<div class="stat-grid">';
-        html += statCard(data.skillCount, t('dash.totalSkills'), 'SK');
-        html += statCard(data.activatedCount, t('dash.enabled'), 'ON');
-        html += statCard(data.sourceCount, t('dash.gitSources'), 'GT');
+        html += statCard(data.skillCount, t('dash.totalSkills'), 'library', 'accent');
+        html += statCard(data.activatedCount, t('dash.enabled'), 'check', 'info');
+        html += statCard(data.sourceCount, t('dash.gitSources'), 'link', 'warning');
         html += '</div>';
 
         html += '<section class="section"><div class="section-heading"><h2 class="section-title">' + t('dash.recentlyAdded') + '</h2></div>';
@@ -38,13 +38,13 @@ async function renderDashboard() {
     }
 }
 
-function statCard(value, label, mark) {
-    return '<div class="stat-card"><div><div class="stat-value">' + Number(value || 0) + '</div><div class="stat-label">' +
-        label + '</div></div><div class="stat-mark" aria-hidden="true">' + mark + '</div></div>';
+function statCard(value, label, icon, tone) {
+    return '<div class="stat-card stat-card-' + tone + '"><div><div class="stat-value">' + Number(value || 0) + '</div><div class="stat-label">' +
+        label + '</div></div><div class="stat-mark" aria-hidden="true">' + uiIcon(icon) + '</div></div>';
 }
 
 function errorState(title, message) {
-    return '<div class="empty-state"><div class="empty-state-mark">!</div><div class="empty-state-title">' + title +
+    return '<div class="empty-state"><div class="empty-state-mark">' + uiIcon('sparkles') + '</div><div class="empty-state-title">' + title +
         '</div><div class="empty-state-desc">' + escapeHtml(message) + '</div></div>';
 }
 

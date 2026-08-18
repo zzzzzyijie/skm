@@ -143,6 +143,7 @@ function t(key) {
 function setLang(lang) {
     currentLang = lang;
     localStorage.setItem('skm-lang', lang);
+    document.documentElement.lang = lang;
     updateNavLabels();
     App.navigate(App.currentPage, false);
     document.querySelectorAll('#lang-toggle, #mobile-lang-toggle').forEach(function (toggle) {
@@ -164,6 +165,26 @@ function displayTag(tag) {
 
 function displaySource(source) {
     return source === 'local' ? t('lib.local') : source;
+}
+
+function uiIcon(name) {
+    var paths = {
+        plus: '<path d="M12 5v14M5 12h14"/>',
+        tags: '<path d="M3.5 6.5v5.2c0 .7.3 1.3.8 1.8l6.2 6.2a2.5 2.5 0 0 0 3.5 0l5.7-5.7a2.5 2.5 0 0 0 0-3.5L13.5 4.3a2.5 2.5 0 0 0-1.8-.8H6.5a3 3 0 0 0-3 3Z"/><circle cx="8" cy="8" r="1.25"/>',
+        settings: '<path d="M4 7h10M18 7h2M4 17h2M10 17h10M14 4v6M6 14v6"/>',
+        search: '<circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/>',
+        eye: '<path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.5"/>',
+        trash: '<path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"/>',
+        refresh: '<path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.1 8.5A7 7 0 0 1 18.8 7L20 12M4 12l1.2 5A7 7 0 0 0 17.9 15.5"/>',
+        folder: '<path d="M3.5 6.5A2.5 2.5 0 0 1 6 4h4l2 2h6A2.5 2.5 0 0 1 20.5 8.5v8A2.5 2.5 0 0 1 18 19H6a2.5 2.5 0 0 1-2.5-2.5v-10Z"/>',
+        library: '<path d="M4 6.5A2.5 2.5 0 0 1 6.5 4H20v15.5H6.5A2.5 2.5 0 0 1 4 17V6.5Z"/><path d="M4 17a2.5 2.5 0 0 1 2.5-2.5H20M8 8h8"/>',
+        check: '<path d="m5 12 4.5 4.5L19 7"/>',
+        alert: '<path d="M10.3 4.2 2.8 17.3A1.8 1.8 0 0 0 4.4 20h15.2a1.8 1.8 0 0 0 1.6-2.7L13.7 4.2a2 2 0 0 0-3.4 0ZM12 9v4M12 17h.01"/>',
+        link: '<path d="M9.5 14.5 14.5 9.5M7.5 16.5l-1 1a3.5 3.5 0 0 1-5-5l4-4a3.5 3.5 0 0 1 5 0M16.5 7.5l1-1a3.5 3.5 0 0 1 5 5l-4 4a3.5 3.5 0 0 1-5 0"/>',
+        copy: '<rect x="8" y="8" width="11" height="11" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>',
+        sparkles: '<path d="m12 3 1.1 3.2a4.2 4.2 0 0 0 2.7 2.7L19 10l-3.2 1.1a4.2 4.2 0 0 0-2.7 2.7L12 17l-1.1-3.2a4.2 4.2 0 0 0-2.7-2.7L5 10l3.2-1.1a4.2 4.2 0 0 0 2.7-2.7L12 3ZM19 16l.5 1.5L21 18l-1.5.5L19 20l-.5-1.5L17 18l1.5-.5L19 16Z"/>'
+    };
+    return '<svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">' + (paths[name] || paths.sparkles) + '</svg>';
 }
 
 // ===== Version =====
@@ -202,7 +223,8 @@ function showToast(message, type) {
     var container = document.getElementById('toast-container');
     var toast = document.createElement('div');
     toast.className = 'toast toast-' + type;
-    toast.textContent = message;
+    toast.setAttribute('role', type === 'error' ? 'alert' : 'status');
+    toast.innerHTML = '<span class="toast-icon" aria-hidden="true">' + uiIcon(type === 'error' ? 'alert' : (type === 'info' ? 'sparkles' : 'check')) + '</span><span>' + escapeHtml(message) + '</span>';
     container.appendChild(toast);
     setTimeout(function () {
         toast.classList.add('removing');
@@ -250,15 +272,18 @@ function statusBadgeClass(status) {
 }
 
 // ===== Modal =====
+var modalReturnFocus = null;
+
 function showModal(title, contentHtml, actions) {
     var existing = document.querySelector('.modal-overlay');
     if (existing) existing.remove();
+    if (!modalReturnFocus || !modalReturnFocus.isConnected) modalReturnFocus = document.activeElement;
     var overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
     overlay.innerHTML =
         '<div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">' +
             '<div class="modal-header"><div class="modal-title" id="modal-title">' + escapeHtml(title) + '</div>' +
-            '<button class="icon-btn modal-close" type="button" data-close-modal aria-label="Close">&times;</button></div>' +
+            '<button class="icon-btn modal-close" type="button" data-close-modal aria-label="' + escapeHtml(t('lib.close')) + '"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div>' +
             '<div class="modal-body">' + contentHtml + '</div>' +
             '<div class="modal-actions">' + (actions || '') + '</div>' +
         '</div>';
@@ -266,6 +291,7 @@ function showModal(title, contentHtml, actions) {
         if (e.target === overlay) closeModal();
     });
     document.body.appendChild(overlay);
+    document.body.classList.add('modal-open');
     overlay.querySelectorAll('[data-close-modal]').forEach(function (button) {
         button.addEventListener('click', closeModal);
     });
@@ -276,7 +302,15 @@ function showModal(title, contentHtml, actions) {
 
 function closeModal() {
     var overlay = document.querySelector('.modal-overlay');
-    if (overlay) overlay.remove();
+    if (overlay && !overlay.classList.contains('is-closing')) {
+        overlay.classList.add('is-closing');
+        setTimeout(function () {
+            overlay.remove();
+            document.body.classList.remove('modal-open');
+            if (modalReturnFocus && modalReturnFocus.isConnected) modalReturnFocus.focus();
+            modalReturnFocus = null;
+        }, 140);
+    }
     document.removeEventListener('keydown', onModalEsc);
 }
 
@@ -289,6 +323,7 @@ var App = {
     currentPage: 'dashboard',
 
     init: function () {
+        document.documentElement.lang = currentLang;
         this.setupNav();
         this.setupLangToggle();
         this.setupMobileNav();
@@ -342,7 +377,10 @@ var App = {
         this.currentPage = page;
         if (updateHash !== false && window.location.hash !== '#/' + page) window.location.hash = '/' + page;
         document.querySelectorAll('.nav-item').forEach(function (item) {
-            item.classList.toggle('active', item.dataset.page === page);
+            var active = item.dataset.page === page;
+            item.classList.toggle('active', active);
+            if (active) item.setAttribute('aria-current', 'page');
+            else item.removeAttribute('aria-current');
         });
         var container = document.getElementById('main-content');
         container.dataset.page = page;
@@ -379,5 +417,6 @@ window.shortRevision = shortRevision;
 window.escapeHtml = escapeHtml;
 window.statusBadgeClass = statusBadgeClass;
 window.isCurrentPage = isCurrentPage;
+window.uiIcon = uiIcon;
 
 document.addEventListener('DOMContentLoaded', function () { App.init(); });

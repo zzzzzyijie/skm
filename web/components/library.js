@@ -1,4 +1,4 @@
-/* global api, showToast, showModal, closeModal, displayTag, formatDate, shortHash, shortRevision, escapeHtml, isCurrentPage, t */
+/* global api, showToast, showModal, closeModal, displayTag, formatDate, shortHash, shortRevision, escapeHtml, isCurrentPage, t, uiIcon */
 
 var libraryState = { skills: [], tags: [], agents: [], activeTag: '', query: '', enabled: {}, gitSources: {} };
 var agentIcons = {
@@ -43,15 +43,15 @@ function paintLibrary() {
     var visible = libraryState.skills.filter(function (skill) {
         return !query || [skill.name, skill.id, skill.description, skill.source].join(' ').toLowerCase().includes(query);
     });
-    var html = '<div class="page animate-in"><div class="page-header"><div><h1 class="page-title">' + t('lib.title') + '</h1>' +
+    var html = '<div class="page"><div class="page-header"><div><h1 class="page-title">' + t('lib.title') + '</h1>' +
         '<p class="page-subtitle">' + t('lib.skillCount').replace('{0}', visible.length) + '</p></div><div class="header-actions">' +
-        '<button class="btn btn-secondary" type="button" id="btn-manage-tags">' + t('lib.manageTags') + '</button>' +
-        '<button class="btn btn-primary" type="button" id="btn-add-skill">+ ' + t('lib.addSkill') + '</button></div></div>';
+        '<button class="btn btn-secondary" type="button" id="btn-manage-tags">' + uiIcon('tags') + t('lib.manageTags') + '</button>' +
+        '<button class="btn btn-primary" type="button" id="btn-add-skill">' + uiIcon('plus') + t('lib.addSkill') + '</button></div></div>';
 
     html += agentManagementBand();
 
     html += '<div class="library-tools"><label class="search-box"><span class="sr-only">' + t('lib.search') + '</span>' +
-        '<span class="search-mark" aria-hidden="true">/</span><input class="input" id="skill-search" value="' + escapeHtml(libraryState.query) +
+        '<span class="search-mark" aria-hidden="true">' + uiIcon('search') + '</span><input class="input" id="skill-search" value="' + escapeHtml(libraryState.query) +
         '" placeholder="' + t('lib.searchPlaceholder') + '"></label>';
     html += '<div class="filter-bar"><span class="filter-label">' + t('dash.tags') + '</span><div class="tag-filter-list">' +
         '<button class="tag clickable' + (!libraryState.activeTag ? ' active' : '') + '" type="button" data-tag="">' + t('lib.all') + '</button>';
@@ -62,7 +62,7 @@ function paintLibrary() {
     html += '</div></div></div>';
 
     if (!visible.length) {
-        html += '<div class="empty-state"><div class="empty-state-mark">L</div><div class="empty-state-title">' + t('lib.noSkills') +
+        html += '<div class="empty-state"><div class="empty-state-mark">' + uiIcon('library') + '</div><div class="empty-state-title">' + t('lib.noSkills') +
             '</div><div class="empty-state-desc">' + t('lib.noSkillsDesc') + '</div></div>';
     } else {
         html += '<div class="card-grid">';
@@ -110,8 +110,8 @@ function skillCard(skill) {
         '</span></div>' + health + '<p class="skill-desc">' + escapeHtml(skill.description || 'No description') + '</p><div class="tag-list">' + tags +
         '</div><div class="skill-meta"><span>' + shortHash(skill.hash) + '</span><span>' + formatDate(skill.addedAt) + '</span></div>' +
         agentControls(skill.id, agents) + '<div class="skill-actions"><button class="btn btn-ghost btn-sm btn-details-skill" type="button" data-id="' +
-        escapeHtml(skill.id) + '">' + t('lib.viewDetails') + '</button><div class="action-spacer"></div><button class="btn btn-danger btn-sm btn-remove-skill" type="button" data-id="' +
-        escapeHtml(skill.id) + '"' + (hasActivation ? ' disabled' : '') + '>' + t('lib.remove') + '</button></div></article>';
+        escapeHtml(skill.id) + '">' + uiIcon('eye') + t('lib.viewDetails') + '</button><div class="action-spacer"></div><button class="btn btn-danger btn-sm btn-remove-skill" type="button" data-id="' +
+        escapeHtml(skill.id) + '"' + (hasActivation ? ' disabled' : '') + '>' + uiIcon('trash') + t('lib.remove') + '</button></div></article>';
 }
 
 function skillHealthMarkup(skill) {
@@ -141,11 +141,11 @@ function agentManagementBand() {
         '</span><div class="managed-agent-list">' + configured.map(function (agent) {
             return '<span class="managed-agent"><img class="agent-logo" src="' + agentIconSource(agent) + '" alt=""><span>' +
                 escapeHtml(agent.name) + '</span></span>';
-        }).join('') + '</div></div><button class="btn btn-secondary" type="button" id="btn-manage-agents">' + t('lib.manageAgents') + '</button></section>';
+        }).join('') + '</div></div><button class="btn btn-secondary" type="button" id="btn-manage-agents">' + uiIcon('settings') + t('lib.manageAgents') + '</button></section>';
 }
 
 function showAgentManager() {
-    var content = '<div class="agent-manager-actions"><button class="btn btn-secondary" type="button" id="btn-new-custom-agent">+ ' + t('lib.addCustomAgent') + '</button></div><div class="agent-picker">' + libraryState.agents.map(function (agent) {
+    var content = '<div class="agent-manager-actions"><button class="btn btn-secondary" type="button" id="btn-new-custom-agent">' + uiIcon('plus') + t('lib.addCustomAgent') + '</button></div><div class="agent-picker">' + libraryState.agents.map(function (agent) {
         var disabled = agent.required || !agent.supported;
         var meta = agent.path + ' · ' + agent.format;
         return '<label class="agent-picker-option"><input type="checkbox" name="managed-agent" value="' + agent.id + '"' +
@@ -485,7 +485,7 @@ async function doRemoveSkill(id) {
 }
 
 function libraryError(title, message) {
-    return '<div class="empty-state"><div class="empty-state-mark">!</div><div class="empty-state-title">' + title +
+    return '<div class="empty-state"><div class="empty-state-mark">' + uiIcon('sparkles') + '</div><div class="empty-state-title">' + title +
         '</div><div class="empty-state-desc">' + escapeHtml(message) + '</div></div>';
 }
 
