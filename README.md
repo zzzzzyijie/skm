@@ -22,8 +22,9 @@ Project     项目引用或独立维护哪些 Skill
 - 安全部署：不覆盖未知目标，检测被修改的链接或副本。
 - 可审计状态：YAML Manifest、Lock 和版本化 JSON 输出。
 
-完整设计见 [Library、Activation 与 Project 设计](docs/library-activation-project-design.md)，
-完整命令说明见 [CLI 使用指南](docs/cli-guide.md)。
+完整设计见 [Library、Activation 与 Project 设计](docs/技能库激活与项目设计.md)，
+完整命令说明见 [CLI 使用指南](docs/命令行使用指南.md)。当前完成度和待办见
+[核心流程验收清单](docs/核心流程验收清单.md)。
 
 ## 安装
 
@@ -69,8 +70,8 @@ go build -trimpath -o ./bin/skm ./cmd/skm
 ```
 
 完整的隔离开发、UI 验证、Snapshot 打包和正式发布流程见
-[隔离开发与发布流程](docs/development-release-workflow.md)。发布维护细节见
-[发布指南](docs/releasing.md)。
+[隔离开发与发布流程](docs/开发与发布流程.md)。发布维护细节见
+[发布指南](docs/发布指南.md)。
 
 ## 快速开始
 
@@ -170,7 +171,7 @@ skm source add git@github.com:your-name/my-skills.git \
 
 导入后 ID 为 `personal/code-review`。这不会原地修改已有的 `local/code-review`；
 确认新 Source 版本后，可先禁用本地版本，再启用 Git 版本。完整迁移与更新流程见
-[CLI 使用指南](docs/cli-guide.md#72-将个人-library-skill-绑定到远程-git)。
+[CLI 使用指南](docs/命令行使用指南.md#72-将个人-library-skill-绑定到远程-git)。
 
 ## 项目使用
 
@@ -309,10 +310,10 @@ sh scripts/dev_smoke_test.sh
 ```
 
 使用 `--full` 加入仓库测试、安装器和 Formula 检查；完整开发到发布流程见
-[隔离开发与发布流程](docs/development-release-workflow.md)。
+[隔离开发与发布流程](docs/开发与发布流程.md)。
 
-发布配置的本地验证方式见 [发布指南](docs/releasing.md#4-本地检查发布配置)。
-需要覆盖测试开发二进制时，请使用 [隔离开发与发布流程](docs/development-release-workflow.md)，
+发布配置的本地验证方式见 [发布指南](docs/发布指南.md#4-本地检查发布配置)。
+需要覆盖测试开发二进制时，请使用 [隔离开发与发布流程](docs/开发与发布流程.md)，
 不要直接对真实 `~/.skm` 或 Agent 目录执行 `enable`、`apply`。
 
 ## License
