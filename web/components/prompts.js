@@ -1,13 +1,14 @@
-/* global api, showToast, showModal, closeModal, displayTag, displaySource, formatDate, shortHash, escapeHtml, isCurrentPage, t, uiIcon, confirmationMarkup */
+/* global api, showToast, showModal, closeModal, displayTag, displaySource, formatDate, shortHash, escapeHtml, isCurrentPage, t, uiIcon, confirmationMarkup, tagPickerMarkup, selectedTagValues, showManageTagsModal */
 
-var promptState = { prompts: [], query: '', activeTag: '' };
-var promptRenderTimer = null;
-var promptRenderSequence = 0;
+var promptState = { prompts: [], tags: [], query: '', activeTag: '' };
+var promptEditorVariables = [];
 
 async function renderPrompts() {
     var container = document.getElementById('main-content');
     try {
-        promptState.prompts = await api.get('/api/prompts') || [];
+        var results = await Promise.all([api.get('/api/prompts'), api.get('/api/tags')]);
+        promptState.prompts = results[0] || [];
+        promptState.tags = results[1] || [];
         if (!isCurrentPage('prompts')) return;
         paintPrompts();
     } catch (err) {
@@ -30,6 +31,7 @@ function paintPrompts() {
     var tags = promptTagCounts();
     var html = '<div class="page prompt-page"><div class="page-header"><div><h1 class="page-title">' + t('prompt.title') + '</h1><p class="page-subtitle">' +
         t('prompt.count').replace('{0}', visible.length) + '</p></div><div class="header-actions"><input class="sr-only" type="file" id="prompt-file-input" accept=".md,text/markdown,text/plain">' +
+        '<button class="btn btn-secondary" type="button" id="btn-manage-prompt-tags">' + uiIcon('tags') + t('lib.manageTags') + '</button>' +
         '<button class="btn btn-secondary" type="button" id="btn-import-prompt">' + uiIcon('folder') + t('prompt.import') + '</button>' +
         '<button class="btn btn-primary" type="button" id="btn-new-prompt">' + uiIcon('plus') + t('prompt.new') + '</button></div></div>';
     html += '<div class="library-tools prompt-tools"><label class="search-box"><span class="sr-only">' + t('prompt.search') + '</span><span class="search-mark" aria-hidden="true">' +
@@ -50,7 +52,8 @@ function paintPrompts() {
     html += '</div>';
     container.innerHTML = html;
 
-    document.getElementById('btn-new-prompt').addEventListener('click', function () { showPromptEditor(null, defaultPromptContent()); });
+    document.getElementById('btn-new-prompt').addEventListener('click', function () { showPromptEditor(null, defaultPromptDocument()); });
+    document.getElementById('btn-manage-prompt-tags').addEventListener('click', showManageTagsModal);
     var fileInput = document.getElementById('prompt-file-input');
     document.getElementById('btn-import-prompt').addEventListener('click', function () { fileInput.click(); });
     fileInput.addEventListener('change', importPromptFile);
@@ -64,14 +67,11 @@ function paintPrompts() {
     container.querySelectorAll('[data-prompt-tag]').forEach(function (button) {
         button.addEventListener('click', function () { promptState.activeTag = button.dataset.promptTag; paintPrompts(); });
     });
-    container.querySelectorAll('[data-use-prompt]').forEach(function (button) {
-        button.addEventListener('click', function () { openPromptUse(button.dataset.usePrompt); });
+    container.querySelectorAll('[data-copy-prompt]').forEach(function (button) {
+        button.addEventListener('click', function () { copySavedPrompt(button.dataset.copyPrompt, button); });
     });
     container.querySelectorAll('[data-edit-prompt]').forEach(function (button) {
         button.addEventListener('click', function () { openPromptEditor(button.dataset.editPrompt); });
-    });
-    container.querySelectorAll('[data-duplicate-prompt]').forEach(function (button) {
-        button.addEventListener('click', function () { duplicatePrompt(button.dataset.duplicatePrompt); });
     });
     container.querySelectorAll('[data-export-prompt]').forEach(function (button) {
         button.addEventListener('click', function () { exportPrompt(button.dataset.exportPrompt); });
@@ -93,18 +93,16 @@ function promptCard(prompt) {
     var tags = (prompt.tags || []).map(function (tag) { return '<span class="tag">' + escapeHtml(displayTag(tag)) + '</span>'; }).join('');
     return '<article class="card prompt-card"><div class="skill-header"><div><div class="skill-name">' + escapeHtml(prompt.name) + '</div><div class="skill-id mono">' +
         escapeHtml(prompt.id) + '</div></div><span class="badge badge-source">' + escapeHtml(displaySource(prompt.source || 'local')) + '</span></div><p class="skill-desc">' +
-        escapeHtml(prompt.description) + '</p><div class="tag-list">' + tags + '</div><div class="prompt-card-stats"><span>' + uiIcon('settings') + '<strong>' +
-        Number((prompt.variables || []).length) + '</strong> ' + t('prompt.variables') + '</span><span class="mono">' + shortHash(prompt.hash) + '</span><span>' + formatDate(prompt.updatedAt) +
-        '</span></div><div class="prompt-primary-action"><button class="btn btn-success" type="button" data-use-prompt="' + escapeHtml(prompt.id) + '">' + uiIcon('sparkles') +
-        t('prompt.use') + '</button></div><div class="prompt-card-actions"><button class="btn btn-ghost btn-sm" type="button" data-edit-prompt="' + escapeHtml(prompt.id) + '">' +
-        uiIcon('settings') + t('prompt.edit') + '</button><button class="btn btn-ghost btn-sm" type="button" data-duplicate-prompt="' + escapeHtml(prompt.id) + '">' +
-        uiIcon('copy') + t('prompt.duplicate') + '</button><button class="btn btn-ghost btn-sm" type="button" data-export-prompt="' + escapeHtml(prompt.id) + '">' +
+        escapeHtml(prompt.description) + '</p><div class="tag-list">' + tags + '</div><div class="prompt-card-stats"><span class="mono">' + shortHash(prompt.hash) + '</span><span>' + formatDate(prompt.updatedAt) +
+        '</span></div><div class="prompt-primary-action"><button class="btn btn-success" type="button" data-copy-prompt="' + escapeHtml(prompt.id) + '">' + uiIcon('copy') +
+        t('prompt.copy') + '</button></div><div class="prompt-card-actions"><button class="btn btn-ghost btn-sm" type="button" data-edit-prompt="' + escapeHtml(prompt.id) + '">' +
+        uiIcon('settings') + t('prompt.edit') + '</button><button class="btn btn-ghost btn-sm" type="button" data-export-prompt="' + escapeHtml(prompt.id) + '">' +
         uiIcon('folder') + t('prompt.export') + '</button><button class="btn btn-danger btn-sm" type="button" data-remove-prompt="' + escapeHtml(prompt.id) + '">' +
         uiIcon('trash') + t('prompt.remove') + '</button></div></article>';
 }
 
-function defaultPromptContent() {
-    return '---\nname: my-prompt\ndescription: Describe when to use this Prompt\ntags: [general]\nvariables:\n  - name: topic\n    label: Topic\n    type: text\n    required: true\n---\nCreate a clear response about {{topic}}.\n';
+function defaultPromptDocument() {
+    return { name: '', description: '', tags: [], body: '', variables: [] };
 }
 
 function importPromptFile(event) {
@@ -115,9 +113,16 @@ function importPromptFile(event) {
         return;
     }
     var reader = new FileReader();
-    reader.addEventListener('load', function () {
-        showPromptEditor(null, String(reader.result || ''));
-        showToast(t('prompt.imported'), 'info');
+    reader.addEventListener('load', async function () {
+        try {
+            var documentData = await api.post('/api/prompts/validate', { content: String(reader.result || '') });
+            showPromptEditor(null, documentData);
+            showToast(t('prompt.imported'), 'info');
+        } catch (err) {
+            showToast(err.message, 'error');
+        } finally {
+            event.target.value = '';
+        }
     });
     reader.readAsText(file);
 }
@@ -125,28 +130,42 @@ function importPromptFile(event) {
 async function openPromptEditor(id) {
     try {
         var details = await api.get('/api/prompts/' + encodePromptID(id));
-        showPromptEditor(details, details.content);
+        showPromptEditor(details, details);
     } catch (err) {
         showToast(err.message, 'error');
     }
 }
 
-function showPromptEditor(existing, content) {
+function showPromptEditor(existing, documentData) {
+    documentData = documentData || defaultPromptDocument();
+    promptEditorVariables = documentData.variables || [];
+    var nameHint = existing ? t('prompt.nameLocked') : t('prompt.nameHint');
     var editor = '<div class="prompt-editor-shell"><div class="prompt-editor-main"><div class="prompt-editor-toolbar"><label class="form-label" for="prompt-content">' + t('prompt.contentLabel') +
         '</label><div class="prompt-editor-meta"><span id="prompt-editor-stats"></span><span class="prompt-editor-dirty" id="prompt-editor-dirty" aria-live="polite">' + escapeHtml(t('prompt.notValidated')) +
-        '</span></div></div><textarea class="input prompt-content-editor mono" id="prompt-content" spellcheck="false" aria-describedby="prompt-editor-shortcuts">' + escapeHtml(content) +
-        '</textarea><div class="prompt-editor-shortcuts" id="prompt-editor-shortcuts">' + escapeHtml(t('prompt.shortcuts')) + '</div></div><aside class="prompt-editor-aside"><div class="prompt-editor-help">' +
-        uiIcon('sparkles') + '<p>' + escapeHtml(t('prompt.editorHint')) + '</p></div><div class="prompt-validation" id="prompt-validation" role="status" aria-live="polite"><span class="muted">' +
+        '</span></div></div><textarea class="input prompt-content-editor" id="prompt-content" required spellcheck="true" placeholder="' + escapeHtml(t('prompt.contentPlaceholder')) +
+        '" aria-describedby="prompt-editor-shortcuts" data-prompt-editor-field>' + escapeHtml(documentData.body || '') +
+        '</textarea><div class="prompt-editor-shortcuts" id="prompt-editor-shortcuts">' + escapeHtml(t('prompt.shortcuts')) + '</div></div><aside class="prompt-editor-aside"><section class="prompt-editor-fields">' +
+        '<div class="prompt-editor-field"><label class="form-label" for="prompt-name">' + t('prompt.nameLabel') + '</label><input class="input mono" id="prompt-name" required autocomplete="off" value="' +
+        escapeHtml(documentData.name || '') + '" placeholder="' + escapeHtml(t('prompt.namePlaceholder')) + '" aria-describedby="prompt-name-hint" data-prompt-editor-field' + (existing ? ' readonly' : '') +
+        '><small class="form-hint" id="prompt-name-hint">' + escapeHtml(nameHint) + '</small></div><div class="prompt-editor-field"><label class="form-label" for="prompt-description">' +
+        t('prompt.descriptionLabel') + '</label><textarea class="input prompt-description-input" id="prompt-description" required placeholder="' + escapeHtml(t('prompt.descriptionPlaceholder')) +
+        '" data-prompt-editor-field>' + escapeHtml(documentData.description || '') + '</textarea></div><div class="prompt-editor-field"><label class="form-label" for="prompt-tags">' +
+        t('prompt.tagsLabel') + '</label>' + tagPickerMarkup('prompt-tags', documentData.tags || [], promptState.tags, true) + '</div></section><div class="prompt-editor-help">' + uiIcon('sparkles') + '<p>' +
+        escapeHtml(t('prompt.editorHint')) + '</p></div><div class="prompt-validation" id="prompt-validation" role="status" aria-live="polite"><span class="muted">' +
         escapeHtml(t('prompt.notValidated')) + '</span></div></aside></div>';
     var actions = '<button class="btn btn-ghost" type="button" data-close-modal>' + t('lib.cancel') + '</button><button class="btn btn-secondary" type="button" id="btn-validate-prompt">' +
         uiIcon('check') + t('prompt.validate') + '</button><button class="btn btn-primary" type="button" id="btn-save-prompt">' + uiIcon('sparkles') + t('prompt.save') + '</button>';
     showModal(existing ? t('prompt.editorTitle') : t('prompt.newTitle'), editor, actions);
     document.querySelector('.modal').classList.add('prompt-editor-modal');
     var textarea = document.getElementById('prompt-content');
+    document.querySelectorAll('#prompt-tags input').forEach(function (input) { input.setAttribute('data-prompt-editor-field', ''); });
     updatePromptEditorStats(textarea.value, false);
-    textarea.addEventListener('input', function () {
-        document.getElementById('prompt-validation').innerHTML = '<span class="muted">' + escapeHtml(t('prompt.notValidated')) + '</span>';
-        updatePromptEditorStats(textarea.value, true);
+    document.querySelectorAll('[data-prompt-editor-field]').forEach(function (field) {
+        field.addEventListener('input', function () {
+            field.removeAttribute('aria-invalid');
+            document.getElementById('prompt-validation').innerHTML = '<span class="muted">' + escapeHtml(t('prompt.notValidated')) + '</span>';
+            updatePromptEditorStats(textarea.value, true);
+        });
     });
     textarea.addEventListener('keydown', function (event) {
         var commandKey = event.metaKey || event.ctrlKey;
@@ -168,7 +187,34 @@ function showPromptEditor(existing, content) {
     });
     document.getElementById('btn-validate-prompt').addEventListener('click', validatePromptEditor);
     document.getElementById('btn-save-prompt').addEventListener('click', function () { savePromptEditor(existing); });
-    textarea.focus();
+    document.getElementById(existing ? 'prompt-content' : 'prompt-name').focus();
+}
+
+function promptEditorPayload() {
+    return {
+        name: document.getElementById('prompt-name').value,
+        description: document.getElementById('prompt-description').value,
+        tags: selectedTagValues('prompt-tags'),
+        body: document.getElementById('prompt-content').value,
+        variables: promptEditorVariables,
+    };
+}
+
+function promptEditorFieldsReady() {
+    var fields = [
+        { id: 'prompt-name', label: t('prompt.nameLabel') },
+        { id: 'prompt-description', label: t('prompt.descriptionLabel') },
+        { id: 'prompt-content', label: t('prompt.contentLabel') },
+    ];
+    for (var index = 0; index < fields.length; index += 1) {
+        var input = document.getElementById(fields[index].id);
+        if (input.value.trim()) continue;
+        input.setAttribute('aria-invalid', 'true');
+        input.focus();
+        showToast(t('prompt.required').replace('{0}', fields[index].label), 'error');
+        return false;
+    }
+    return true;
 }
 
 function updatePromptEditorStats(content, dirty) {
@@ -184,9 +230,10 @@ function updatePromptEditorStats(content, dirty) {
 async function validatePromptEditor() {
     var button = document.getElementById('btn-validate-prompt');
     if (!button || button.disabled) return;
+    if (!promptEditorFieldsReady()) return;
     button.disabled = true;
     try {
-        var documentData = await api.post('/api/prompts/validate', { content: document.getElementById('prompt-content').value });
+        var documentData = await api.post('/api/prompts/validate', promptEditorPayload());
         var variables = (documentData.variables || []).map(function (variable) { return '<span class="tag">{{' + escapeHtml(variable.name) + '}}</span>'; }).join('');
         document.getElementById('prompt-validation').innerHTML = '<div class="prompt-validation-ok">' + uiIcon('check') + '<strong>' + escapeHtml(t('prompt.valid')) +
             '</strong></div><div class="prompt-validation-name">' + escapeHtml(documentData.name) + '</div><p>' + escapeHtml(documentData.description) + '</p>' +
@@ -206,9 +253,10 @@ async function validatePromptEditor() {
 
 async function savePromptEditor(existing) {
     var button = document.getElementById('btn-save-prompt');
+    if (!promptEditorFieldsReady()) return;
     button.disabled = true;
     try {
-        var data = { content: document.getElementById('prompt-content').value };
+        var data = promptEditorPayload();
         if (existing) {
             data.baseHash = existing.hash;
             await api.put('/api/prompts/' + encodePromptID(existing.id), data);
@@ -220,17 +268,6 @@ async function savePromptEditor(existing) {
         await renderPrompts();
     } catch (err) {
         button.disabled = false;
-        showToast(err.message, 'error');
-    }
-}
-
-async function duplicatePrompt(id) {
-    try {
-        var details = await api.get('/api/prompts/' + encodePromptID(id));
-        var nextName = (details.name + '-copy').slice(0, 63).replace(/-+$/, '');
-        var content = details.content.replace(/^name:\s*.*$/m, 'name: ' + nextName);
-        showPromptEditor(null, content);
-    } catch (err) {
         showToast(err.message, 'error');
     }
 }
@@ -275,106 +312,43 @@ async function removePrompt(id) {
     }
 }
 
-async function openPromptUse(id) {
+async function copySavedPrompt(id, button) {
+    var original = button.innerHTML;
+    button.disabled = true;
     try {
-        var details = await api.get('/api/prompts/' + encodePromptID(id));
-        var fields = (details.variables || []).map(promptVariableField).join('');
-        if (!fields) fields = '<div class="prompt-no-variables">' + escapeHtml(t('prompt.noVariables')) + '</div>';
-        var content = '<div class="prompt-use-layout"><section class="prompt-use-variables"><div class="prompt-panel-heading"><span>' + t('prompt.variables') +
-            '</span><button class="btn btn-secondary btn-sm" type="button" id="btn-render-prompt">' + uiIcon('refresh') + t('prompt.render') + '</button></div><div class="prompt-variable-fields">' +
-            fields + '</div></section><section class="prompt-use-preview"><div class="prompt-panel-heading"><span>' + t('prompt.preview') + '</span><span class="prompt-preview-state" id="prompt-preview-state"></span></div>' +
-            '<pre class="prompt-preview-output" id="prompt-preview-output"></pre></section></div>';
-        var actions = '<button class="btn btn-ghost" type="button" data-close-modal>' + t('lib.close') + '</button><button class="btn btn-primary" type="button" id="btn-copy-prompt" disabled>' +
-            uiIcon('copy') + t('prompt.copy') + '</button>';
-        showModal(t('prompt.useTitle') + ': ' + details.name, content, actions);
-        document.querySelector('.modal').classList.add('prompt-use-modal');
-        document.getElementById('btn-render-prompt').addEventListener('click', function () { renderPromptUse(details); });
-        document.querySelectorAll('[data-prompt-variable]').forEach(function (input) {
-            input.addEventListener('input', function () { schedulePromptRender(details); });
-            input.addEventListener('change', function () { schedulePromptRender(details); });
-        });
-        document.getElementById('btn-copy-prompt').addEventListener('click', copyRenderedPrompt);
-        renderPromptUse(details);
-    } catch (err) {
-        showToast(err.message, 'error');
-    }
-}
-
-function promptVariableField(variable) {
-    var name = escapeHtml(variable.name);
-    var label = escapeHtml(variable.label || variable.name) + (variable.required ? ' <span class="required-mark">*</span>' : '');
-    var description = variable.description ? '<small>' + escapeHtml(variable.description) + '</small>' : '';
-    var attributes = ' data-prompt-variable="' + name + '" id="prompt-var-' + name + '"';
-    var input;
-    if (variable.type === 'multiline') {
-        input = '<textarea class="input prompt-variable-textarea"' + attributes + '>' + escapeHtml(variable.default || '') + '</textarea>';
-    } else if (variable.type === 'select') {
-        input = '<select class="input"' + attributes + '>' + (variable.options || []).map(function (option) {
-            return '<option value="' + escapeHtml(option) + '"' + (option === variable.default ? ' selected' : '') + '>' + escapeHtml(option) + '</option>';
-        }).join('') + '</select>';
-    } else if (variable.type === 'boolean') {
-        input = '<label class="prompt-boolean"><input type="checkbox"' + attributes + (variable.default === 'true' ? ' checked' : '') + '><span>true</span></label>';
-    } else {
-        var type = variable.type === 'number' ? 'number' : (variable.type === 'secret' ? 'password' : 'text');
-        input = '<input class="input" type="' + type + '"' + attributes + ' value="' + escapeHtml(variable.default || '') + '" autocomplete="off">';
-    }
-    return '<div class="form-group prompt-variable-field"><label class="form-label" for="prompt-var-' + name + '">' + label + '</label>' + input + description + '</div>';
-}
-
-function schedulePromptRender(details) {
-    clearTimeout(promptRenderTimer);
-    promptRenderTimer = setTimeout(function () { renderPromptUse(details); }, 180);
-}
-
-async function renderPromptUse(details) {
-    var sequence = ++promptRenderSequence;
-    var state = document.getElementById('prompt-preview-state');
-    var output = document.getElementById('prompt-preview-output');
-    var copyButton = document.getElementById('btn-copy-prompt');
-    if (!state || !output || !copyButton) return;
-    state.textContent = t('loading');
-    copyButton.disabled = true;
-    try {
-        var result = await api.post('/api/prompt-render', { prompt: details.id, variables: collectPromptVariables() });
-        if (sequence !== promptRenderSequence || !document.getElementById('prompt-preview-output')) return;
-        output.textContent = result.content || '';
-        output.dataset.rendered = result.content || '';
-        if ((result.missingVariables || []).length) {
-            state.className = 'prompt-preview-state has-missing';
-            state.textContent = t('prompt.missing').replace('{0}', result.missingVariables.join(', '));
+        var detailsPromise = api.get('/api/prompts/' + encodePromptID(id));
+        if (navigator.clipboard && navigator.clipboard.write && window.ClipboardItem) {
+            await navigator.clipboard.write([new window.ClipboardItem({
+                'text/plain': detailsPromise.then(function (details) {
+                    return new Blob([details.body || ''], { type: 'text/plain' });
+                }),
+            })]);
         } else {
-            state.className = 'prompt-preview-state is-ready';
-            state.textContent = t('prompt.valid');
-            copyButton.disabled = false;
+            var details = await detailsPromise;
+            await copyPromptText(details.body || '');
         }
-    } catch (err) {
-        if (sequence !== promptRenderSequence) return;
-        state.className = 'prompt-preview-state has-missing';
-        state.textContent = err.message;
-        output.textContent = '';
-    }
-}
-
-function collectPromptVariables() {
-    var values = {};
-    document.querySelectorAll('[data-prompt-variable]').forEach(function (input) {
-        values[input.dataset.promptVariable] = input.type === 'checkbox' ? String(input.checked) : input.value;
-    });
-    return values;
-}
-
-async function copyRenderedPrompt() {
-    var output = document.getElementById('prompt-preview-output');
-    try {
-        await copyPromptText(output.dataset.rendered || output.textContent || '');
+        button.innerHTML = uiIcon('check') + t('prompt.copiedShort');
         showToast(t('prompt.copied'));
+        setTimeout(function () {
+            if (!button.isConnected) return;
+            button.innerHTML = original;
+            button.disabled = false;
+        }, 1200);
     } catch (err) {
+        button.innerHTML = original;
+        button.disabled = false;
         showToast(err.message, 'error');
     }
 }
 
 function copyPromptText(content) {
-    if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(content);
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        return navigator.clipboard.writeText(content).catch(function () { return copyPromptTextFallback(content); });
+    }
+    return copyPromptTextFallback(content);
+}
+
+function copyPromptTextFallback(content) {
     var textarea = document.createElement('textarea');
     textarea.value = content;
     textarea.style.position = 'fixed';

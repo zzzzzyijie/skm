@@ -35,7 +35,7 @@ func TestAgentAndModeValidation(t *testing.T) {
 
 func TestDefaultConfig(t *testing.T) {
 	config := DefaultConfig()
-	if config.Version != SchemaVersion || len(config.Defaults.Tags) != 1 || len(config.Defaults.Agents) != 2 {
+	if config.Version != SchemaVersion || len(config.Tags) != 1 || config.Tags[0] != "general" || len(config.Defaults.Tags) != 1 || len(config.Defaults.Agents) != 2 {
 		t.Fatalf("default config = %#v", config)
 	}
 }

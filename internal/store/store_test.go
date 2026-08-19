@@ -16,7 +16,7 @@ func TestEnsureAndYAMLRoundTrips(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(config.Defaults.Tags, []string{"general"}) {
+	if !reflect.DeepEqual(config.Tags, []string{"general"}) || !reflect.DeepEqual(config.Defaults.Tags, []string{"general"}) {
 		t.Fatalf("default config = %#v", config)
 	}
 	if err := storage.SaveCatalog(domain.Catalog{Skills: []domain.Skill{{ID: "local/one", Name: "one", Location: domain.LocationLibrary}}}); err != nil {

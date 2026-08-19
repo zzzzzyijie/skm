@@ -57,9 +57,9 @@ function paintLibrary() {
         '" placeholder="' + t('lib.searchPlaceholder') + '"></label>';
     html += '<div class="filter-bar"><span class="filter-label">' + t('lib.tags') + '</span><div class="tag-filter-list">' +
         '<button class="tag clickable' + (!libraryState.activeTag ? ' active' : '') + '" type="button" data-tag="">' + t('lib.all') + '</button>';
-    libraryState.tags.forEach(function (tag) {
+    libraryState.tags.filter(function (tag) { return tag.skillCount > 0; }).forEach(function (tag) {
         html += '<button class="tag clickable' + (libraryState.activeTag === tag.name ? ' active' : '') + '" type="button" data-tag="' +
-            escapeHtml(tag.name) + '">' + escapeHtml(displayTag(tag.name)) + ' <small>' + tag.count + '</small></button>';
+            escapeHtml(tag.name) + '">' + escapeHtml(displayTag(tag.name)) + ' <small>' + tag.skillCount + '</small></button>';
     });
     html += '</div></div></div>';
 
@@ -310,15 +310,17 @@ async function toggleSkillAgent(skillID, agent, button) {
 }
 
 function showAddSkillModal() {
+    var localTags = tagPickerMarkup('add-skill-tags', [], libraryState.tags, true);
+    var sourceTags = tagPickerMarkup('git-source-tags', [], libraryState.tags, true);
     var content = '<div class="import-mode" role="tablist"><button class="import-mode-option active" type="button" data-import-mode="local">' +
         t('lib.importLocal') + '</button><button class="import-mode-option" type="button" data-import-mode="git">' + t('lib.importGit') + '</button></div>' +
         '<div class="import-pane" data-import-pane="local"><div class="form-group"><label class="form-label" for="add-skill-path">' + t('lib.skillPath') +
         '</label><div class="path-picker"><input class="input" id="add-skill-path" readonly placeholder="' + t('lib.chooseSkillPath') + '"><button class="btn btn-secondary" type="button" id="btn-choose-skill-path">' + t('lib.choosePath') + '</button></div></div><div class="form-group"><label class="form-label" for="add-skill-tags">' +
-        t('lib.tagsComma') + '</label><input class="input" id="add-skill-tags" placeholder="' + t('lib.skillTagsPlaceholder') + '"></div></div>' +
+        t('lib.selectTags') + '</label>' + localTags + '</div></div>' +
         '<div class="import-pane is-hidden" data-import-pane="git"><div class="form-group"><label class="form-label" for="git-source-input">' +
         t('lib.gitInput') + '</label><input class="input mono" id="git-source-input" placeholder="npx skills add jakubkrehel/skills"></div><div class="form-group"><label class="form-label" for="git-source-name">' +
         t('lib.gitSourceName') + '</label><input class="input" id="git-source-name" placeholder="' + t('lib.gitNamePlaceholder') + '"></div><div class="form-group"><label class="form-label" for="git-source-tags">' +
-        t('lib.tagsComma') + '</label><input class="input" id="git-source-tags" placeholder="team, review"></div></div>';
+        t('lib.selectTags') + '</label>' + sourceTags + '</div></div>';
     var actions = '<button class="btn btn-ghost" type="button" data-close-modal>' + t('lib.cancel') + '</button>' +
         '<button class="btn btn-primary" type="button" id="btn-confirm-add">' + t('lib.addSkill') + '</button>';
     showModal(t('lib.addSkillTitle'), content, actions);
@@ -352,17 +354,13 @@ async function chooseSkillDirectory() {
     }
 }
 
-function splitList(value) {
-    return value ? value.split(',').map(function (item) { return item.trim(); }).filter(Boolean) : [];
-}
-
 async function doAddSkill() {
     var path = document.getElementById('add-skill-path').value.trim();
     if (!path) { showToast(t('lib.pathRequired'), 'error'); return; }
     var button = document.getElementById('btn-confirm-add');
     button.disabled = true;
     try {
-        await api.post('/api/skills', { path: path, tags: splitList(document.getElementById('add-skill-tags').value.trim()), source: '' });
+        await api.post('/api/skills', { path: path, tags: selectedTagValues('add-skill-tags'), source: '' });
         closeModal();
         showToast(t('lib.addedSuccess'));
         renderLibrary();
@@ -377,7 +375,7 @@ async function doImportGitSource() {
     button.disabled = true;
     try {
         var result = await api.post('/api/sources', {
-            input: input, name: name, ref: '', paths: [], tags: splitList(document.getElementById('git-source-tags').value.trim()),
+            input: input, name: name, ref: '', paths: [], tags: selectedTagValues('git-source-tags'),
         });
         closeModal();
         showToast(t('lib.importedSource').replace('{0}', (result.skills || []).length).replace('{1}', result.source.name));
@@ -398,10 +396,7 @@ function showSkillDetails(skill) {
     if (!skill) return;
     var source = libraryState.gitSources[skill.source];
     var skillTags = skill.tags || [];
-    var tags = skillTags.map(function (tag) {
-        var remove = '<button type="button" class="tag-remove" data-remove-tag="' + escapeHtml(tag) + '" aria-label="' + t('lib.remove') + ' ' + escapeHtml(displayTag(tag)) + '">&times;</button>';
-        return '<span class="tag removable">' + escapeHtml(displayTag(tag)) + remove + '</span>';
-    }).join('') || '<span class="muted">' + t('lib.noTags') + '</span>';
+    var tagPicker = tagPickerMarkup('detail-skill-tags', skillTags, libraryState.tags, false);
     var sourceDetails = source ? '<div><dt>' + t('lib.gitUrl') + '</dt><dd class="mono detail-path">' + escapeHtml(source.url) + '</dd></div><div><dt>' +
         t('lib.gitRef') + '</dt><dd>' + escapeHtml(source.ref || 'default') + '</dd></div>' : '';
     var linked = skill.mode === 'symlink' && skill.projectRoot;
@@ -413,8 +408,8 @@ function showSkillDetails(skill) {
         t('lib.description') + '</dt><dd>' + escapeHtml(skill.description || '-') + '</dd></div><div><dt>' + t('lib.path') + '</dt><dd class="mono detail-path">' +
         escapeHtml(skill.path) + '</dd></div><div><dt>' + t('lib.hash') + '</dt><dd class="mono">' + escapeHtml(skill.hash) + '</dd></div><div><dt>' +
         t('lib.revision') + '</dt><dd class="mono">' + shortRevision(skill.revision) + '</dd></div>' + originDetails + sourceDetails + '<div><dt>' + t('lib.added') +
-        '</dt><dd>' + formatDate(skill.addedAt) + '</dd></div></dl><section class="skill-detail-section"><div class="form-group"><label class="form-label">' + t('lib.tags') +
-        '</label><div class="tag-list detail-tags">' + tags + '</div></div><div class="inline-form"><input class="input" id="detail-new-tag" placeholder="' + t('lib.tagName') + '"><button class="btn btn-secondary" type="button" id="btn-add-tag">' + t('lib.addTag') + '</button></div></section>' +
+        '</dt><dd>' + formatDate(skill.addedAt) + '</dd></div></dl><section class="skill-detail-section"><div class="skill-detail-section-heading"><span class="form-label">' + t('lib.tags') +
+        '</span><button class="btn btn-secondary btn-sm" type="button" id="btn-save-skill-tags">' + uiIcon('check') + t('lib.saveTags') + '</button></div>' + tagPicker + '</section>' +
         health + '<section class="skill-detail-section skill-content-section"><div class="skill-detail-section-heading"><span class="form-label">' + t('lib.content') + '</span><span class="mono muted">SKILL.md</span></div>' +
         (skill.body ? '<pre class="skill-detail-content">' + escapeHtml(skill.body) + '</pre>' : '<div class="inline-empty">' + t('lib.noContent') + '</div>') + '</section>';
     var actions = '<button class="btn btn-ghost" type="button" data-close-modal>' + t('lib.close') + '</button>' +
@@ -422,10 +417,7 @@ function showSkillDetails(skill) {
         (source ? '<button class="btn btn-primary" type="button" id="btn-update-source">' + t('lib.updateSource') + '</button>' : '');
     showModal(t('lib.details'), content, actions);
     document.querySelector('.modal').classList.add('skill-detail-modal');
-    document.getElementById('btn-add-tag').addEventListener('click', function () { addSkillTag(skill.id); });
-    document.querySelectorAll('[data-remove-tag]').forEach(function (button) {
-        button.addEventListener('click', function () { removeSkillTag(skill.id, button.dataset.removeTag); });
-    });
+    document.getElementById('btn-save-skill-tags').addEventListener('click', function () { saveSkillTags(skill.id); });
     if (source) document.getElementById('btn-update-source').addEventListener('click', function () { updateGitSource(source.name); });
     if (linked) document.getElementById('btn-detach-skill').addEventListener('click', function () { confirmDetachLibrarySkill(skill.id); });
 }
@@ -463,25 +455,18 @@ async function updateGitSource(name) {
     } catch (err) { button.disabled = false; button.textContent = t('lib.updateSource'); showToast(err.message, 'error'); }
 }
 
-async function addSkillTag(id) {
-    var input = document.getElementById('detail-new-tag');
-    var tag = input.value.trim();
-    if (!tag) return;
+async function saveSkillTags(id) {
+    var button = document.getElementById('btn-save-skill-tags');
+    button.disabled = true;
     try {
-        await api.post('/api/skill-tags/add', { skill: id, tags: [tag] });
+        await api.put('/api/skill-tags', { skill: id, tags: selectedTagValues('detail-skill-tags') });
         await refreshLibraryAfterTagChange();
-        showToast(t('lib.tagAdded'));
+        showToast(t('lib.tagsUpdated'));
         await openSkillDetails(id);
-    } catch (err) { showToast(err.message, 'error'); }
-}
-
-async function removeSkillTag(id, tag) {
-    try {
-        await api.post('/api/skill-tags/remove', { skill: id, tag: tag });
-        await refreshLibraryAfterTagChange();
-        showToast(t('lib.tagRemoved'));
-        await openSkillDetails(id);
-    } catch (err) { showToast(err.message, 'error'); }
+    } catch (err) {
+        button.disabled = false;
+        showToast(err.message, 'error');
+    }
 }
 
 async function refreshLibraryAfterTagChange() {
@@ -492,33 +477,117 @@ async function refreshLibraryAfterTagChange() {
     paintLibrary();
 }
 
-function showManageTagsModal() {
-    var content = libraryState.tags.length ? '<div class="tag-manager">' : '<div class="inline-empty">' + t('lib.noTags') + '</div>';
-    libraryState.tags.forEach(function (tag) {
-        content += '<div class="tag-manager-row"><span class="tag">' + escapeHtml(displayTag(tag.name)) + '</span><span class="muted">' + tag.count + '</span>' +
-            '<button class="btn btn-ghost btn-sm" type="button" data-rename-tag="' + escapeHtml(tag.name) + '">' + t('lib.renameTag') + '</button></div>';
+function tagPickerMarkup(id, selectedValues, availableTags, useDefaults) {
+    var selected = {};
+    (selectedValues || []).forEach(function (name) { selected[name] = true; });
+    var values = (availableTags || []).slice();
+    (selectedValues || []).forEach(function (name) {
+        if (!values.some(function (tag) { return tag.name === name; })) values.push({ name: name, count: 0 });
     });
-    if (libraryState.tags.length) content += '</div>';
-    showModal(t('lib.manageTags'), content, '<button class="btn btn-primary" type="button" data-close-modal>' + t('lib.close') + '</button>');
+    values.sort(function (left, right) { return left.name.localeCompare(right.name); });
+    if (!(selectedValues || []).length && useDefaults) {
+        values.forEach(function (tag) { if (tag.default) selected[tag.name] = true; });
+    }
+    if (!values.length) return '<div class="tag-picker-empty">' + escapeHtml(t('lib.noManagedTags')) + '</div>';
+    return '<div class="tag-picker" id="' + escapeHtml(id) + '" role="group" aria-label="' + escapeHtml(t('lib.selectTags')) + '">' + values.map(function (tag) {
+        return '<label class="tag-picker-option"><input type="checkbox" value="' + escapeHtml(tag.name) + '"' + (selected[tag.name] ? ' checked' : '') +
+            '><span class="tag-picker-copy"><strong>' + escapeHtml(displayTag(tag.name)) + '</strong><span>' +
+            (tag.default ? '<small class="tag-default">' + escapeHtml(t('lib.defaultTag')) + '</small>' : '') +
+            '<small>' + escapeHtml(t('lib.tagUsage').replace('{0}', Number(tag.count || 0))) + '</small></span></span></label>';
+    }).join('') + '</div>';
+}
+
+function selectedTagValues(id) {
+    var values = [];
+    document.querySelectorAll('#' + id + ' input[type="checkbox"]:checked').forEach(function (input) { values.push(input.value); });
+    return values;
+}
+
+async function showManageTagsModal() {
+    try {
+        var managedTags = await api.get('/api/tags') || [];
+        libraryState.tags = managedTags;
+        if (typeof promptState !== 'undefined') promptState.tags = managedTags;
+        var content = '<div class="tag-manager-create"><div><label class="form-label" for="new-managed-tag">' + t('lib.newTag') + '</label><input class="input" id="new-managed-tag" placeholder="' +
+            escapeHtml(t('lib.tagNamePlaceholder')) + '" autocomplete="off"></div><button class="btn btn-primary" type="button" id="btn-create-tag">' + uiIcon('plus') + t('lib.createTag') + '</button></div>';
+        content += managedTags.length ? '<div class="tag-manager">' : '<div class="inline-empty">' + t('lib.noTags') + '</div>';
+        managedTags.forEach(function (tag) {
+            var locked = tag.default || tag.count > 0;
+            content += '<div class="tag-manager-row"><div class="tag-manager-main"><span class="tag">' + escapeHtml(displayTag(tag.name)) + '</span>' +
+                (tag.default ? '<span class="badge badge-muted">' + escapeHtml(t('lib.defaultTag')) + '</span>' : '') + '<span class="muted">' +
+                escapeHtml(t('lib.tagUsage').replace('{0}', Number(tag.count || 0))) + '</span></div><div class="tag-manager-actions"><button class="btn btn-ghost btn-sm" type="button" data-rename-tag="' +
+                escapeHtml(tag.name) + '">' + t('lib.renameTag') + '</button><button class="btn btn-danger btn-sm" type="button" data-delete-tag="' + escapeHtml(tag.name) + '"' +
+                (locked ? ' disabled title="' + escapeHtml(t(tag.default ? 'lib.defaultTagLocked' : 'lib.tagInUse')) + '"' : '') + '>' + t('lib.remove') + '</button></div></div>';
+        });
+        if (managedTags.length) content += '</div>';
+        showModal(t('lib.manageTags'), content, '<button class="btn btn-primary" type="button" data-close-modal>' + t('lib.close') + '</button>');
+        document.getElementById('btn-create-tag').addEventListener('click', createManagedTag);
+        document.getElementById('new-managed-tag').addEventListener('keydown', function (event) { if (event.key === 'Enter') createManagedTag(); });
+    } catch (err) {
+        showToast(err.message, 'error');
+        return;
+    }
     document.querySelectorAll('[data-rename-tag]').forEach(function (button) {
         button.addEventListener('click', function () { showRenameTagModal(button.dataset.renameTag); });
     });
+    document.querySelectorAll('[data-delete-tag]').forEach(function (button) {
+        button.addEventListener('click', function () { deleteManagedTag(button.dataset.deleteTag, button); });
+    });
+}
+
+async function createManagedTag() {
+    var input = document.getElementById('new-managed-tag');
+    var button = document.getElementById('btn-create-tag');
+    var name = input.value.trim();
+    if (!name) return;
+    button.disabled = true;
+    try {
+        await api.post('/api/tags', { name: name });
+        showToast(t('lib.tagCreated'));
+        await refreshTagOwningPage();
+        await showManageTagsModal();
+    } catch (err) {
+        button.disabled = false;
+        showToast(err.message, 'error');
+    }
+}
+
+async function deleteManagedTag(name, button) {
+    button.disabled = true;
+    try {
+        await api.del('/api/tags/' + encodeURIComponent(name));
+        showToast(t('lib.tagDeleted'));
+        await refreshTagOwningPage();
+        await showManageTagsModal();
+    } catch (err) {
+        button.disabled = false;
+        showToast(err.message, 'error');
+    }
+}
+
+async function refreshTagOwningPage() {
+    if (isCurrentPage('prompts') && typeof renderPrompts === 'function') {
+        await renderPrompts();
+    } else {
+        await renderLibrary();
+    }
 }
 
 function showRenameTagModal(oldName) {
     var content = '<div class="form-group"><label class="form-label" for="rename-tag-input">' + t('lib.newTagName') + '</label>' +
-        '<input class="input" id="rename-tag-input" value="' + escapeHtml(displayTag(oldName)) + '"></div>';
+        '<input class="input" id="rename-tag-input" value="' + escapeHtml(oldName) + '"></div>';
     showModal(t('lib.renameTag') + ': ' + displayTag(oldName), content, '<button class="btn btn-ghost" type="button" data-close-modal>' + t('lib.cancel') +
         '</button><button class="btn btn-primary" type="button" id="btn-do-rename">' + t('lib.renameTag') + '</button>');
     document.getElementById('btn-do-rename').addEventListener('click', async function () {
         var next = document.getElementById('rename-tag-input').value.trim();
-        if (!next || next === oldName || (oldName === 'general' && next === displayTag(oldName))) return;
+        if (!next || next === oldName) return;
         try {
             await api.post('/api/tags/rename', { old: oldName, new: next });
-            closeModal();
             if (libraryState.activeTag === oldName) libraryState.activeTag = next;
+            if (typeof promptState !== 'undefined' && promptState.activeTag === oldName) promptState.activeTag = next;
             showToast(t('lib.renamedTag'));
-            renderLibrary();
+            await refreshTagOwningPage();
+            await showManageTagsModal();
         } catch (err) { showToast(err.message, 'error'); }
     });
 }

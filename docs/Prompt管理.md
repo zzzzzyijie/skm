@@ -11,7 +11,7 @@ Prompt 是与 Skill 平级的独立资产：Skill 描述 Agent 应具备的能�
 - 本地 `PROMPT.md` 创建、导入、查看、更新、导出和删除。
 - 标签、搜索和不可变内容快照。
 - `text`、`multiline`、`number`、`boolean`、`select`、`secret` 变量。
-- CLI 严格渲染，以及 Web 变量表单、预览和复制。
+- CLI 严格渲染，以及 Web 结构化创建、编辑和正文复制。
 - 基于 `baseHash` 的编辑冲突保护。
 
 ## 文件格式
@@ -40,8 +40,9 @@ variables:
 ```
 
 变量名只能使用小写字母、数字、连字符和下划线，并以小写字母开头。正文引用的每一个
-`{{variable}}` 都必须在 frontmatter 中声明。`secret` 变量不能设置默认值，Web 和 CLI
-不会把本次变量输入保存回 Catalog。
+`{{variable}}` 都必须在 frontmatter 中声明。`secret` 变量不能设置默认值，CLI
+不会把本次变量输入保存回 Catalog。Web 第一版保留导入文件中的变量定义，但卡片主操作会直接
+复制 Prompt 正文，其中的占位符保持原样。
 
 ## 本地数据
 
@@ -71,8 +72,9 @@ skm prompt export local/code-review --output ./PROMPT.md
 skm prompt remove local/code-review
 ```
 
-`prompt render` 有缺失的必填变量时会失败。Web 预览会保留未替换占位符，并列出缺失变量，
-所有必填值完整后才能复制最终结果。
+`prompt render` 有缺失的必填变量时会失败。Web 新建弹窗只需填写名称、描述、标签和正文；
+标签从 Skill 与 Prompt 共用的标签库中选择。
+服务端负责生成 `PROMPT.md` frontmatter；“复制 Prompt”会把正文直接写入设备剪贴板。
 
 ## 后续能力
 

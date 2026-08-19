@@ -10,6 +10,7 @@ import (
 	"github.com/zzzzzyijie/skm/internal/catalog"
 	"github.com/zzzzzyijie/skm/internal/domain"
 	"github.com/zzzzzyijie/skm/internal/planner"
+	promptpkg "github.com/zzzzzyijie/skm/internal/prompt"
 	"github.com/zzzzzyijie/skm/internal/skill"
 	"github.com/zzzzzyijie/skm/internal/tags"
 )
@@ -198,28 +199,170 @@ func (s *Server) handleRemoveSkill(w http.ResponseWriter, r *http.Request) {
 }
 
 type tagCount struct {
-	Name  string `json:"name"`
-	Count int    `json:"count"`
+	Name        string `json:"name"`
+	Count       int    `json:"count"`
+	SkillCount  int    `json:"skillCount"`
+	PromptCount int    `json:"promptCount"`
+	Default     bool   `json:"default"`
 }
 
 func (s *Server) handleListTags(w http.ResponseWriter, r *http.Request) {
+	config, err := s.store.LoadConfig()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
 	library, err := s.store.LoadCatalog()
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err)
 		return
 	}
-	counts := make(map[string]int)
+	prompts, err := s.store.LoadPromptCatalog()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+	counts := make(map[string]*tagCount)
+	ensure := func(name string) *tagCount {
+		if counts[name] == nil {
+			counts[name] = &tagCount{Name: name}
+		}
+		return counts[name]
+	}
+	for _, name := range append(append([]string(nil), config.Tags...), config.Defaults.Tags...) {
+		ensure(name)
+	}
+	for _, name := range config.Defaults.Tags {
+		ensure(name).Default = true
+	}
 	for _, value := range library.Skills {
 		for _, tag := range value.Tags {
-			counts[tag]++
+			counts[tag] = ensure(tag)
+			counts[tag].SkillCount++
+			counts[tag].Count++
+		}
+	}
+	for _, value := range prompts.Prompts {
+		for _, tag := range value.Tags {
+			counts[tag] = ensure(tag)
+			counts[tag].PromptCount++
+			counts[tag].Count++
 		}
 	}
 	result := make([]tagCount, 0, len(counts))
-	for name, count := range counts {
-		result = append(result, tagCount{Name: name, Count: count})
+	for _, count := range counts {
+		result = append(result, *count)
 	}
 	sort.Slice(result, func(i, j int) bool { return result[i].Name < result[j].Name })
 	writeJSON(w, http.StatusOK, result)
+}
+
+func (s *Server) handleCreateTag(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Name string `json:"name"`
+	}
+	if err := readJSON(r, &body); err != nil {
+		writeError(w, http.StatusBadRequest, err)
+		return
+	}
+	values, err := tags.Normalize([]string{body.Name}, nil)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err)
+		return
+	}
+	name := values[0]
+	err = s.withLock(func() error {
+		config, loadErr := s.store.LoadConfig()
+		if loadErr != nil {
+			return loadErr
+		}
+		config.Tags, loadErr = tags.Normalize(append(config.Tags, name), config.Defaults.Tags)
+		if loadErr != nil {
+			return loadErr
+		}
+		return s.store.SaveConfig(config)
+	})
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, tagCount{Name: name})
+}
+
+func (s *Server) handleDeleteTag(w http.ResponseWriter, r *http.Request) {
+	name := strings.ToLower(strings.TrimSpace(r.PathValue("name")))
+	var deleted bool
+	err := s.withLock(func() error {
+		config, err := s.store.LoadConfig()
+		if err != nil {
+			return err
+		}
+		for _, value := range config.Defaults.Tags {
+			if value == name {
+				return fmt.Errorf("default tag %q cannot be deleted", name)
+			}
+		}
+		library, err := s.store.LoadCatalog()
+		if err != nil {
+			return err
+		}
+		for _, value := range library.Skills {
+			if containsTag(value.Tags, name) {
+				return fmt.Errorf("tag %q is still used by a Skill", name)
+			}
+		}
+		prompts, err := s.store.LoadPromptCatalog()
+		if err != nil {
+			return err
+		}
+		for _, value := range prompts.Prompts {
+			if containsTag(value.Tags, name) {
+				return fmt.Errorf("tag %q is still used by a Prompt", name)
+			}
+		}
+		result := config.Tags[:0]
+		for _, value := range config.Tags {
+			if value == name {
+				deleted = true
+				continue
+			}
+			result = append(result, value)
+		}
+		if !deleted {
+			return fmt.Errorf("tag %q not found", name)
+		}
+		config.Tags = result
+		return s.store.SaveConfig(config)
+	})
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"name": name, "deleted": deleted})
+}
+
+func (s *Server) handleReplaceSkillTags(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Skill string   `json:"skill"`
+		Tags  []string `json:"tags"`
+	}
+	if err := readJSON(r, &body); err != nil {
+		writeError(w, http.StatusBadRequest, err)
+		return
+	}
+	var value domain.Skill
+	err := s.withLock(func() error {
+		var tagErr error
+		value, tagErr = catalog.New(s.store).UpdateTags(body.Skill, func([]string) []string {
+			return append([]string(nil), body.Tags...)
+		})
+		return tagErr
+	})
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, value)
 }
 
 func (s *Server) handleAddTags(w http.ResponseWriter, r *http.Request) {
@@ -292,8 +435,14 @@ func (s *Server) handleRenameTag(w http.ResponseWriter, r *http.Request) {
 	}
 	oldName := strings.ToLower(body.Old)
 	newName := validated[0]
-	changed := 0
+	skillsChanged := 0
+	promptsChanged := 0
+	registryChanged := false
 	err = s.withLock(func() error {
+		config, err := s.store.LoadConfig()
+		if err != nil {
+			return err
+		}
 		library, err := s.store.LoadCatalog()
 		if err != nil {
 			return err
@@ -316,9 +465,48 @@ func (s *Server) handleRenameTag(w http.ResponseWriter, r *http.Request) {
 			if err := s.store.UpsertSkill(value); err != nil {
 				return err
 			}
-			changed++
+			skillsChanged++
 		}
-		if changed == 0 {
+		promptCatalog, err := s.store.LoadPromptCatalog()
+		if err != nil {
+			return err
+		}
+		manager := promptpkg.New(s.store)
+		for _, value := range promptCatalog.Prompts {
+			if !containsTag(value.Tags, oldName) {
+				continue
+			}
+			_, document, readErr := manager.Read(value.ID)
+			if readErr != nil {
+				return readErr
+			}
+			nextTags := replaceTag(value.Tags, oldName, newName)
+			content, buildErr := promptpkg.Build(document.Name, document.Description, document.Body, nextTags, document.Variables)
+			if buildErr != nil {
+				return buildErr
+			}
+			if _, updateErr := manager.Update(value.ID, string(content), value.Hash, nextTags); updateErr != nil {
+				return updateErr
+			}
+			promptsChanged++
+		}
+		config.Tags, registryChanged = replaceConfiguredTag(config.Tags, oldName, newName)
+		var defaultsChanged bool
+		config.Defaults.Tags, defaultsChanged = replaceConfiguredTag(config.Defaults.Tags, oldName, newName)
+		registryChanged = registryChanged || defaultsChanged
+		if skillsChanged > 0 || promptsChanged > 0 {
+			config.Tags, err = tags.Normalize(append(config.Tags, newName), config.Defaults.Tags)
+			if err != nil {
+				return err
+			}
+			registryChanged = true
+		}
+		if registryChanged {
+			if err := s.store.SaveConfig(config); err != nil {
+				return err
+			}
+		}
+		if skillsChanged == 0 && promptsChanged == 0 && !registryChanged {
 			return fmt.Errorf("tag %q not found", oldName)
 		}
 		return nil
@@ -327,5 +515,39 @@ func (s *Server) handleRenameTag(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"old": oldName, "new": newName, "skillsChanged": changed})
+	writeJSON(w, http.StatusOK, map[string]any{
+		"old": oldName, "new": newName,
+		"skillsChanged": skillsChanged, "promptsChanged": promptsChanged,
+	})
+}
+
+func containsTag(values []string, name string) bool {
+	for _, value := range values {
+		if value == name {
+			return true
+		}
+	}
+	return false
+}
+
+func replaceTag(values []string, oldName, newName string) []string {
+	result := append([]string(nil), values...)
+	for index, value := range result {
+		if value == oldName {
+			result[index] = newName
+		}
+	}
+	return result
+}
+
+func replaceConfiguredTag(values []string, oldName, newName string) ([]string, bool) {
+	changed := containsTag(values, oldName)
+	if !changed {
+		return values, false
+	}
+	result, err := tags.Normalize(replaceTag(values, oldName, newName), nil)
+	if err != nil {
+		return values, false
+	}
+	return result, true
 }

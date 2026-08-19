@@ -88,8 +88,8 @@ skm ui
 
 默认监听 `http://localhost:9527` 并打开浏览器。可用 `--port` 更换端口，或用
 `--no-browser` 只启动服务。Web UI 与 CLI 使用同一份 Library、Project 注册和 Activation
-数据；Prompt 页面可编辑、校验、填写变量并复制生成结果；Projects 页面可完成本机项目登记、
-Skill 软链/复制、状态检查和解绑。
+数据；Prompt 页面可填写名称、描述、标签和正文，校验后保存，并将正文直接复制到设备剪贴板；
+Projects 页面可完成本机项目登记、Skill 软链/复制、状态检查和解绑。
 
 Library 的仓库导入框支持 Git URL、GitHub `owner/repo` 简写，也可以直接粘贴安装命令：
 
@@ -276,7 +276,8 @@ Manifest、Lock 和 vendored Skill 内容。
 
 ## 标签
 
-标签属于个人 Library Skill：
+标签是 Skill 与 Prompt 共用的个人资源。Web UI 可创建、重命名和删除未使用标签，并在添加或
+编辑 Skill、Prompt 时从已有标签中选择。CLI 的以下命令用于管理 Skill 的标签关联：
 
 ```bash
 skm tag list

@@ -2,7 +2,6 @@ package server
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
 
 	"github.com/zzzzzyijie/skm/internal/domain"
@@ -13,6 +12,25 @@ type promptDetails struct {
 	domain.Prompt
 	Content string `json:"content"`
 	Body    string `json:"body"`
+}
+
+type promptWriteRequest struct {
+	Content     string                  `json:"content"`
+	Name        string                  `json:"name"`
+	Description string                  `json:"description"`
+	Tags        []string                `json:"tags"`
+	Body        string                  `json:"body"`
+	Variables   []domain.PromptVariable `json:"variables"`
+	Source      string                  `json:"source"`
+	BaseHash    string                  `json:"baseHash"`
+}
+
+func (body promptWriteRequest) promptContent() (string, error) {
+	if body.Content != "" {
+		return body.Content, nil
+	}
+	data, err := promptpkg.Build(body.Name, body.Description, body.Body, body.Tags, body.Variables)
+	return string(data), err
 }
 
 func (s *Server) handleListPrompts(w http.ResponseWriter, r *http.Request) {
@@ -34,23 +52,20 @@ func (s *Server) handleShowPrompt(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleCreatePrompt(w http.ResponseWriter, r *http.Request) {
-	var body struct {
-		Content string   `json:"content"`
-		Source  string   `json:"source"`
-		Tags    []string `json:"tags"`
-	}
+	var body promptWriteRequest
 	if err := readJSON(r, &body); err != nil {
 		writeError(w, http.StatusBadRequest, err)
 		return
 	}
-	if body.Content == "" {
-		writeError(w, http.StatusBadRequest, fmt.Errorf("Prompt content is required"))
+	content, err := body.promptContent()
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err)
 		return
 	}
 	var value domain.Prompt
-	err := s.withLock(func() error {
+	err = s.withLock(func() error {
 		var createErr error
-		value, createErr = promptpkg.New(s.store).Create(body.Content, body.Source, body.Tags)
+		value, createErr = promptpkg.New(s.store).Create(content, body.Source, body.Tags)
 		return createErr
 	})
 	if err != nil {
@@ -61,23 +76,20 @@ func (s *Server) handleCreatePrompt(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleUpdatePrompt(w http.ResponseWriter, r *http.Request) {
-	var body struct {
-		Content  string   `json:"content"`
-		BaseHash string   `json:"baseHash"`
-		Tags     []string `json:"tags"`
-	}
+	var body promptWriteRequest
 	if err := readJSON(r, &body); err != nil {
 		writeError(w, http.StatusBadRequest, err)
 		return
 	}
-	if body.Content == "" {
-		writeError(w, http.StatusBadRequest, fmt.Errorf("Prompt content is required"))
+	content, err := body.promptContent()
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err)
 		return
 	}
 	var value domain.Prompt
-	err := s.withLock(func() error {
+	err = s.withLock(func() error {
 		var updateErr error
-		value, updateErr = promptpkg.New(s.store).Update(splitPromptID(r), body.Content, body.BaseHash, body.Tags)
+		value, updateErr = promptpkg.New(s.store).Update(splitPromptID(r), content, body.BaseHash, body.Tags)
 		return updateErr
 	})
 	if err != nil {
@@ -106,20 +118,22 @@ func (s *Server) handleRemovePrompt(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleValidatePrompt(w http.ResponseWriter, r *http.Request) {
-	var body struct {
-		Content string `json:"content"`
-	}
+	var body promptWriteRequest
 	if err := readJSON(r, &body); err != nil {
 		writeError(w, http.StatusBadRequest, err)
 		return
 	}
-	document, err := promptpkg.Parse([]byte(body.Content))
+	content, err := body.promptContent()
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err)
+		return
+	}
+	document, err := promptpkg.Parse([]byte(content))
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err)
 		return
 	}
 	document.Content = ""
-	document.Body = ""
 	writeJSON(w, http.StatusOK, document)
 }
 

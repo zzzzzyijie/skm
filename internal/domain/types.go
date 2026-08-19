@@ -89,6 +89,7 @@ func (m LinkMode) Effective() LinkMode {
 type Config struct {
 	Version  int               `yaml:"version" json:"version"`
 	Defaults Defaults          `yaml:"defaults" json:"defaults"`
+	Tags     []string          `yaml:"tags,omitempty" json:"tags,omitempty"`
 	Agents   []AgentDefinition `yaml:"agents,omitempty" json:"agents,omitempty"`
 }
 
@@ -294,6 +295,7 @@ type Plan struct {
 func DefaultConfig() Config {
 	return Config{
 		Version: SchemaVersion,
+		Tags:    []string{"general"},
 		Defaults: Defaults{
 			Tags:     []string{"general"},
 			Agents:   []Agent{AgentClaude, AgentCodex},

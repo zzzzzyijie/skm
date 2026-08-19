@@ -66,7 +66,7 @@ func TestEmbeddedLibraryUIUsesScannedManageableAgents(t *testing.T) {
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("GET /components/library.js = %d, body=%s", recorder.Code, body)
 	}
-	for _, marker := range []string{"btn-scan-agents", "agent.detected", "btn-new-custom-agent"} {
+	for _, marker := range []string{"btn-scan-agents", "agent.detected", "btn-new-custom-agent", "tagPickerMarkup", "btn-create-tag", "/api/skill-tags"} {
 		if !strings.Contains(body, marker) {
 			t.Fatalf("Agent management UI is missing %q", marker)
 		}
@@ -76,17 +76,20 @@ func TestEmbeddedLibraryUIUsesScannedManageableAgents(t *testing.T) {
 	}
 }
 
-func TestEmbeddedPromptUIUsesServerValidationAndRendering(t *testing.T) {
+func TestEmbeddedPromptUIUsesStructuredEditorAndClipboard(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	New(testStore(t)).Handler().ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/components/prompts.js", nil))
 	body := recorder.Body.String()
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("GET /components/prompts.js = %d, body=%s", recorder.Code, body)
 	}
-	for _, marker := range []string{"/api/prompts/validate", "/api/prompt-render", "data-prompt-variable", "baseHash", "prompt-editor-stats", "setRangeText"} {
+	for _, marker := range []string{"/api/prompts/validate", "data-copy-prompt", "copySavedPrompt", "prompt-name", "prompt-description", "prompt-tags", "tagPickerMarkup", "showManageTagsModal", "baseHash", "setRangeText"} {
 		if !strings.Contains(body, marker) {
 			t.Fatalf("Prompt UI is missing %q", marker)
 		}
+	}
+	if strings.Contains(body, "data-duplicate-prompt") || strings.Contains(body, "openPromptUse") {
+		t.Fatal("Prompt UI still contains duplicate or use-dialog actions")
 	}
 }
 
@@ -182,6 +185,78 @@ func TestPromptAPILifecycleRenderingAndConflict(t *testing.T) {
 	}
 	requestJSON(t, handler, http.MethodDelete, "/api/prompts/local/release-notes", nil, http.StatusOK, nil)
 	requestJSON(t, handler, http.MethodGet, "/api/prompts/local/release-notes", nil, http.StatusNotFound, nil)
+
+	structured := map[string]any{
+		"name": "meeting-notes", "description": "Summarize a meeting",
+		"tags": []string{"work", "summary"}, "body": "Summarize the meeting notes clearly.",
+	}
+	var validated struct {
+		Name string   `json:"name"`
+		Tags []string `json:"tags"`
+		Body string   `json:"body"`
+	}
+	requestJSON(t, handler, http.MethodPost, "/api/prompts/validate", structured, http.StatusOK, &validated)
+	if validated.Name != "meeting-notes" || !reflect.DeepEqual(validated.Tags, []string{"summary", "work"}) || validated.Body != "Summarize the meeting notes clearly.\n" {
+		t.Fatalf("validated structured Prompt = %#v", validated)
+	}
+	requestJSON(t, handler, http.MethodPost, "/api/prompts", structured, http.StatusCreated, &created)
+	requestJSON(t, handler, http.MethodGet, "/api/prompts/local/meeting-notes", nil, http.StatusOK, &details)
+	if !strings.Contains(details.Content, "name: meeting-notes") || details.Body != validated.Body {
+		t.Fatalf("structured Prompt details = %#v", details)
+	}
+	requestJSON(t, handler, http.MethodDelete, "/api/prompts/local/meeting-notes", nil, http.StatusOK, nil)
+}
+
+func TestManagedTagsSpanSkillsAndPrompts(t *testing.T) {
+	handler := New(testStore(t)).Handler()
+	requestJSON(t, handler, http.MethodPost, "/api/tags", map[string]any{"name": "design"}, http.StatusCreated, nil)
+
+	skillPath := makeSkill(t, "tagged-skill")
+	var createdSkill domain.Skill
+	requestJSON(t, handler, http.MethodPost, "/api/skills", map[string]any{
+		"path": skillPath, "tags": []string{"design"},
+	}, http.StatusCreated, &createdSkill)
+	var createdPrompt domain.Prompt
+	requestJSON(t, handler, http.MethodPost, "/api/prompts", map[string]any{
+		"name": "tagged-prompt", "description": "Prompt with a managed tag",
+		"tags": []string{"design"}, "body": "Write a concise design review.",
+	}, http.StatusCreated, &createdPrompt)
+
+	var values []tagCount
+	requestJSON(t, handler, http.MethodGet, "/api/tags", nil, http.StatusOK, &values)
+	design := findTagCount(values, "design")
+	if design == nil || design.Count != 2 || design.SkillCount != 1 || design.PromptCount != 1 || design.Default {
+		t.Fatalf("managed design tag = %#v", design)
+	}
+	requestJSON(t, handler, http.MethodDelete, "/api/tags/design", nil, http.StatusBadRequest, nil)
+
+	requestJSON(t, handler, http.MethodPost, "/api/tags/rename", map[string]any{
+		"old": "design", "new": "product-design",
+	}, http.StatusOK, nil)
+	var skillDetails librarySkillDetails
+	requestJSON(t, handler, http.MethodGet, "/api/skills/"+createdSkill.ID, nil, http.StatusOK, &skillDetails)
+	if !reflect.DeepEqual(skillDetails.Tags, []string{"product-design"}) {
+		t.Fatalf("renamed Skill tags = %#v", skillDetails.Tags)
+	}
+	var details promptDetails
+	requestJSON(t, handler, http.MethodGet, "/api/prompts/"+createdPrompt.ID, nil, http.StatusOK, &details)
+	if !reflect.DeepEqual(details.Tags, []string{"product-design"}) || !strings.Contains(details.Content, "product-design") {
+		t.Fatalf("renamed Prompt tags = %#v, content=%q", details.Tags, details.Content)
+	}
+
+	requestJSON(t, handler, http.MethodPut, "/api/skill-tags", map[string]any{
+		"skill": createdSkill.ID, "tags": []string{"general"},
+	}, http.StatusOK, &createdSkill)
+	if !reflect.DeepEqual(createdSkill.Tags, []string{"general"}) {
+		t.Fatalf("replaced Skill tags = %#v", createdSkill.Tags)
+	}
+
+	requestJSON(t, handler, http.MethodPost, "/api/tags", map[string]any{"name": "unused"}, http.StatusCreated, nil)
+	requestJSON(t, handler, http.MethodDelete, "/api/tags/unused", nil, http.StatusOK, nil)
+	requestJSON(t, handler, http.MethodGet, "/api/tags", nil, http.StatusOK, &values)
+	if findTagCount(values, "unused") != nil {
+		t.Fatalf("deleted tag remained: %#v", values)
+	}
 }
 
 func TestAgentManagementControlsAvailableActivationTargets(t *testing.T) {
@@ -740,10 +815,15 @@ func requestJSON(t *testing.T, handler http.Handler, method, url string, body an
 }
 
 func hasTag(values []tagCount, name string) bool {
+	return findTagCount(values, name) != nil
+}
+
+func findTagCount(values []tagCount, name string) *tagCount {
 	for _, value := range values {
 		if value.Name == name {
-			return true
+			result := value
+			return &result
 		}
 	}
-	return false
+	return nil
 }
