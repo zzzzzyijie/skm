@@ -24,11 +24,34 @@ func TestHandlerServesEmbeddedUIWithSecurityHeaders(t *testing.T) {
 	if recorder.Code != http.StatusOK || !strings.Contains(body, "AI Skill Manager") {
 		t.Fatalf("GET / = %d, body=%s", recorder.Code, body)
 	}
+	if strings.Contains(body, `data-page="dashboard"`) || strings.Contains(body, `components/dashboard.js`) {
+		t.Fatal("embedded UI still exposes the removed dashboard page")
+	}
+	if !strings.Contains(body, `data-page="library"`) || !strings.Contains(body, `data-page="projects"`) {
+		t.Fatal("embedded UI is missing a core navigation item")
+	}
 	if got := recorder.Header().Get("X-Frame-Options"); got != "DENY" {
 		t.Fatalf("X-Frame-Options = %q", got)
 	}
 	if got := recorder.Header().Get("Content-Security-Policy"); !strings.Contains(got, "default-src 'self'") {
 		t.Fatalf("Content-Security-Policy = %q", got)
+	}
+}
+
+func TestEmbeddedProjectUIUsesAgentScopedDetailsWithoutPlanSection(t *testing.T) {
+	recorder := httptest.NewRecorder()
+	New(testStore(t)).Handler().ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/components/projects.js", nil))
+	body := recorder.Body.String()
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("GET /components/projects.js = %d, body=%s", recorder.Code, body)
+	}
+	for _, marker := range []string{"data-project-skill-agent", "?agent=", "projectExistingAgentsForSkill"} {
+		if !strings.Contains(body, marker) {
+			t.Fatalf("project UI is missing %q", marker)
+		}
+	}
+	if strings.Contains(body, "function projectPlanMarkup") {
+		t.Fatal("project UI still renders the deployment plan section")
 	}
 }
 
@@ -279,6 +302,11 @@ func TestProjectLifecycleAPI(t *testing.T) {
 			t.Fatalf("project Skill document = %#v", document)
 		}
 	}
+	requestJSON(t, handler, http.MethodGet, "/api/projects/web-project/skills/shared?agent=codex", nil, http.StatusOK, &projectSkillDetail)
+	if len(projectSkillDetail.Documents) != 1 || projectSkillDetail.Documents[0].Agent != "codex" {
+		t.Fatalf("filtered project Skill details = %#v", projectSkillDetail)
+	}
+	requestJSON(t, handler, http.MethodGet, "/api/projects/web-project/skills/shared?agent=cursor", nil, http.StatusNotFound, nil)
 
 	var deployment struct {
 		Plan domain.Plan `json:"plan"`

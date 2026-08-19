@@ -1,4 +1,4 @@
-/* global api, showToast, showModal, closeModal, escapeHtml, statusBadgeClass, formatDate, isCurrentPage, t, uiIcon */
+/* global api, showToast, showModal, closeModal, escapeHtml, statusBadgeClass, formatDate, isCurrentPage, t, uiIcon, confirmationMarkup */
 
 var projectState = { projects: [], skills: [], selectedID: '', detail: null, agentFilter: 'all' };
 
@@ -79,7 +79,7 @@ function paintProjects() {
         button.addEventListener('click', function () { showConfirmUnlinkModal(button.dataset.unlinkSkill); });
     });
     container.querySelectorAll('[data-project-skill-details]').forEach(function (button) {
-        button.addEventListener('click', function () { showProjectSkillDetails(button.dataset.projectSkillDetails); });
+        button.addEventListener('click', function () { showProjectSkillDetails(button.dataset.projectSkillDetails, button.dataset.projectSkillAgent); });
     });
     container.querySelectorAll('[data-migrate-project-skill]').forEach(function (button) {
         button.addEventListener('click', function () { showMigrateProjectSkillModal(button.dataset.migrateProjectSkill); });
@@ -113,7 +113,6 @@ function projectDetailMarkup() {
         '</span><span class="mono project-path">' + escapeHtml(project.path) + '</span></div></div><div class="header-actions"><button class="btn btn-primary btn-sm" type="button" id="btn-project-add-skill">' + uiIcon('plus') + t('proj.addSkill') + '</button><button class="btn btn-secondary btn-sm" type="button" id="btn-project-refresh">' +
         uiIcon('refresh') + t('proj.scan') + '</button><button class="btn btn-danger btn-sm" type="button" id="btn-project-unregister">' + uiIcon('trash') + t('proj.unregister') + '</button></div></div>';
     html += projectScanMarkup(detail);
-    html += projectPlanMarkup(detail.plan);
     return html;
 }
 
@@ -161,10 +160,10 @@ function projectScanSkillRow(skill, detail, filter) {
     var agents = (skill.agents || []).map(function (agent) { return projectAgentBadge(agent); }).join('');
     var statusLabel = projectScanStatusLabel(skill.status);
     var managed = activation ? '<span class="badge badge-source">' + escapeHtml(t('proj.managed')) + '</span>' : '<span class="badge badge-muted">' + escapeHtml(t('proj.external')) + '</span>';
-    var action = (filter !== 'all' ? '<button class="btn btn-ghost btn-sm" type="button" data-project-skill-details="' + escapeHtml(skill.id) + '">' + t('proj.viewDetails') + '</button>' : '') +
-        (!activation && !skill.librarySkillId && skill.status !== 'error' ? '<button class="btn btn-secondary btn-sm" type="button" data-migrate-project-skill="' + escapeHtml(skill.id) + '">' + t('proj.migrate') + '</button>' : '') +
-        (!activation ? '<button class="btn btn-danger btn-sm" type="button" data-remove-project-skill="' + escapeHtml(skill.id) + '">' + t('proj.removeSkill') + '</button>' : '') +
-        (activation ? '<button class="btn btn-danger btn-sm" type="button" data-unlink-skill="' + escapeHtml(activation.skillId) + '">' + t('proj.unlink') + '</button>' : '');
+    var action = (filter !== 'all' ? '<button class="btn btn-ghost btn-sm" type="button" data-project-skill-details="' + escapeHtml(skill.id) + '" data-project-skill-agent="' + escapeHtml(filter) + '">' + uiIcon('eye') + t('proj.viewDetails') + '</button>' : '') +
+        (!activation && !skill.librarySkillId && skill.status !== 'error' ? '<button class="btn btn-secondary btn-sm" type="button" data-migrate-project-skill="' + escapeHtml(skill.id) + '">' + uiIcon('library') + t('proj.migrate') + '</button>' : '') +
+        (!activation ? '<button class="btn btn-danger btn-sm" type="button" data-remove-project-skill="' + escapeHtml(skill.id) + '">' + uiIcon('trash') + t('proj.removeSkill') + '</button>' : '') +
+        (activation ? '<button class="btn btn-danger btn-sm" type="button" data-unlink-skill="' + escapeHtml(activation.skillId) + '">' + uiIcon('link') + t('proj.unlink') + '</button>' : '');
     var issue = (skill.issues || []).map(function (message) { return '<div class="project-skill-issue">' + escapeHtml(message) + '</div>'; }).join('');
     return '<article class="project-skill-row"><div class="project-skill-main"><div class="project-skill-title"><strong>' + escapeHtml(skill.name || skill.id) +
         '</strong></div><p class="project-skill-description">' + escapeHtml(skill.description || t('proj.noDescription')) +
@@ -202,12 +201,12 @@ function showMigrateProjectSkillModal(skillID) {
     if (!skill) return;
     var agents = skill.agents || [];
     var sourceControl = agents.length === 1
-        ? '<input type="hidden" id="project-migrate-agent" value="' + escapeHtml(agents[0]) + '"><div class="migration-source-value">' + escapeHtml(projectAgentName(agents[0])) + '</div>'
+        ? '<input type="hidden" id="project-migrate-agent" value="' + escapeHtml(agents[0]) + '"><div class="migration-source-value"><span class="migration-source-icon" aria-hidden="true">' + uiIcon('folder') + '</span><span>' + escapeHtml(projectAgentName(agents[0])) + '</span></div>'
         : '<select class="select" id="project-migrate-agent">' + agents.map(function (agent) { return '<option value="' + escapeHtml(agent) + '">' + escapeHtml(projectAgentName(agent)) + '</option>'; }).join('') + '</select>';
-    var content = '<div class="form-group"><label class="form-label" for="project-migrate-agent">' + t('proj.migrateSource') + '</label>' + sourceControl + '</div>' +
-        '<div class="form-group"><span class="form-label">' + t('proj.mode') + '</span><div class="import-mode project-mode"><button class="import-mode-option" type="button" data-migrate-mode="symlink">' + t('proj.migrateLink') + '</button><button class="import-mode-option active" type="button" data-migrate-mode="copy">' + t('proj.migrateCopy') + '</button></div>' +
-        '<p class="migration-mode-description" id="migration-mode-description">' + t('proj.migrateCopyDesc') + '</p></div>' +
-        '<label class="check-option migration-remove-option" id="migration-remove-option"><input type="checkbox" id="project-migrate-remove"><span><strong>' + t('proj.removeAfterCopy') + '</strong><small>' + t('proj.removeAfterCopyNote') + '</small></span></label>';
+    var content = '<div class="modal-stack migration-dialog"><div class="modal-field"><label class="form-label" for="project-migrate-agent">' + t('proj.migrateSource') + '</label>' + sourceControl + '</div>' +
+        '<div class="modal-field"><span class="form-label">' + t('proj.mode') + '</span><div class="import-mode project-mode"><button class="import-mode-option" type="button" data-migrate-mode="symlink">' + t('proj.migrateLink') + '</button><button class="import-mode-option active" type="button" data-migrate-mode="copy">' + t('proj.migrateCopy') + '</button></div>' +
+        '<p class="mode-help" id="migration-mode-description">' + t('proj.migrateCopyDesc') + '</p></div>' +
+        '<label class="choice-card migration-remove-option" id="migration-remove-option"><input type="checkbox" id="project-migrate-remove"><span class="choice-card-copy"><strong>' + t('proj.removeAfterCopy') + '</strong><small>' + t('proj.removeAfterCopyNote') + '</small></span></label></div>';
     var actions = '<button class="btn btn-ghost" type="button" data-close-modal>' + t('lib.cancel') + '</button><button class="btn btn-primary" type="button" id="btn-confirm-project-migrate">' + t('proj.migrateConfirm') + '</button>';
     showModal(t('proj.migrateTitle'), content, actions);
     document.querySelectorAll('[data-migrate-mode]').forEach(function (button) {
@@ -243,8 +242,7 @@ async function migrateProjectSkill(skillID) {
 }
 
 function showConfirmRemoveProjectSkillModal(skillID) {
-    var content = '<p class="confirm-copy">' + t('proj.confirmRemoveSkillDesc').replace('{0}', escapeHtml(skillID)) + '</p>' +
-        '<p class="migration-mode-description">' + t('proj.confirmRemoveSkillNote') + '</p>';
+    var content = confirmationMarkup(t('proj.confirmRemoveSkillDesc').replace('{0}', skillID), t('proj.confirmRemoveSkillNote'), 'danger');
     var actions = '<button class="btn btn-ghost" type="button" data-close-modal>' + t('lib.cancel') + '</button>' +
         '<button class="btn btn-danger" type="button" id="btn-confirm-remove-project-skill">' + t('proj.removeSkill') + '</button>';
     showModal(t('proj.confirmRemoveSkillTitle'), content, actions);
@@ -262,9 +260,9 @@ function showConfirmRemoveProjectSkillModal(skillID) {
     });
 }
 
-async function showProjectSkillDetails(skillID) {
+async function showProjectSkillDetails(skillID, agentID) {
     try {
-        var detail = await api.get('/api/projects/' + encodeURIComponent(projectState.selectedID) + '/skills/' + encodeURIComponent(skillID));
+        var detail = await api.get('/api/projects/' + encodeURIComponent(projectState.selectedID) + '/skills/' + encodeURIComponent(skillID) + '?agent=' + encodeURIComponent(agentID));
         var documents = detail.documents || [];
         var content = documents.map(projectSkillDocumentMarkup).join('');
         showModal(t('proj.skillDetails'), content, '<button class="btn btn-ghost" type="button" data-close-modal>' + t('lib.close') + '</button>');
@@ -306,59 +304,6 @@ function projectScanStatusLabel(status) {
     return t('proj.scanOk');
 }
 
-function projectPlanMarkup(plan) {
-    var operations = (plan && plan.operations) || [];
-    var groups = projectOperationGroups(operations);
-    var html = '<section class="project-section"><div class="section-heading"><div><h3 class="section-title">' + t('proj.statusTitle') + '</h3><p class="section-caption">' +
-        t('proj.statusDesc') + '</p></div></div>';
-    if (!groups.length) return html + '<div class="inline-empty">' + t('proj.statusEmpty') + '</div></section>';
-    html += '<div class="table-wrap"><table class="project-deployment-table"><thead><tr><th>' + t('proj.skill') + '</th><th>' + t('proj.agents') + '</th><th>' + t('proj.mode') + '</th><th>' + t('proj.statusTitle') + '</th></tr></thead><tbody>';
-    groups.forEach(function (group) {
-        var agents = group.agents.map(function (agent) { return projectAgentBadge(agent); }).join('');
-        var modes = group.modes.map(function (mode) { return '<span class="badge badge-muted">' + escapeHtml(projectModeLabel(mode)) + '</span>'; }).join('');
-        var statuses = group.statuses.map(function (status) { return '<span class="badge ' + statusBadgeClass(status) + '">' + escapeHtml(projectDeploymentStatusLabel(status)) + '</span>'; }).join('');
-        html += '<tr><td><strong>' + escapeHtml(group.name || group.skillId) + '</strong></td><td><div class="project-skill-agents">' + agents + '</div></td><td><div class="project-skill-badges">' + modes + '</div></td><td><div class="project-skill-badges">' + statuses + '</div></td></tr>';
-    });
-    return html + '</tbody></table></div></section>';
-}
-
-function projectOperationGroups(operations) {
-    var groups = [];
-    var bySkill = Object.create(null);
-    operations.forEach(function (operation) {
-        var key = operation.skillId || operation.name;
-        if (!bySkill[key]) {
-            bySkill[key] = { skillId: operation.skillId, name: operation.name, agents: [], modes: [], statuses: [] };
-            groups.push(bySkill[key]);
-        }
-        projectPushUnique(bySkill[key].agents, operation.agent);
-        projectPushUnique(bySkill[key].modes, operation.mode);
-        projectPushUnique(bySkill[key].statuses, operation.status);
-    });
-    return groups;
-}
-
-function projectPushUnique(values, value) {
-    if (value && values.indexOf(value) < 0) values.push(value);
-}
-
-function projectModeLabel(mode) {
-    if (mode === 'symlink') return t('proj.symlink');
-    if (mode === 'copy') return t('proj.copied');
-    return mode;
-}
-
-function projectDeploymentStatusLabel(status) {
-    var labels = {
-        'create': 'proj.statusCreate',
-        'unchanged': 'proj.statusUnchanged',
-        'replace-managed': 'proj.statusReplaceManaged',
-        'conflict-unmanaged': 'proj.statusConflictUnmanaged',
-        'broken': 'proj.statusBroken'
-    };
-    return labels[status] ? t(labels[status]) : status;
-}
-
 function showAddProjectModal() {
     var content = '<div class="form-group"><label class="form-label" for="project-path-input">' + t('proj.path') + '</label><div class="path-picker"><input class="input" id="project-path-input" readonly placeholder="' + t('proj.chooseProjectPath') + '"><button class="btn btn-secondary" type="button" id="btn-choose-project-path">' + t('lib.choosePath') + '</button></div></div>';
     showModal(t('proj.register'), content, '<button class="btn btn-ghost" type="button" data-close-modal>' + t('lib.cancel') + '</button><button class="btn btn-primary" type="button" id="btn-confirm-project">' + t('proj.register') + '</button>');
@@ -398,22 +343,65 @@ function selectedProjectAgents() {
     return Array.prototype.map.call(document.querySelectorAll('input[name="project-agent"]:checked'), function (input) { return input.value; });
 }
 
+function projectExistingAgentsForSkill(skillID) {
+    var existing = Object.create(null);
+    var detail = projectState.detail || {};
+    (detail.activations || []).forEach(function (activation) {
+        if (activation.skillId !== skillID) return;
+        (activation.agents || []).forEach(function (agent) { existing[agent] = true; });
+    });
+    var librarySkill = projectState.skills.find(function (skill) { return skill.id === skillID; });
+    var scanned = ((detail.scan || {}).skills || []).find(function (skill) {
+        if (skill.librarySkillId === skillID) return true;
+        return librarySkill && (skill.id === librarySkill.name || skill.name === librarySkill.name);
+    });
+    if (scanned) (scanned.agents || []).forEach(function (agent) { existing[agent] = true; });
+    return existing;
+}
+
+function projectActivationForSkill(skillID) {
+    return ((projectState.detail || {}).activations || []).find(function (activation) { return activation.skillId === skillID; });
+}
+
+function isProjectSkillExistsError(message) {
+    return /already uses mode|target exists|refusing to overwrite unmanaged target|multiple Skills target/i.test(message || '');
+}
+
 async function deployProjectSkill() {
     var skill = document.getElementById('project-skill-select').value;
     if (!skill) { showToast(t('proj.chooseSkill'), 'error'); return; }
     var agents = selectedProjectAgents();
     if (!agents.length) { showToast(t('proj.chooseAgent'), 'error'); return; }
     var activeMode = (document.querySelector('[data-project-mode].active') || {}).dataset.projectMode || 'link';
+    var requestedMode = activeMode === 'link' ? 'symlink' : 'copy';
+    var activation = projectActivationForSkill(skill);
+    if (activation && activation.mode && activation.mode !== requestedMode) {
+        var modeLabel = activation.mode === 'copy' ? t('proj.copy') : t('proj.link');
+        showToast(t('proj.modeAlreadyExists').replace('{0}', skill).replace('{1}', modeLabel), 'info');
+        return;
+    }
+    var existing = projectExistingAgentsForSkill(skill);
+    var skipped = agents.filter(function (agent) { return existing[agent]; });
+    var pending = agents.filter(function (agent) { return !existing[agent]; });
+    if (!pending.length) {
+        showToast(t('proj.alreadyExists').replace('{0}', skill), 'info');
+        return;
+    }
     var button = document.getElementById('btn-confirm-project-deploy');
     button.disabled = true;
     try {
-        await api.post('/api/projects/' + encodeURIComponent(projectState.selectedID) + '/' + activeMode, { skill: skill, agents: agents });
+        await api.post('/api/projects/' + encodeURIComponent(projectState.selectedID) + '/' + activeMode, { skill: skill, agents: pending });
         closeModal();
-        showToast(t('proj.deployed'));
+        if (skipped.length) {
+            showToast(t('proj.deployedWithSkipped').replace('{0}', skipped.map(projectAgentName).join(', ')), 'info');
+        } else {
+            showToast(t('proj.deployed'));
+        }
         await renderProjects();
     } catch (err) {
         button.disabled = false;
-        showToast(err.message, 'error');
+        var alreadyExists = isProjectSkillExistsError(err.message);
+        showToast(alreadyExists ? t('proj.alreadyExists').replace('{0}', skill) : err.message, alreadyExists ? 'info' : 'error');
     }
 }
 
@@ -434,7 +422,7 @@ async function unlinkProjectSkill(skill, force) {
 }
 
 function showConfirmUnlinkModal(skill) {
-    var content = '<p class="confirm-copy">' + t('proj.confirmUnlinkDesc').replace('{0}', escapeHtml(skill)) + '</p>';
+    var content = confirmationMarkup(t('proj.confirmUnlinkDesc').replace('{0}', skill), '', 'danger');
     var actions = '<button class="btn btn-ghost" type="button" data-close-modal>' + t('lib.cancel') + '</button>' +
         '<button class="btn btn-danger" type="button" id="btn-confirm-unlink">' + t('proj.confirmUnlink') + '</button>';
     showModal(t('proj.confirmUnlinkTitle'), content, actions);
@@ -447,7 +435,7 @@ function showConfirmUnlinkModal(skill) {
 }
 
 function showForceUnlinkModal(skill) {
-    var content = '<p class="confirm-copy">' + t('proj.forceUnlinkDesc').replace('{0}', escapeHtml(skill)) + '</p>';
+    var content = confirmationMarkup(t('proj.forceUnlinkDesc').replace('{0}', skill), '', 'danger');
     var actions = '<button class="btn btn-ghost" type="button" data-close-modal>' + t('lib.cancel') + '</button>' +
         '<button class="btn btn-danger" type="button" id="btn-confirm-force-unlink">' + t('proj.forceUnlink') + '</button>';
     showModal(t('proj.forceUnlinkTitle'), content, actions);
@@ -463,7 +451,7 @@ function showForceUnlinkModal(skill) {
 }
 
 function unregisterProject() {
-    showModal(t('proj.unregister'), '<p class="confirm-copy">' + t('proj.confirmUnregister') + '</p>', '<button class="btn btn-ghost" type="button" data-close-modal>' + t('lib.cancel') + '</button><button class="btn btn-danger" type="button" id="btn-confirm-unregister">' + t('proj.unregister') + '</button>');
+    showModal(t('proj.unregister'), confirmationMarkup(t('proj.confirmUnregister'), '', 'danger'), '<button class="btn btn-ghost" type="button" data-close-modal>' + t('lib.cancel') + '</button><button class="btn btn-danger" type="button" id="btn-confirm-unregister">' + t('proj.unregister') + '</button>');
     document.getElementById('btn-confirm-unregister').addEventListener('click', async function () {
         this.disabled = true;
         try {

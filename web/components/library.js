@@ -1,6 +1,6 @@
-/* global api, showToast, showModal, closeModal, displayTag, formatDate, shortHash, shortRevision, escapeHtml, isCurrentPage, t, uiIcon */
+/* global api, showToast, showModal, closeModal, displayTag, formatDate, shortHash, shortRevision, escapeHtml, isCurrentPage, t, uiIcon, confirmationMarkup */
 
-var libraryState = { skills: [], tags: [], agents: [], activeTag: '', query: '', enabled: {}, gitSources: {} };
+var libraryState = { skills: [], tags: [], agents: [], activeTag: '', query: '', enabled: {}, gitSources: {}, summary: {} };
 var agentIcons = {
     claude: 'claude.svg', codex: 'codex.svg', cursor: 'cursor.svg', copilot: 'copilot.svg', gemini: 'gemini.svg',
     windsurf: 'windsurf.svg', kiro: 'kiro.svg', cline: 'cline.svg', opencode: 'opencode.svg', trae: 'trae.svg',
@@ -15,11 +15,12 @@ async function renderLibrary() {
     var container = document.getElementById('main-content');
     try {
         var url = '/api/skills' + (libraryState.activeTag ? '?tag=' + encodeURIComponent(libraryState.activeTag) : '');
-        var results = await Promise.all([api.get(url), api.get('/api/tags'), api.get('/api/status'), api.get('/api/sources'), api.get('/api/agents')]);
+        var results = await Promise.all([api.get(url), api.get('/api/tags'), api.get('/api/status'), api.get('/api/sources'), api.get('/api/agents'), api.get('/api/dashboard')]);
         if (!isCurrentPage('library')) return;
         libraryState.skills = results[0] || [];
         libraryState.tags = results[1] || [];
         libraryState.agents = results[4] || [];
+        libraryState.summary = results[5] || {};
         libraryState.enabled = {};
         libraryState.gitSources = {};
         (results[2].operations || []).forEach(function (operation) {
@@ -48,12 +49,13 @@ function paintLibrary() {
         '<button class="btn btn-secondary" type="button" id="btn-manage-tags">' + uiIcon('tags') + t('lib.manageTags') + '</button>' +
         '<button class="btn btn-primary" type="button" id="btn-add-skill">' + uiIcon('plus') + t('lib.addSkill') + '</button></div></div>';
 
+    html += librarySummaryMarkup();
     html += agentManagementBand();
 
     html += '<div class="library-tools"><label class="search-box"><span class="sr-only">' + t('lib.search') + '</span>' +
         '<span class="search-mark" aria-hidden="true">' + uiIcon('search') + '</span><input class="input" id="skill-search" value="' + escapeHtml(libraryState.query) +
         '" placeholder="' + t('lib.searchPlaceholder') + '"></label>';
-    html += '<div class="filter-bar"><span class="filter-label">' + t('dash.tags') + '</span><div class="tag-filter-list">' +
+    html += '<div class="filter-bar"><span class="filter-label">' + t('lib.tags') + '</span><div class="tag-filter-list">' +
         '<button class="tag clickable' + (!libraryState.activeTag ? ' active' : '') + '" type="button" data-tag="">' + t('lib.all') + '</button>';
     libraryState.tags.forEach(function (tag) {
         html += '<button class="tag clickable' + (libraryState.activeTag === tag.name ? ' active' : '') + '" type="button" data-tag="' +
@@ -94,6 +96,19 @@ function paintLibrary() {
     container.querySelectorAll('.btn-remove-skill').forEach(function (button) {
         button.addEventListener('click', function () { confirmRemoveSkill(button.dataset.id); });
     });
+}
+
+function librarySummaryMarkup() {
+    var skillCount = Number(libraryState.summary.skillCount || 0);
+    var sourceCount = Number(libraryState.summary.sourceCount || 0);
+    return '<section class="library-summary" aria-label="' + escapeHtml(t('lib.summaryLabel')) + '">' +
+        librarySummaryItem(skillCount, t('lib.totalSkills'), 'library', 'accent') +
+        librarySummaryItem(sourceCount, t('lib.gitSources'), 'link', 'info') + '</section>';
+}
+
+function librarySummaryItem(value, label, icon, tone) {
+    return '<div class="library-summary-item library-summary-' + tone + '"><span class="library-summary-icon" aria-hidden="true">' + uiIcon(icon) +
+        '</span><span class="library-summary-copy"><strong>' + value + '</strong><span>' + escapeHtml(label) + '</span></span></div>';
 }
 
 function isGitSkill(skill) {
@@ -148,10 +163,10 @@ function showAgentManager() {
     var content = '<div class="agent-manager-actions"><button class="btn btn-secondary" type="button" id="btn-new-custom-agent">' + uiIcon('plus') + t('lib.addCustomAgent') + '</button></div><div class="agent-picker">' + libraryState.agents.map(function (agent) {
         var disabled = agent.required || !agent.supported;
         var meta = agent.path + ' · ' + agent.format;
-        return '<label class="agent-picker-option"><input type="checkbox" name="managed-agent" value="' + agent.id + '"' +
+        return '<div class="agent-picker-option"><label class="agent-picker-select"><input type="checkbox" name="managed-agent" value="' + agent.id + '"' +
             (agent.configured ? ' checked' : '') + (disabled ? ' disabled' : '') + '><img class="agent-logo" src="' + agentIconSource(agent) +
             '" alt=""><span><strong>' + escapeHtml(agent.name) + (agent.required ? ' · ' + t('lib.fixedAgent') : '') + '</strong><small class="mono">' +
-            escapeHtml(meta) + '</small></span>' + (agent.custom ? '<button class="agent-edit" type="button" data-edit-custom-agent="' + agent.id + '" aria-label="' + t('lib.customAgent') + '">•••</button>' : '') + '</label>';
+            escapeHtml(meta) + '</small></span></label>' + (agent.custom ? '<button class="agent-edit" type="button" data-edit-custom-agent="' + agent.id + '" aria-label="' + t('lib.customAgent') + '">•••</button>' : '') + '</div>';
     }).join('') + '</div>';
     var actions = '<button class="btn btn-ghost" type="button" data-close-modal>' + t('lib.cancel') + '</button>' +
         '<button class="btn btn-primary" type="button" id="btn-save-agents">' + t('lib.saveAgents') + '</button>';
@@ -161,6 +176,7 @@ function showAgentManager() {
     document.querySelectorAll('[data-edit-custom-agent]').forEach(function (button) {
         button.addEventListener('click', function (event) {
             event.preventDefault();
+            event.stopPropagation();
             showCustomAgentEditor(libraryState.agents.find(function (agent) { return agent.id === button.dataset.editCustomAgent; }));
         });
     });
@@ -363,9 +379,9 @@ function showSkillDetails(skill) {
     var content = '<div class="detail-hero"><div><div class="detail-name">' + escapeHtml(skill.name) + '</div><div class="mono muted">' + escapeHtml(skill.id) +
         '</div></div><span class="badge badge-source">' + escapeHtml(displaySource(skill.source || 'local')) + '</span></div><dl class="detail-list"><div><dt>' +
         t('lib.description') + '</dt><dd>' + escapeHtml(skill.description || '-') + '</dd></div><div><dt>' + t('lib.path') + '</dt><dd class="mono detail-path">' +
-        escapeHtml(skill.path) + '</dd></div><div><dt>' + t('dash.hash') + '</dt><dd class="mono">' + escapeHtml(skill.hash) + '</dd></div><div><dt>' +
-        t('lib.revision') + '</dt><dd class="mono">' + shortRevision(skill.revision) + '</dd></div>' + originDetails + sourceDetails + '<div><dt>' + t('dash.added') +
-        '</dt><dd>' + formatDate(skill.addedAt) + '</dd></div></dl><section class="skill-detail-section"><div class="form-group"><label class="form-label">' + t('dash.tags') +
+        escapeHtml(skill.path) + '</dd></div><div><dt>' + t('lib.hash') + '</dt><dd class="mono">' + escapeHtml(skill.hash) + '</dd></div><div><dt>' +
+        t('lib.revision') + '</dt><dd class="mono">' + shortRevision(skill.revision) + '</dd></div>' + originDetails + sourceDetails + '<div><dt>' + t('lib.added') +
+        '</dt><dd>' + formatDate(skill.addedAt) + '</dd></div></dl><section class="skill-detail-section"><div class="form-group"><label class="form-label">' + t('lib.tags') +
         '</label><div class="tag-list detail-tags">' + tags + '</div></div><div class="inline-form"><input class="input" id="detail-new-tag" placeholder="' + t('lib.tagName') + '"><button class="btn btn-secondary" type="button" id="btn-add-tag">' + t('lib.addTag') + '</button></div></section>' +
         health + '<section class="skill-detail-section skill-content-section"><div class="skill-detail-section-heading"><span class="form-label">' + t('lib.content') + '</span><span class="mono muted">SKILL.md</span></div>' +
         (skill.body ? '<pre class="skill-detail-content">' + escapeHtml(skill.body) + '</pre>' : '<div class="inline-empty">' + t('lib.noContent') + '</div>') + '</section>';
@@ -379,17 +395,26 @@ function showSkillDetails(skill) {
         button.addEventListener('click', function () { removeSkillTag(skill.id, button.dataset.removeTag); });
     });
     if (source) document.getElementById('btn-update-source').addEventListener('click', function () { updateGitSource(source.name); });
-    if (linked) document.getElementById('btn-detach-skill').addEventListener('click', function () { detachLibrarySkill(skill.id); });
+    if (linked) document.getElementById('btn-detach-skill').addEventListener('click', function () { confirmDetachLibrarySkill(skill.id); });
+}
+
+function confirmDetachLibrarySkill(id) {
+    var actions = '<button class="btn btn-ghost" type="button" data-close-modal>' + t('lib.cancel') + '</button>' +
+        '<button class="btn btn-primary" type="button" id="btn-confirm-detach">' + t('lib.detach') + '</button>';
+    showModal(t('lib.detach'), confirmationMarkup(t('lib.detachConfirm'), '', 'info'), actions);
+    document.getElementById('btn-confirm-detach').addEventListener('click', function () { detachLibrarySkill(id); });
 }
 
 async function detachLibrarySkill(id) {
-    if (!window.confirm(t('lib.detachConfirm'))) return;
+    var button = document.getElementById('btn-confirm-detach');
+    if (button) button.disabled = true;
     try {
         await api.post('/api/skills/detach', { skill: id });
         closeModal();
         showToast(t('lib.detached'), 'success');
         await renderLibrary();
     } catch (err) {
+        if (button) button.disabled = false;
         showToast(err.message, 'error');
     }
 }
@@ -467,7 +492,7 @@ function showRenameTagModal(oldName) {
 }
 
 function confirmRemoveSkill(id) {
-    var content = '<p class="confirm-copy">' + t('lib.confirmRemove') + ' <strong>' + escapeHtml(id) + '</strong>?</p>';
+    var content = confirmationMarkup(t('lib.confirmRemove') + ' ' + id + '?', t('lib.confirmRemoveNote'), 'danger');
     showModal(t('lib.confirmRemoveTitle'), content, '<button class="btn btn-ghost" type="button" data-close-modal>' + t('lib.cancel') +
         '</button><button class="btn btn-danger" type="button" id="btn-confirm-remove">' + t('lib.remove') + '</button>');
     document.getElementById('btn-confirm-remove').addEventListener('click', function () { doRemoveSkill(id); });

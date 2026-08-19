@@ -198,7 +198,11 @@ func (s *Server) handleShowProjectSkill(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	details := projectSkillDetails{ID: skillID, Documents: make([]projectSkillDocument, 0, len(roots))}
+	selectedAgent := strings.TrimSpace(r.URL.Query().Get("agent"))
 	for _, agent := range roots {
+		if selectedAgent != "" && agent.ID != selectedAgent {
+			continue
+		}
 		resolved, candidate, candidateErr := projectSkillDirectory(filepath.Join(agent.Path, skillID))
 		if !candidate || candidateErr != nil {
 			continue
@@ -218,6 +222,10 @@ func (s *Server) handleShowProjectSkill(w http.ResponseWriter, r *http.Request) 
 		})
 	}
 	if len(details.Documents) == 0 {
+		if selectedAgent != "" {
+			writeError(w, http.StatusNotFound, fmt.Errorf("readable project Skill %q not found for Agent %q", skillID, selectedAgent))
+			return
+		}
 		writeError(w, http.StatusNotFound, fmt.Errorf("readable project Skill %q not found", skillID))
 		return
 	}

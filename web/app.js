@@ -3,12 +3,9 @@
 // ===== i18n =====
 var translations = {
     en: {
-        'nav.dashboard': 'Dashboard', 'nav.library': 'My Skills', 'nav.projects': 'Projects',
-        'dash.title': 'Dashboard', 'dash.totalSkills': 'Total Skills', 'dash.enabled': 'Enabled', 'dash.gitSources': 'Git Sources',
-        'dash.recentlyAdded': 'Recently Added', 'dash.id': 'ID', 'dash.tags': 'Tags', 'dash.added': 'Added', 'dash.hash': 'Hash',
-        'dash.loadFailed': 'Failed to load dashboard',
-        'dash.noRecent': 'No Skills have been added yet.',
+        'nav.library': 'My Skills', 'nav.projects': 'Projects',
         'lib.title': 'My Skills', 'lib.addSkill': 'Add Skill', 'lib.manageAgents': 'Agent management', 'lib.addAgentTitle': 'Agent management', 'lib.saveAgents': 'Save', 'lib.all': 'All', 'lib.search': 'Search Skills',
+        'lib.summaryLabel': 'Library overview', 'lib.totalSkills': 'Total Skills', 'lib.gitSources': 'Git Sources', 'lib.tags': 'Tags', 'lib.added': 'Added', 'lib.hash': 'Hash',
         'lib.searchPlaceholder': 'Search by name, ID, description, or source', 'lib.manageTags': 'Manage tags',
         'lib.noSkills': 'No Skills found', 'lib.noSkillsDesc': 'Add a Skill to your personal Library with the button above.',
         'lib.skillPath': 'Skill Path', 'lib.tagsComma': 'Tags (comma-separated)',
@@ -51,26 +48,22 @@ var translations = {
         'proj.scan': 'Scan project', 'proj.scanTitle': 'Project Skills', 'proj.scanDesc': 'Skills found in the project Agent directories, grouped by Skill.', 'proj.lastScan': 'Last scan',
         'proj.scanOk': 'Valid', 'proj.scanWarning': 'Check', 'proj.scanError': 'Unavailable', 'proj.managed': 'Managed', 'proj.external': 'Detected',
         'proj.noScannedSkills': 'No Skills found in the project Agent directories.', 'proj.noFilteredSkills': 'No Skills found for this Agent.', 'proj.noDescription': 'No description',
-        'proj.link': 'Link', 'proj.copy': 'Copy', 'proj.symlink': 'Symlink', 'proj.copied': 'Copy', 'proj.unlink': 'Unlink', 'proj.status': 'Refresh status',
+        'proj.link': 'Link', 'proj.copy': 'Copy', 'proj.unlink': 'Unlink',
         'proj.confirmUnlinkTitle': 'Unlink Skill', 'proj.confirmUnlink': 'Unlink', 'proj.confirmUnlinkDesc': 'Unlink "{0}" from this project? The managed deployment will be removed.',
         'proj.forceUnlinkTitle': 'Remove modified Skill', 'proj.forceUnlink': 'Remove anyway', 'proj.forceUnlinkDesc': '"{0}" has been modified in this project. Removing it will permanently delete the project copy.',
         'proj.unregister': 'Remove', 'proj.noSkills': 'No Skills deployed to this project.',
         'proj.noSkillsDesc': 'Choose a Library Skill below to link or copy it into the project.',
         'proj.selectSkill': 'Select a Library Skill', 'proj.chooseAgent': 'Select at least one Agent',
         'proj.chooseSkill': 'Select a Skill', 'proj.unregistered': 'Project removed',
-        'proj.deployed': 'Skill deployed', 'proj.unlinked': 'Skill unlinked', 'proj.confirmUnregister': 'Remove this project? Managed Skills must be unlinked first.',
-        'proj.noProjects': 'No projects', 'proj.pathRequired': 'Project path is required', 'proj.statusTitle': 'Deployment status', 'proj.statusDesc': 'Managed deployment operations for this project.',
-        'proj.statusEmpty': 'No deployment operations', 'proj.statusCreate': 'Pending creation', 'proj.statusUnchanged': 'Deployed', 'proj.statusReplaceManaged': 'Update required', 'proj.statusConflictUnmanaged': 'Conflict', 'proj.statusBroken': 'Broken', 'proj.target': 'Target', 'proj.source': 'Source', 'proj.viewDetails': 'View details', 'proj.skillDetails': 'Project Skill details', 'proj.skillPath': 'Skill path', 'proj.metadata': 'Metadata', 'proj.content': 'Skill content', 'proj.noContent': 'No Skill content',
+        'proj.deployed': 'Skill deployed', 'proj.deployedWithSkipped': 'Skill added; already present in {0}, so those Agents were skipped.', 'proj.alreadyExists': '“{0}” already exists for the selected Agents. Nothing was changed.', 'proj.modeAlreadyExists': '“{0}” already uses {1} mode. Unlink it before switching modes.', 'proj.unlinked': 'Skill unlinked', 'proj.confirmUnregister': 'Remove this project? Managed Skills must be unlinked first.',
+        'proj.noProjects': 'No projects', 'proj.pathRequired': 'Project path is required', 'proj.viewDetails': 'View details', 'proj.skillDetails': 'Project Skill details', 'proj.skillPath': 'Skill path', 'proj.metadata': 'Metadata', 'proj.content': 'Skill content', 'proj.noContent': 'No Skill content',
         'proj.migrate': 'Add to My Skills', 'proj.migrateTitle': 'Add project Skill to My Skills', 'proj.migrateSource': 'Source Agent', 'proj.migrateLink': 'Follow project', 'proj.migrateCopy': 'Copy', 'proj.migrateLinkDesc': 'Use the project directory as the live source. Switching to a branch without this Skill will use the last known snapshot until the source returns.', 'proj.migrateCopyDesc': 'Recommended. Create an independent snapshot in My Skills that is unaffected by project or branch changes.', 'proj.removeAfterCopy': 'Remove the project originals after copying (move)', 'proj.removeAfterCopyNote': 'All Agent copies must be identical and unmanaged. This cannot be undone.', 'proj.migrateConfirm': 'Add to My Skills', 'proj.migrated': 'Skill added to My Skills',
         'proj.removeSkill': 'Remove', 'proj.confirmRemoveSkillTitle': 'Remove project Skill', 'proj.confirmRemoveSkillDesc': 'Remove "{0}" from this project?', 'proj.confirmRemoveSkillNote': 'Every copy in this project’s Agent directories will be permanently deleted. This cannot be undone.', 'proj.projectSkillRemoved': 'Project Skill removed',
     },
     zh: {
-        'nav.dashboard': '仪表盘', 'nav.library': '我的 skill', 'nav.projects': '项目',
-        'dash.title': '仪表盘', 'dash.totalSkills': 'Skill 总数', 'dash.enabled': '已启用', 'dash.gitSources': 'Git 来源',
-        'dash.recentlyAdded': '最近添加', 'dash.id': 'ID', 'dash.tags': '标签', 'dash.added': '添加时间', 'dash.hash': '哈希',
-        'dash.loadFailed': '加载仪表盘失败',
-        'dash.noRecent': '尚未添加任何 Skill。',
+        'nav.library': '我的 skill', 'nav.projects': '项目',
         'lib.title': '我的 skill', 'lib.addSkill': '添加 Skill', 'lib.manageAgents': 'Agent 管理', 'lib.addAgentTitle': 'Agent 管理', 'lib.saveAgents': '保存', 'lib.all': '全部', 'lib.search': '搜索 Skill',
+        'lib.summaryLabel': 'Skill 库概览', 'lib.totalSkills': 'Skill 总数', 'lib.gitSources': '来源数量', 'lib.tags': '标签', 'lib.added': '添加时间', 'lib.hash': '哈希',
         'lib.searchPlaceholder': '按名称、ID、描述或来源搜索', 'lib.manageTags': '管理标签',
         'lib.noSkills': '暂无 Skill', 'lib.noSkillsDesc': '点击上方按钮将 Skill 添加到个人库。',
         'lib.skillPath': 'Skill 路径', 'lib.tagsComma': '标签（逗号分隔）',
@@ -113,16 +106,15 @@ var translations = {
         'proj.scan': '扫描项目', 'proj.scanTitle': '项目中的 Skill', 'proj.scanDesc': '扫描项目 Agent 目录，并按 Skill 合并展示。', 'proj.lastScan': '上次扫描',
         'proj.scanOk': '正常', 'proj.scanWarning': '需检查', 'proj.scanError': '不可用', 'proj.managed': 'SKM 管理', 'proj.external': '已检测',
         'proj.noScannedSkills': '项目 Agent 目录中暂无 Skill。', 'proj.noFilteredSkills': '该 Agent 下暂无 Skill。', 'proj.noDescription': '暂无描述',
-        'proj.link': '软链接', 'proj.copy': '复制', 'proj.symlink': '软链', 'proj.copied': '复制', 'proj.unlink': '解绑', 'proj.status': '刷新状态',
+        'proj.link': '软链接', 'proj.copy': '复制', 'proj.unlink': '解绑',
         'proj.confirmUnlinkTitle': '确认解绑 Skill', 'proj.confirmUnlink': '确认解绑', 'proj.confirmUnlinkDesc': '确定要从当前项目解绑“{0}”吗？对应的托管部署将被移除。',
         'proj.forceUnlinkTitle': '移除已修改的 Skill', 'proj.forceUnlink': '仍要移除', 'proj.forceUnlinkDesc': '“{0}”已在项目中被修改。继续操作将永久删除该项目副本。',
         'proj.unregister': '移除', 'proj.noSkills': '该项目暂无已部署 Skill。',
         'proj.noSkillsDesc': '从下方选择 Library Skill，将它软链或复制到项目中。',
         'proj.selectSkill': '选择 Library Skill', 'proj.chooseAgent': '请至少选择一个 Agent',
         'proj.chooseSkill': '请选择 Skill', 'proj.unregistered': '项目已移除',
-        'proj.deployed': 'Skill 已部署', 'proj.unlinked': 'Skill 已解绑', 'proj.confirmUnregister': '确认移除该项目？必须先解绑已管理的 Skill。',
-        'proj.noProjects': '暂无项目', 'proj.pathRequired': '项目路径不能为空', 'proj.statusTitle': '部署状态', 'proj.statusDesc': 'SKM 管理的项目部署操作。',
-        'proj.statusEmpty': '没有部署操作', 'proj.statusCreate': '待创建', 'proj.statusUnchanged': '已部署', 'proj.statusReplaceManaged': '待更新', 'proj.statusConflictUnmanaged': '存在冲突', 'proj.statusBroken': '已损坏', 'proj.target': '目标', 'proj.source': '来源', 'proj.viewDetails': '查看详情', 'proj.skillDetails': '项目 Skill 详情', 'proj.skillPath': 'Skill 路径', 'proj.metadata': '元数据', 'proj.content': 'Skill 内容', 'proj.noContent': '暂无 Skill 内容',
+        'proj.deployed': 'Skill 已部署', 'proj.deployedWithSkipped': 'Skill 已添加；{0} 中已存在，因此已自动跳过。', 'proj.alreadyExists': '“{0}”已存在于所选 Agent，无需重复添加。', 'proj.modeAlreadyExists': '“{0}”已使用{1}模式；如需切换，请先解绑。', 'proj.unlinked': 'Skill 已解绑', 'proj.confirmUnregister': '确认移除该项目？必须先解绑已管理的 Skill。',
+        'proj.noProjects': '暂无项目', 'proj.pathRequired': '项目路径不能为空', 'proj.viewDetails': '查看详情', 'proj.skillDetails': '项目 Skill 详情', 'proj.skillPath': 'Skill 路径', 'proj.metadata': '元数据', 'proj.content': 'Skill 内容', 'proj.noContent': '暂无 Skill 内容',
         'proj.migrate': '迁移到我的 skill', 'proj.migrateTitle': '迁移项目 Skill', 'proj.migrateSource': '来源 Agent', 'proj.migrateLink': '跟随项目', 'proj.migrateCopy': '复制', 'proj.migrateLinkDesc': '以项目目录为实时来源；切换到不含此 Skill 的分支时，将临时使用最后快照，直到来源恢复。', 'proj.migrateCopyDesc': '推荐。在“我的 skill”中创建独立快照，不受项目修改或分支切换影响。', 'proj.removeAfterCopy': '复制成功后移除项目原件（移动）', 'proj.removeAfterCopyNote': '仅当所有 Agent 副本内容一致且未由 SKM 托管时可用，此操作不可撤销。', 'proj.migrateConfirm': '添加到我的 skill', 'proj.migrated': '已添加到我的 skill',
         'proj.removeSkill': '移除', 'proj.confirmRemoveSkillTitle': '移除项目 Skill', 'proj.confirmRemoveSkillDesc': '确定要从当前项目移除“{0}”吗？', 'proj.confirmRemoveSkillNote': '该 Skill 在项目所有 Agent 目录中的副本都会被永久删除，此操作不可撤销。', 'proj.projectSkillRemoved': '项目 Skill 已移除',
     }
@@ -152,7 +144,7 @@ function setLang(lang) {
 }
 
 function updateNavLabels() {
-    var map = { dashboard: 'nav.dashboard', library: 'nav.library', projects: 'nav.projects' };
+    var map = { library: 'nav.library', projects: 'nav.projects' };
     document.querySelectorAll('.nav-item').forEach(function (item) {
         var key = map[item.dataset.page];
         if (key) item.querySelector('.nav-label').textContent = t(key);
@@ -271,6 +263,14 @@ function statusBadgeClass(status) {
     return map[status] || 'badge-muted';
 }
 
+function confirmationMarkup(message, note, tone) {
+    tone = tone || 'danger';
+    var icon = tone === 'danger' ? 'alert' : 'sparkles';
+    return '<div class="confirm-dialog confirm-dialog-' + tone + '"><div class="confirm-dialog-icon" aria-hidden="true">' + uiIcon(icon) +
+        '</div><div class="confirm-dialog-copy"><p class="confirm-dialog-message">' + escapeHtml(message) + '</p>' +
+        (note ? '<p class="confirm-dialog-note">' + escapeHtml(note) + '</p>' : '') + '</div></div>';
+}
+
 // ===== Modal =====
 var modalReturnFocus = null;
 
@@ -320,7 +320,7 @@ function onModalEsc(e) {
 
 // ===== Main App =====
 var App = {
-    currentPage: 'dashboard',
+    currentPage: 'library',
 
     init: function () {
         document.documentElement.lang = currentLang;
@@ -330,13 +330,18 @@ var App = {
         this.loadVersion();
         updateNavLabels();
         var initialPage = window.location.hash.replace(/^#\/?/, '');
-        if (!['dashboard', 'library', 'projects'].includes(initialPage)) initialPage = 'dashboard';
+        if (!['library', 'projects'].includes(initialPage)) {
+            initialPage = 'library';
+            window.history.replaceState(null, '', '#/library');
+        }
         this.navigate(initialPage, false);
         window.addEventListener('hashchange', function () {
             var page = window.location.hash.replace(/^#\/?/, '');
-            if (['dashboard', 'library', 'projects'].includes(page) && page !== App.currentPage) {
-                App.navigate(page, false);
+            if (!['library', 'projects'].includes(page)) {
+                window.history.replaceState(null, '', '#/library');
+                page = 'library';
             }
+            if (page !== App.currentPage) App.navigate(page, false);
         });
     },
 
@@ -386,7 +391,6 @@ var App = {
         container.dataset.page = page;
         container.innerHTML = '<div class="loading-full"><div class="spinner"></div><p>' + t('loading') + '</p></div>';
         switch (page) {
-            case 'dashboard':  renderDashboard(); break;
             case 'library':    renderLibrary(); break;
             case 'projects':   renderProjects(); break;
         }
@@ -418,5 +422,6 @@ window.escapeHtml = escapeHtml;
 window.statusBadgeClass = statusBadgeClass;
 window.isCurrentPage = isCurrentPage;
 window.uiIcon = uiIcon;
+window.confirmationMarkup = confirmationMarkup;
 
 document.addEventListener('DOMContentLoaded', function () { App.init(); });
