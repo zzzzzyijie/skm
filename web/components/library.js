@@ -147,31 +147,32 @@ function agentControls(skillID, agents) {
             '" data-agent="' + agent.id + '" aria-pressed="' + Boolean(agents[agent.id]) + '"><img class="agent-logo" src="' +
             agentIconSource(agent) + '" alt=""><span>' + escapeHtml(agent.name) + '</span></button>';
     }).join('');
-    return '<div class="agent-controls" aria-label="Agent activation">' + controls + '</div>';
+    return controls ? '<div class="agent-controls" aria-label="Agent activation">' + controls + '</div>' : '';
 }
 
 function agentManagementBand() {
     var configured = libraryState.agents.filter(function (agent) { return agent.configured; });
+    var managed = configured.length ? configured.map(function (agent) {
+        return '<span class="managed-agent"><img class="agent-logo" src="' + agentIconSource(agent) + '" alt=""><span>' +
+            escapeHtml(agent.name) + '</span></span>';
+    }).join('') : '<span class="agent-manager-empty">' + t('lib.noManagedAgents') + '</span>';
     return '<section class="agent-manager"><div class="agent-manager-main"><span class="agent-manager-label">' + t('lib.manageAgents') +
-        '</span><div class="managed-agent-list">' + configured.map(function (agent) {
-            return '<span class="managed-agent"><img class="agent-logo" src="' + agentIconSource(agent) + '" alt=""><span>' +
-                escapeHtml(agent.name) + '</span></span>';
-        }).join('') + '</div></div><button class="btn btn-secondary" type="button" id="btn-manage-agents">' + uiIcon('settings') + t('lib.manageAgents') + '</button></section>';
+        '</span><div class="managed-agent-list">' + managed + '</div></div><button class="btn btn-secondary" type="button" id="btn-manage-agents">' + uiIcon('settings') + t('lib.manageAgents') + '</button></section>';
 }
 
 function showAgentManager() {
-    var content = '<div class="agent-manager-actions"><button class="btn btn-secondary" type="button" id="btn-new-custom-agent">' + uiIcon('plus') + t('lib.addCustomAgent') + '</button></div><div class="agent-picker">' + libraryState.agents.map(function (agent) {
-        var disabled = agent.required || !agent.supported;
-        var meta = agent.path + ' · ' + agent.format;
-        return '<div class="agent-picker-option"><label class="agent-picker-select"><input type="checkbox" name="managed-agent" value="' + agent.id + '"' +
-            (agent.configured ? ' checked' : '') + (disabled ? ' disabled' : '') + '><img class="agent-logo" src="' + agentIconSource(agent) +
-            '" alt=""><span><strong>' + escapeHtml(agent.name) + (agent.required ? ' · ' + t('lib.fixedAgent') : '') + '</strong><small class="mono">' +
-            escapeHtml(meta) + '</small></span></label>' + (agent.custom ? '<button class="agent-edit" type="button" data-edit-custom-agent="' + agent.id + '" aria-label="' + t('lib.customAgent') + '">•••</button>' : '') + '</div>';
-    }).join('') + '</div>';
+    var detected = libraryState.agents.filter(function (agent) { return !agent.custom && agent.detected; });
+    var other = libraryState.agents.filter(function (agent) { return !agent.custom && !agent.detected; });
+    var custom = libraryState.agents.filter(function (agent) { return agent.custom; });
+    var content = '<div class="agent-manager-actions"><button class="btn btn-secondary" type="button" id="btn-scan-agents">' + uiIcon('refresh') + t('lib.scanAgents') + '</button>' +
+        '<button class="btn btn-secondary" type="button" id="btn-new-custom-agent">' + uiIcon('plus') + t('lib.addCustomAgent') + '</button></div><div class="agent-picker-groups">' +
+        agentManagerGroup(t('lib.detectedAgents'), detected, t('lib.noDetectedAgents')) +
+        agentManagerGroup(t('lib.otherAgents'), other, '') + agentManagerGroup(t('lib.customAgents'), custom, '') + '</div>';
     var actions = '<button class="btn btn-ghost" type="button" data-close-modal>' + t('lib.cancel') + '</button>' +
         '<button class="btn btn-primary" type="button" id="btn-save-agents">' + t('lib.saveAgents') + '</button>';
     showModal(t('lib.addAgentTitle'), content, actions);
     document.getElementById('btn-save-agents').addEventListener('click', saveManagedAgents);
+    document.getElementById('btn-scan-agents').addEventListener('click', refreshAgentScan);
     document.getElementById('btn-new-custom-agent').addEventListener('click', function () { showCustomAgentEditor(null); });
     document.querySelectorAll('[data-edit-custom-agent]').forEach(function (button) {
         button.addEventListener('click', function (event) {
@@ -180,6 +181,37 @@ function showAgentManager() {
             showCustomAgentEditor(libraryState.agents.find(function (agent) { return agent.id === button.dataset.editCustomAgent; }));
         });
     });
+}
+
+function agentManagerGroup(title, agents, emptyMessage) {
+    if (!agents.length && !emptyMessage) return '';
+    return '<section class="agent-picker-section"><div class="agent-picker-heading"><span>' + escapeHtml(title) + '</span><span class="badge badge-muted">' + agents.length + '</span></div>' +
+        (agents.length ? '<div class="agent-picker">' + agents.map(agentPickerOption).join('') + '</div>' : '<div class="agent-picker-empty">' + escapeHtml(emptyMessage) + '</div>') + '</section>';
+}
+
+function agentPickerOption(agent) {
+    var meta = agent.path + ' · ' + agent.format;
+    var detectedLabel = agent.detected ? t('lib.detectedAgent') : t('lib.notDetectedAgent');
+    return '<div class="agent-picker-option' + (agent.detected ? ' is-detected' : ' is-not-detected') + '"><label class="agent-picker-select"><input type="checkbox" name="managed-agent" value="' + escapeHtml(agent.id) + '"' +
+        (agent.configured ? ' checked' : '') + (!agent.supported ? ' disabled' : '') + '><img class="agent-logo" src="' + agentIconSource(agent) +
+        '" alt=""><span><span class="agent-picker-name"><strong>' + escapeHtml(agent.name) + '</strong><small class="agent-detection-state">' + escapeHtml(detectedLabel) + '</small></span><small class="mono">' +
+        escapeHtml(meta) + '</small></span></label>' + (agent.custom ? '<button class="agent-edit" type="button" data-edit-custom-agent="' + escapeHtml(agent.id) + '" aria-label="' + t('lib.customAgent') + '">•••</button>' : '') + '</div>';
+}
+
+async function refreshAgentScan() {
+    var button = document.getElementById('btn-scan-agents');
+    var selected = {};
+    document.querySelectorAll('input[name="managed-agent"]:checked').forEach(function (input) { selected[input.value] = true; });
+    button.disabled = true;
+    try {
+        libraryState.agents = await api.get('/api/agents') || [];
+        libraryState.agents.forEach(function (agent) { agent.configured = Boolean(selected[agent.id]); });
+        showAgentManager();
+        showToast(t('lib.agentScanUpdated'), 'info');
+    } catch (err) {
+        button.disabled = false;
+        showToast(err.message, 'error');
+    }
 }
 
 async function saveManagedAgents() {

@@ -65,6 +65,10 @@ func (s *Server) handleEnable(w http.ResponseWriter, r *http.Request) {
 	if len(body.Agents) == 0 {
 		agents = availableAgents
 	}
+	if len(agents) == 0 {
+		writeError(w, http.StatusBadRequest, fmt.Errorf("at least one managed agent is required"))
+		return
+	}
 	configured := agentSet(availableAgents)
 	for _, agent := range agents {
 		if !configured[agent] {
@@ -203,7 +207,7 @@ func (s *Server) buildCurrentPlan() (domain.Plan, error) {
 
 func parseAgents(values []string, custom map[domain.Agent]bool) ([]domain.Agent, error) {
 	if len(values) == 0 {
-		return []domain.Agent{domain.AgentClaude, domain.AgentCodex}, nil
+		return nil, nil
 	}
 	var result []domain.Agent
 	seen := make(map[domain.Agent]struct{})

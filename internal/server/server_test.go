@@ -55,6 +55,23 @@ func TestEmbeddedProjectUIUsesAgentScopedDetailsWithoutPlanSection(t *testing.T)
 	}
 }
 
+func TestEmbeddedLibraryUIUsesScannedManageableAgents(t *testing.T) {
+	recorder := httptest.NewRecorder()
+	New(testStore(t)).Handler().ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/components/library.js", nil))
+	body := recorder.Body.String()
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("GET /components/library.js = %d, body=%s", recorder.Code, body)
+	}
+	for _, marker := range []string{"btn-scan-agents", "agent.detected", "btn-new-custom-agent"} {
+		if !strings.Contains(body, marker) {
+			t.Fatalf("Agent management UI is missing %q", marker)
+		}
+	}
+	if strings.Contains(body, "agent.required") || strings.Contains(body, "lib.fixedAgent") {
+		t.Fatal("Agent management UI still contains fixed Agent behavior")
+	}
+}
+
 func TestLibraryTagAndActivationLifecycle(t *testing.T) {
 	handler := New(testStore(t)).Handler()
 	requestJSON(t, handler, http.MethodPost, "/api/sources", map[string]any{}, http.StatusBadRequest, nil)
@@ -109,38 +126,62 @@ func TestLibraryTagAndActivationLifecycle(t *testing.T) {
 func TestAgentManagementControlsAvailableActivationTargets(t *testing.T) {
 	storage := testStore(t)
 	handler := New(storage).Handler()
+	for _, path := range []string{
+		filepath.Join(storage.Paths.UserHome, ".claude"),
+		filepath.Join(storage.Paths.UserHome, ".cursor"),
+	} {
+		if err := os.MkdirAll(path, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
 
 	var agents []agentDescriptor
 	requestJSON(t, handler, http.MethodGet, "/api/agents", nil, http.StatusOK, &agents)
 	configured := make(map[domain.Agent]bool)
+	detected := make(map[domain.Agent]bool)
 	for _, agent := range agents {
 		configured[agent.ID] = agent.Configured
+		detected[agent.ID] = agent.Detected
 	}
 	if !configured[domain.AgentClaude] || !configured[domain.AgentCodex] || configured[domain.AgentCursor] {
 		t.Fatalf("default managed agents = %#v", configured)
+	}
+	if !detected[domain.AgentClaude] || !detected[domain.AgentCursor] || detected[domain.AgentCodex] {
+		t.Fatalf("detected agents = %#v", detected)
+	}
+	requestJSON(t, handler, http.MethodPut, "/api/agents", map[string]any{
+		"agents": []string{},
+	}, http.StatusOK, &agents)
+	for _, agent := range agents {
+		if agent.Configured {
+			t.Fatalf("Agent %s remained fixed after clearing management", agent.ID)
+		}
 	}
 
 	skillPath := makeSkill(t, "managed-agent")
 	var created domain.Skill
 	requestJSON(t, handler, http.MethodPost, "/api/skills", map[string]any{"path": skillPath}, http.StatusCreated, &created)
 	requestJSON(t, handler, http.MethodPost, "/api/enable", map[string]any{
+		"skills": []string{created.ID}, "mode": "auto",
+	}, http.StatusBadRequest, nil)
+	requestJSON(t, handler, http.MethodPost, "/api/enable", map[string]any{
 		"skills": []string{created.ID}, "agents": []string{"cursor"}, "mode": "auto",
 	}, http.StatusBadRequest, nil)
 
 	requestJSON(t, handler, http.MethodPut, "/api/agents", map[string]any{
-		"agents": []string{"claude", "codex", "cursor"},
+		"agents": []string{"cursor"},
 	}, http.StatusOK, &agents)
 	requestJSON(t, handler, http.MethodPost, "/api/enable", map[string]any{
 		"skills": []string{created.ID}, "agents": []string{"cursor"}, "mode": "auto",
 	}, http.StatusOK, nil)
 	requestJSON(t, handler, http.MethodPut, "/api/agents", map[string]any{
-		"agents": []string{"claude", "codex"},
+		"agents": []string{},
 	}, http.StatusBadRequest, nil)
 	requestJSON(t, handler, http.MethodPost, "/api/disable", map[string]any{
 		"skills": []string{created.ID}, "agents": []string{"cursor"},
 	}, http.StatusOK, nil)
 	requestJSON(t, handler, http.MethodPut, "/api/agents", map[string]any{
-		"agents": []string{"claude", "codex"},
+		"agents": []string{},
 	}, http.StatusOK, &agents)
 	requestJSON(t, handler, http.MethodPost, "/api/agents/custom", map[string]any{
 		"id": "local-agent", "name": "Local Agent", "skillsPath": "~/.local-agent/skills",
@@ -155,7 +196,7 @@ func TestAgentManagementControlsAvailableActivationTargets(t *testing.T) {
 	requestJSON(t, handler, http.MethodDelete, "/api/agents/local-agent", nil, http.StatusOK, nil)
 
 	config, err := storage.LoadConfig()
-	if err != nil || len(config.Defaults.Agents) != 2 {
+	if err != nil || len(config.Defaults.Agents) != 0 {
 		t.Fatalf("saved agent config = %#v, err=%v", config, err)
 	}
 }

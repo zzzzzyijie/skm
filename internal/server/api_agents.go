@@ -4,6 +4,8 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
@@ -18,7 +20,7 @@ type agentDescriptor struct {
 	Path       string       `json:"path,omitempty"`
 	Format     string       `json:"format,omitempty"`
 	Configured bool         `json:"configured"`
-	Required   bool         `json:"required"`
+	Detected   bool         `json:"detected"`
 	Supported  bool         `json:"supported"`
 	Note       string       `json:"note,omitempty"`
 	Icon       string       `json:"icon,omitempty"`
@@ -41,12 +43,12 @@ func (s *Server) handleListAgents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	configured := agentSet(configuredAgents(config.Defaults.Agents, config.Agents))
+	customRoots := adapter.CustomRoots(config.Agents)
 	result := make([]agentDescriptor, 0, len(managedAgents)+len(config.Agents))
 	for _, agent := range managedAgents {
-		required := agent == domain.AgentClaude || agent == domain.AgentCodex
 		descriptor := agentDescriptor{
 			ID: agent, Name: adapter.DisplayName(agent), Configured: configured[agent],
-			Required: required, Supported: agent.Valid(),
+			Detected: s.agentDetected(agent, customRoots, false), Supported: agent.Valid(),
 		}
 		if agent.Valid() {
 			target, _ := adapter.Target(agent, domain.PlacementUser, "~", "", "<skill-name>")
@@ -61,7 +63,7 @@ func (s *Server) handleListAgents(w http.ResponseWriter, r *http.Request) {
 		result = append(result, agentDescriptor{
 			ID: definition.ID, Name: definition.Name, Path: definition.SkillsPath + "/<skill-name>",
 			Format: "<skill-name>/SKILL.md", Configured: configured[definition.ID], Supported: true,
-			Icon: definition.Icon, Custom: true,
+			Detected: s.agentDetected(definition.ID, customRoots, true), Icon: definition.Icon, Custom: true,
 		})
 	}
 	writeJSON(w, http.StatusOK, result)
@@ -81,7 +83,7 @@ func (s *Server) handleUpdateAgents(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 		custom := customAgentSet(config.Agents)
-		selected := map[domain.Agent]bool{domain.AgentClaude: true, domain.AgentCodex: true}
+		selected := make(map[domain.Agent]bool)
 		for _, raw := range body.Agents {
 			agent := domain.Agent(raw)
 			if !agent.Valid() && !custom[agent] {
@@ -268,7 +270,7 @@ func orderedSelectedAgents(selected map[domain.Agent]bool, definitions []domain.
 }
 
 func configuredAgents(values []domain.Agent, definitions []domain.AgentDefinition) []domain.Agent {
-	selected := map[domain.Agent]bool{domain.AgentClaude: true, domain.AgentCodex: true}
+	selected := make(map[domain.Agent]bool)
 	custom := customAgentSet(definitions)
 	for _, agent := range values {
 		if agent.Valid() || custom[agent] {
@@ -276,6 +278,24 @@ func configuredAgents(values []domain.Agent, definitions []domain.AgentDefinitio
 		}
 	}
 	return orderedSelectedAgents(selected, definitions)
+}
+
+func (s *Server) agentDetected(agent domain.Agent, customRoots map[domain.Agent]string, custom bool) bool {
+	target, err := adapter.Target(agent, domain.PlacementUser, s.store.Paths.UserHome, "", "probe", customRoots)
+	if err != nil {
+		return false
+	}
+	skillsRoot := filepath.Dir(target)
+	candidates := []string{skillsRoot}
+	if !custom {
+		candidates = append(candidates, filepath.Dir(skillsRoot))
+	}
+	for _, candidate := range candidates {
+		if info, statErr := os.Stat(candidate); statErr == nil && info.IsDir() {
+			return true
+		}
+	}
+	return false
 }
 
 func customAgentSet(definitions []domain.AgentDefinition) map[domain.Agent]bool {
