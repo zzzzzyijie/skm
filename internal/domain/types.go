@@ -7,6 +7,8 @@ import (
 
 const SchemaVersion = 2
 
+const PromptSchemaVersion = 1
+
 type SkillLocation string
 
 const (
@@ -175,6 +177,34 @@ type Source struct {
 type Sources struct {
 	Version int      `yaml:"version" json:"version"`
 	Sources []Source `yaml:"sources" json:"sources"`
+}
+
+type PromptVariable struct {
+	Name        string   `yaml:"name" json:"name"`
+	Label       string   `yaml:"label,omitempty" json:"label,omitempty"`
+	Type        string   `yaml:"type,omitempty" json:"type,omitempty"`
+	Required    bool     `yaml:"required,omitempty" json:"required,omitempty"`
+	Default     string   `yaml:"default,omitempty" json:"default,omitempty"`
+	Options     []string `yaml:"options,omitempty" json:"options,omitempty"`
+	Description string   `yaml:"description,omitempty" json:"description,omitempty"`
+}
+
+type Prompt struct {
+	ID          string           `yaml:"id" json:"id"`
+	Name        string           `yaml:"name" json:"name"`
+	Description string           `yaml:"description" json:"description"`
+	Tags        []string         `yaml:"tags" json:"tags"`
+	Source      string           `yaml:"source" json:"source"`
+	Hash        string           `yaml:"hash" json:"hash"`
+	Path        string           `yaml:"path" json:"path"`
+	Variables   []PromptVariable `yaml:"variables,omitempty" json:"variables,omitempty"`
+	AddedAt     time.Time        `yaml:"addedAt" json:"addedAt"`
+	UpdatedAt   time.Time        `yaml:"updatedAt" json:"updatedAt"`
+}
+
+type PromptCatalog struct {
+	Version int      `yaml:"version" json:"version"`
+	Prompts []Prompt `yaml:"prompts,omitempty" json:"prompts"`
 }
 
 type Project struct {

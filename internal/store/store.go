@@ -96,6 +96,7 @@ func (s *Store) Ensure() error {
 	for _, dir := range []string{
 		s.Paths.Home,
 		filepath.Join(s.Paths.Home, "objects"),
+		filepath.Join(s.Paths.Home, "prompt-objects"),
 		filepath.Join(s.Paths.Home, "sources"),
 		filepath.Join(s.Paths.Home, "state"),
 		filepath.Join(s.Paths.Home, "locks"),
@@ -293,6 +294,54 @@ func (s *Store) SaveSources(sources domain.Sources) error {
 	}
 	sort.Slice(sources.Sources, func(i, j int) bool { return sources.Sources[i].Name < sources.Sources[j].Name })
 	return saveYAML(filepath.Join(s.Paths.Home, "sources.yaml"), sources)
+}
+
+func (s *Store) LoadPromptCatalog() (domain.PromptCatalog, error) {
+	catalog := domain.PromptCatalog{Version: domain.PromptSchemaVersion}
+	if err := loadYAML(filepath.Join(s.Paths.Home, "prompt-catalog.yaml"), &catalog); err != nil {
+		return domain.PromptCatalog{}, err
+	}
+	return catalog, nil
+}
+
+func (s *Store) SavePromptCatalog(catalog domain.PromptCatalog) error {
+	catalog.Version = domain.PromptSchemaVersion
+	sort.Slice(catalog.Prompts, func(i, j int) bool { return catalog.Prompts[i].ID < catalog.Prompts[j].ID })
+	return saveYAML(filepath.Join(s.Paths.Home, "prompt-catalog.yaml"), catalog)
+}
+
+func (s *Store) UpsertPrompt(value domain.Prompt) error {
+	catalog, err := s.LoadPromptCatalog()
+	if err != nil {
+		return err
+	}
+	for index := range catalog.Prompts {
+		if catalog.Prompts[index].ID == value.ID {
+			catalog.Prompts[index] = value
+			return s.SavePromptCatalog(catalog)
+		}
+	}
+	catalog.Prompts = append(catalog.Prompts, value)
+	return s.SavePromptCatalog(catalog)
+}
+
+func (s *Store) RemovePrompt(id string) error {
+	catalog, err := s.LoadPromptCatalog()
+	if err != nil {
+		return err
+	}
+	kept := catalog.Prompts[:0]
+	for _, value := range catalog.Prompts {
+		if value.ID != id {
+			kept = append(kept, value)
+		}
+	}
+	catalog.Prompts = kept
+	return s.SavePromptCatalog(catalog)
+}
+
+func (s *Store) PromptObjectPath(hash, name string) string {
+	return filepath.Join(s.Paths.Home, "prompt-objects", hash, name)
 }
 
 func (s *Store) LoadProjects() (domain.Projects, error) {

@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -27,8 +28,11 @@ func TestHandlerServesEmbeddedUIWithSecurityHeaders(t *testing.T) {
 	if strings.Contains(body, `data-page="dashboard"`) || strings.Contains(body, `components/dashboard.js`) {
 		t.Fatal("embedded UI still exposes the removed dashboard page")
 	}
-	if !strings.Contains(body, `data-page="library"`) || !strings.Contains(body, `data-page="projects"`) {
+	if !strings.Contains(body, `data-page="library"`) || !strings.Contains(body, `data-page="prompts"`) || !strings.Contains(body, `data-page="projects"`) {
 		t.Fatal("embedded UI is missing a core navigation item")
+	}
+	if !strings.Contains(body, `components/prompts.js`) {
+		t.Fatal("embedded UI is missing the Prompt component")
 	}
 	if got := recorder.Header().Get("X-Frame-Options"); got != "DENY" {
 		t.Fatalf("X-Frame-Options = %q", got)
@@ -69,6 +73,20 @@ func TestEmbeddedLibraryUIUsesScannedManageableAgents(t *testing.T) {
 	}
 	if strings.Contains(body, "agent.required") || strings.Contains(body, "lib.fixedAgent") {
 		t.Fatal("Agent management UI still contains fixed Agent behavior")
+	}
+}
+
+func TestEmbeddedPromptUIUsesServerValidationAndRendering(t *testing.T) {
+	recorder := httptest.NewRecorder()
+	New(testStore(t)).Handler().ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/components/prompts.js", nil))
+	body := recorder.Body.String()
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("GET /components/prompts.js = %d, body=%s", recorder.Code, body)
+	}
+	for _, marker := range []string{"/api/prompts/validate", "/api/prompt-render", "data-prompt-variable", "baseHash", "prompt-editor-stats", "setRangeText"} {
+		if !strings.Contains(body, marker) {
+			t.Fatalf("Prompt UI is missing %q", marker)
+		}
 	}
 }
 
@@ -121,6 +139,49 @@ func TestLibraryTagAndActivationLifecycle(t *testing.T) {
 	if dashboard.SkillCount != 0 || dashboard.ActivatedCount != 0 {
 		t.Fatalf("dashboard after removal = %#v", dashboard)
 	}
+}
+
+func TestPromptAPILifecycleRenderingAndConflict(t *testing.T) {
+	handler := New(testStore(t)).Handler()
+	content := "---\nname: release-notes\ndescription: Draft release notes\ntags: [release]\nvariables:\n  - name: version\n    required: true\n---\nRelease {{version}}\n"
+	var created domain.Prompt
+	requestJSON(t, handler, http.MethodPost, "/api/prompts", map[string]any{"content": content}, http.StatusCreated, &created)
+	if created.ID != "local/release-notes" || created.Hash == "" || len(created.Variables) != 1 {
+		t.Fatalf("created Prompt = %#v", created)
+	}
+
+	var values []domain.Prompt
+	requestJSON(t, handler, http.MethodGet, "/api/prompts?tag=release", nil, http.StatusOK, &values)
+	if len(values) != 1 || values[0].ID != created.ID {
+		t.Fatalf("Prompt list = %#v", values)
+	}
+	var details promptDetails
+	requestJSON(t, handler, http.MethodGet, "/api/prompts/local/release-notes", nil, http.StatusOK, &details)
+	if details.Content != content || !strings.Contains(details.Body, "Release {{version}}") {
+		t.Fatalf("Prompt details = %#v", details)
+	}
+
+	var rendered struct {
+		Content          string   `json:"content"`
+		MissingVariables []string `json:"missingVariables"`
+	}
+	requestJSON(t, handler, http.MethodPost, "/api/prompt-render", map[string]any{"prompt": created.ID, "variables": map[string]string{}}, http.StatusOK, &rendered)
+	if !reflect.DeepEqual(rendered.MissingVariables, []string{"version"}) {
+		t.Fatalf("missing variables = %#v", rendered)
+	}
+	requestJSON(t, handler, http.MethodPost, "/api/prompt-render", map[string]any{"prompt": created.ID, "variables": map[string]string{"version": "v1.0"}}, http.StatusOK, &rendered)
+	if rendered.Content != "Release v1.0\n" || len(rendered.MissingVariables) != 0 {
+		t.Fatalf("rendered Prompt = %#v", rendered)
+	}
+
+	updatedContent := strings.Replace(content, "Draft release notes", "Publish release notes", 1)
+	requestJSON(t, handler, http.MethodPut, "/api/prompts/local/release-notes", map[string]any{"content": updatedContent, "baseHash": "stale"}, http.StatusConflict, nil)
+	requestJSON(t, handler, http.MethodPut, "/api/prompts/local/release-notes", map[string]any{"content": updatedContent, "baseHash": created.Hash}, http.StatusOK, &created)
+	if created.Description != "Publish release notes" {
+		t.Fatalf("updated Prompt = %#v", created)
+	}
+	requestJSON(t, handler, http.MethodDelete, "/api/prompts/local/release-notes", nil, http.StatusOK, nil)
+	requestJSON(t, handler, http.MethodGet, "/api/prompts/local/release-notes", nil, http.StatusNotFound, nil)
 }
 
 func TestAgentManagementControlsAvailableActivationTargets(t *testing.T) {

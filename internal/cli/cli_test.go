@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/zzzzzyijie/skm/internal/domain"
@@ -50,6 +51,53 @@ func TestCLIAddTagEnableDisableAndPlan(t *testing.T) {
 	out = runCLI(t, "--home", skmHome, "--project", project, "list")
 	if !bytes.Contains(out, []byte("local/review")) {
 		t.Fatalf("disable removed Library Skill:\n%s", out)
+	}
+}
+
+func TestCLIPromptLifecycleAndRendering(t *testing.T) {
+	root, _, project, skmHome := cliPaths(t)
+	runCLI(t, "--home", skmHome, "--project", project, "prompt", "create", "summary", "--description", "Summarize a topic", "--variable", "topic", "--body", "Summarize {{topic}}")
+	createdOutput := runCLI(t, "--home", skmHome, "--project", project, "prompt", "render", "summary", "--var", "topic=testing")
+	if !bytes.Contains(createdOutput, []byte("Summarize testing")) {
+		t.Fatalf("created Prompt render: %s", createdOutput)
+	}
+	runCLI(t, "--home", skmHome, "--project", project, "prompt", "remove", "summary")
+
+	promptPath := filepath.Join(root, "PROMPT.md")
+	writeCLIPrompt(t, promptPath, "code-review", "Review carefully")
+	runCLI(t, "--home", skmHome, "--project", project, "prompt", "validate", promptPath)
+	runCLI(t, "--home", skmHome, "--project", project, "prompt", "add", promptPath)
+
+	out := runCLI(t, "--home", skmHome, "--project", project, "prompt", "list", "--tag", "review")
+	if !bytes.Contains(out, []byte("local/code-review")) {
+		t.Fatalf("Prompt list: %s", out)
+	}
+	codePath := filepath.Join(root, "main.go")
+	if err := os.WriteFile(codePath, []byte("package main"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out = runCLI(t, "--home", skmHome, "--project", project, "prompt", "render", "code-review", "--var", "language=Go", "--var-file", "code="+codePath)
+	if !bytes.Contains(out, []byte("Review this Go code")) || !bytes.Contains(out, []byte("package main")) {
+		t.Fatalf("Prompt render: %s", out)
+	}
+
+	updated := strings.Replace(readTestFile(t, promptPath), "Review carefully", "Review thoroughly", 1)
+	if err := os.WriteFile(promptPath, []byte(updated), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	runCLI(t, "--home", skmHome, "--project", project, "prompt", "update", "code-review", promptPath)
+	out = runCLI(t, "--home", skmHome, "--project", project, "--json", "prompt", "show", "code-review")
+	if !bytes.Contains(out, []byte("Review thoroughly")) || !bytes.Contains(out, []byte(`"content"`)) {
+		t.Fatalf("Prompt show: %s", out)
+	}
+	exported := filepath.Join(root, "exported", "PROMPT.md")
+	runCLI(t, "--home", skmHome, "--project", project, "prompt", "export", "code-review", "--output", exported)
+	if !strings.Contains(readTestFile(t, exported), "Review thoroughly") {
+		t.Fatal("exported Prompt is stale")
+	}
+	runCLI(t, "--home", skmHome, "--project", project, "prompt", "remove", "code-review")
+	if out := runCLI(t, "--home", skmHome, "--project", project, "prompt", "list"); bytes.Contains(out, []byte("code-review")) {
+		t.Fatalf("removed Prompt remained: %s", out)
 	}
 }
 
@@ -528,4 +576,21 @@ func writeCLISkill(t *testing.T, path, name string) {
 	if err := os.WriteFile(filepath.Join(path, "SKILL.md"), []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}
+}
+
+func writeCLIPrompt(t *testing.T, path, name, description string) {
+	t.Helper()
+	content := "---\nname: " + name + "\ndescription: " + description + "\ntags: [review]\nvariables:\n  - name: language\n    type: select\n    required: true\n    options: [Go, Swift]\n  - name: code\n    type: multiline\n    required: true\n---\nReview this {{language}} code:\n\n{{code}}\n"
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func readTestFile(t *testing.T, path string) string {
+	t.Helper()
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(data)
 }

@@ -46,6 +46,7 @@ user_home="$test_root/user"
 skm_home="$user_home/.skm"
 project_root="$test_root/project"
 skill_root="$test_root/smoke-skill"
+prompt_file="$test_root/PROMPT.md"
 go_cache="${GOCACHE:-/tmp/skm-go-cache}"
 
 cleanup() {
@@ -80,6 +81,17 @@ printf '%s\n' \
   '---' \
   'Use only to exercise a local skm build.' \
   > "$skill_root/SKILL.md"
+printf '%s\n' \
+  '---' \
+  'name: smoke-prompt' \
+  'description: Temporary Prompt for the skm development smoke test.' \
+  'tags: [smoke]' \
+  'variables:' \
+  '  - name: topic' \
+  '    required: true' \
+  '---' \
+  'Explain {{topic}} clearly.' \
+  > "$prompt_file"
 
 step "Building current source"
 (
@@ -105,6 +117,13 @@ run_skm doctor | grep -F "$skm_home" >/dev/null
 run_skm disable local/smoke-skill
 [ ! -e "$claude_target" ] && [ ! -L "$claude_target" ]
 [ ! -e "$codex_target" ] && [ ! -L "$codex_target" ]
+
+step "Running isolated Prompt flow"
+run_skm prompt validate "$prompt_file"
+run_skm prompt add "$prompt_file"
+run_skm --json prompt list --tag smoke | grep -F 'local/smoke-prompt' >/dev/null
+run_skm prompt render local/smoke-prompt --var topic=testing | grep -F 'Explain testing clearly.' >/dev/null
+run_skm prompt remove local/smoke-prompt
 
 if [ "$run_full" = true ]; then
   step "Running repository verification suite"

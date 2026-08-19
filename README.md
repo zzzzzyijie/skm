@@ -5,6 +5,7 @@ Codex 或具体项目。它将三个概念明确分开：
 
 ```text
 Library     用户拥有和管理哪些 Skill
+Prompt      用户保存、填写变量和复用哪些 Prompt 模板
 Activation  哪些 Skill 对哪些 Agent 启用
 Project     项目引用或独立维护哪些 Skill
 ```
@@ -13,6 +14,7 @@ Project     项目引用或独立维护哪些 Skill
 
 - 个人 Library：添加、移除、查看和验证本地 Skill。
 - Library 标签：分类、组合筛选和批量启用。
+- Prompt Library：创建、导入、校验、编辑和变量化渲染可复用 Prompt。
 - Git Source：导入和更新个人或团队 Skill 仓库。
 - Agent Activation：用受控软链接启用到 Claude Code 和 Codex。
 - 本机项目部署：登记多个项目，并将 Library Skill 软链或复制到项目 Agent 目录。
@@ -23,6 +25,7 @@ Project     项目引用或独立维护哪些 Skill
 - 可审计状态：YAML Manifest、Lock 和版本化 JSON 输出。
 
 完整设计见 [Library、Activation 与 Project 设计](docs/技能库激活与项目设计.md)，
+Prompt 格式与第一版能力见 [Prompt 管理](docs/Prompt管理.md)，
 完整命令说明见 [CLI 使用指南](docs/命令行使用指南.md)。当前完成度和待办见
 [核心流程验收清单](docs/核心流程验收清单.md)。
 
@@ -85,7 +88,8 @@ skm ui
 
 默认监听 `http://localhost:9527` 并打开浏览器。可用 `--port` 更换端口，或用
 `--no-browser` 只启动服务。Web UI 与 CLI 使用同一份 Library、Project 注册和 Activation
-数据；Projects 页面可完成本机项目登记、Skill 软链/复制、状态检查和解绑。
+数据；Prompt 页面可编辑、校验、填写变量并复制生成结果；Projects 页面可完成本机项目登记、
+Skill 软链/复制、状态检查和解绑。
 
 Library 的仓库导入框支持 Git URL、GitHub `owner/repo` 简写，也可以直接粘贴安装命令：
 
@@ -96,6 +100,21 @@ npx skills add jakubkrehel/skills --skill better-ui
 
 SKM 只解析命令中的来源和 `--skill` 选项，不会执行 `npx`；导入仍由内置的 Git Source
 流程完成并记录 revision。来源名称可留空，由仓库 owner 和名称自动生成。
+
+### 管理 Prompt
+
+Prompt 使用带 YAML frontmatter 的 `PROMPT.md`，第一版只进行本地管理和变量替换，不调用
+模型 API，也不会把 Prompt 部署到 Agent Skill 目录：
+
+```bash
+skm prompt validate ./PROMPT.md
+skm prompt add ./PROMPT.md
+skm prompt list --tag review
+skm prompt render local/code-review \
+  --var language=Go \
+  --var-file code=./main.go
+skm prompt export local/code-review --output ./PROMPT.md
+```
 
 ### 建立个人 Library
 

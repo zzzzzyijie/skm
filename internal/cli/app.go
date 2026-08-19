@@ -51,7 +51,7 @@ func Execute(args []string, out, errOut io.Writer) int {
 func (a *App) RootCommand() *cobra.Command {
 	root := &cobra.Command{
 		Use:           "skm",
-		Short:         "Manage and deploy AI Agent Skills",
+		Short:         "Manage AI Agent Skills and reusable Prompts",
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
@@ -78,6 +78,7 @@ func (a *App) RootCommand() *cobra.Command {
 		a.newDoctorCommand(),
 		a.newSourceCommand(),
 		a.newTagCommand(),
+		a.newPromptCommand(),
 		a.newProjectCommand(),
 		a.newSyncCommand(),
 		a.newUICommand(),

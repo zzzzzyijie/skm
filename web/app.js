@@ -3,7 +3,8 @@
 // ===== i18n =====
 var translations = {
     en: {
-        'nav.library': 'My Skills', 'nav.projects': 'Projects',
+        'nav.library': 'My Skills', 'nav.prompts': 'Prompts', 'nav.projects': 'Projects',
+        'prompt.title': 'Prompts', 'prompt.count': '{0} Prompt(s)', 'prompt.new': 'New Prompt', 'prompt.import': 'Import PROMPT.md', 'prompt.search': 'Search Prompts', 'prompt.searchPlaceholder': 'Search by name, ID, description, or source', 'prompt.all': 'All', 'prompt.noPrompts': 'No Prompts yet', 'prompt.noPromptsDesc': 'Create a reusable Prompt template or import a PROMPT.md file.', 'prompt.variables': 'Variables', 'prompt.use': 'Use Prompt', 'prompt.edit': 'Edit', 'prompt.duplicate': 'Duplicate', 'prompt.export': 'Export', 'prompt.remove': 'Remove', 'prompt.newTitle': 'Create Prompt', 'prompt.editorTitle': 'Edit Prompt', 'prompt.contentLabel': 'PROMPT.md content', 'prompt.editorHint': 'YAML frontmatter defines metadata and variables. The Markdown body is the reusable template.', 'prompt.validate': 'Validate', 'prompt.valid': 'Prompt is valid', 'prompt.notValidated': 'Not validated', 'prompt.unsaved': 'Unsaved changes', 'prompt.lines': '{0} lines', 'prompt.characters': '{0} characters', 'prompt.shortcuts': '⌘/Ctrl+S to save · ⌘/Ctrl+Enter to validate · Tab inserts two spaces', 'prompt.save': 'Save Prompt', 'prompt.created': 'Prompt created', 'prompt.updated': 'Prompt updated', 'prompt.removed': 'Prompt removed', 'prompt.imported': 'PROMPT.md loaded', 'prompt.useTitle': 'Use Prompt', 'prompt.render': 'Render', 'prompt.preview': 'Rendered preview', 'prompt.missing': 'Missing required variables: {0}', 'prompt.copy': 'Copy result', 'prompt.copied': 'Rendered Prompt copied', 'prompt.noVariables': 'This Prompt has no variables.', 'prompt.confirmRemoveTitle': 'Remove Prompt', 'prompt.confirmRemove': 'Remove “{0}” from the Prompt Library?', 'prompt.confirmRemoveNote': 'The managed Prompt snapshot will be deleted. This cannot be undone.', 'prompt.loadFailed': 'Failed to load Prompts', 'prompt.invalidFile': 'Choose a PROMPT.md or Markdown file.',
         'lib.title': 'My Skills', 'lib.addSkill': 'Add Skill', 'lib.manageAgents': 'Agent management', 'lib.addAgentTitle': 'Agent management', 'lib.saveAgents': 'Save', 'lib.all': 'All', 'lib.search': 'Search Skills',
         'lib.summaryLabel': 'Library overview', 'lib.totalSkills': 'Total Skills', 'lib.gitSources': 'Git Sources', 'lib.tags': 'Tags', 'lib.added': 'Added', 'lib.hash': 'Hash',
         'lib.searchPlaceholder': 'Search by name, ID, description, or source', 'lib.manageTags': 'Manage tags',
@@ -61,7 +62,8 @@ var translations = {
         'proj.removeSkill': 'Remove', 'proj.confirmRemoveSkillTitle': 'Remove project Skill', 'proj.confirmRemoveSkillDesc': 'Remove "{0}" from this project?', 'proj.confirmRemoveSkillNote': 'Every copy in this project’s Agent directories will be permanently deleted. This cannot be undone.', 'proj.projectSkillRemoved': 'Project Skill removed',
     },
     zh: {
-        'nav.library': '我的 skill', 'nav.projects': '项目',
+        'nav.library': '我的 skill', 'nav.prompts': 'Prompt', 'nav.projects': '项目',
+        'prompt.title': 'Prompt', 'prompt.count': '{0} 个 Prompt', 'prompt.new': '新建 Prompt', 'prompt.import': '导入 PROMPT.md', 'prompt.search': '搜索 Prompt', 'prompt.searchPlaceholder': '按名称、ID、描述或来源搜索', 'prompt.all': '全部', 'prompt.noPrompts': '暂无 Prompt', 'prompt.noPromptsDesc': '创建可复用的 Prompt 模板，或导入 PROMPT.md 文件。', 'prompt.variables': '变量', 'prompt.use': '使用 Prompt', 'prompt.edit': '编辑', 'prompt.duplicate': '复制一份', 'prompt.export': '导出', 'prompt.remove': '删除', 'prompt.newTitle': '新建 Prompt', 'prompt.editorTitle': '编辑 Prompt', 'prompt.contentLabel': 'PROMPT.md 内容', 'prompt.editorHint': 'YAML frontmatter 定义元数据和变量，Markdown 正文是可复用模板。', 'prompt.validate': '校验', 'prompt.valid': 'Prompt 格式有效', 'prompt.notValidated': '尚未校验', 'prompt.unsaved': '有未保存修改', 'prompt.lines': '{0} 行', 'prompt.characters': '{0} 个字符', 'prompt.shortcuts': '⌘/Ctrl+S 保存 · ⌘/Ctrl+Enter 校验 · Tab 插入两个空格', 'prompt.save': '保存 Prompt', 'prompt.created': 'Prompt 已创建', 'prompt.updated': 'Prompt 已更新', 'prompt.removed': 'Prompt 已删除', 'prompt.imported': '已载入 PROMPT.md', 'prompt.useTitle': '使用 Prompt', 'prompt.render': '生成预览', 'prompt.preview': '生成结果', 'prompt.missing': '尚未填写必填变量：{0}', 'prompt.copy': '复制结果', 'prompt.copied': '生成结果已复制', 'prompt.noVariables': '这个 Prompt 不包含变量。', 'prompt.confirmRemoveTitle': '删除 Prompt', 'prompt.confirmRemove': '确定从 Prompt 库删除“{0}”吗？', 'prompt.confirmRemoveNote': '对应的托管快照将被删除，此操作不可撤销。', 'prompt.loadFailed': '加载 Prompt 失败', 'prompt.invalidFile': '请选择 PROMPT.md 或 Markdown 文件。',
         'lib.title': '我的 skill', 'lib.addSkill': '添加 Skill', 'lib.manageAgents': 'Agent 管理', 'lib.addAgentTitle': 'Agent 管理', 'lib.saveAgents': '保存', 'lib.all': '全部', 'lib.search': '搜索 Skill',
         'lib.summaryLabel': 'Skill 库概览', 'lib.totalSkills': 'Skill 总数', 'lib.gitSources': '来源数量', 'lib.tags': '标签', 'lib.added': '添加时间', 'lib.hash': '哈希',
         'lib.searchPlaceholder': '按名称、ID、描述或来源搜索', 'lib.manageTags': '管理标签',
@@ -144,7 +146,7 @@ function setLang(lang) {
 }
 
 function updateNavLabels() {
-    var map = { library: 'nav.library', projects: 'nav.projects' };
+    var map = { library: 'nav.library', prompts: 'nav.prompts', projects: 'nav.projects' };
     document.querySelectorAll('.nav-item').forEach(function (item) {
         var key = map[item.dataset.page];
         if (key) item.querySelector('.nav-label').textContent = t(key);
@@ -330,14 +332,14 @@ var App = {
         this.loadVersion();
         updateNavLabels();
         var initialPage = window.location.hash.replace(/^#\/?/, '');
-        if (!['library', 'projects'].includes(initialPage)) {
+        if (!['library', 'prompts', 'projects'].includes(initialPage)) {
             initialPage = 'library';
             window.history.replaceState(null, '', '#/library');
         }
         this.navigate(initialPage, false);
         window.addEventListener('hashchange', function () {
             var page = window.location.hash.replace(/^#\/?/, '');
-            if (!['library', 'projects'].includes(page)) {
+            if (!['library', 'prompts', 'projects'].includes(page)) {
                 window.history.replaceState(null, '', '#/library');
                 page = 'library';
             }
@@ -392,6 +394,7 @@ var App = {
         container.innerHTML = '<div class="loading-full"><div class="spinner"></div><p>' + t('loading') + '</p></div>';
         switch (page) {
             case 'library':    renderLibrary(); break;
+            case 'prompts':    renderPrompts(); break;
             case 'projects':   renderProjects(); break;
         }
     },
