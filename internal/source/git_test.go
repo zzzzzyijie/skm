@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/zzzzzyijie/skm/internal/catalog"
@@ -194,6 +195,81 @@ func TestGitSourceRemoveRefusesSymlinkedCheckout(t *testing.T) {
 	}
 	if info, err := os.Lstat(checkoutPath); err != nil || info.Mode()&os.ModeSymlink == 0 {
 		t.Fatalf("source symlink was modified: info=%v err=%v", info, err)
+	}
+}
+
+func TestGitSourceFailedUpdateKeepsCatalogBindingAndCheckout(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git is not installed")
+	}
+	repository := t.TempDir()
+	run(t, repository, "git", "init", "-b", "main")
+	writeRepoSkill(t, repository, "skills/one", "one", "version one")
+	writeRepoSkill(t, repository, "skills/two", "two", "version one")
+	commitAll(t, repository, "initial")
+
+	storage := sourceStore(t)
+	manager := NewGitManager(storage, catalog.New(storage))
+	if _, _, err := manager.Add(domain.Source{Name: "team", URL: repository}); err != nil {
+		t.Fatal(err)
+	}
+	beforeCatalog, err := storage.LoadCatalog()
+	if err != nil {
+		t.Fatal(err)
+	}
+	beforeSources, err := storage.LoadSources()
+	if err != nil {
+		t.Fatal(err)
+	}
+	checkoutDocument := filepath.Join(storage.SourcePath("team"), "skills", "one", "SKILL.md")
+	beforeCheckout, err := os.ReadFile(checkoutDocument)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	writeRepoSkill(t, repository, "skills/one", "one", "version two")
+	invalidDocument := filepath.Join(repository, "skills", "two", "SKILL.md")
+	if err := os.WriteFile(invalidDocument, []byte("---\nname: two\n---\ninvalid update\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	commitAll(t, repository, "invalid update")
+
+	if _, _, err := manager.Update([]string{"team"}); err == nil {
+		t.Fatal("invalid repository update should fail")
+	}
+	afterCatalog, err := storage.LoadCatalog()
+	if err != nil {
+		t.Fatal(err)
+	}
+	afterSources, err := storage.LoadSources()
+	if err != nil {
+		t.Fatal(err)
+	}
+	afterCheckout, err := os.ReadFile(checkoutDocument)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(afterCatalog, beforeCatalog) {
+		t.Fatalf("failed update changed catalog:\nbefore=%#v\nafter=%#v", beforeCatalog, afterCatalog)
+	}
+	if !reflect.DeepEqual(afterSources, beforeSources) {
+		t.Fatalf("failed update changed source binding:\nbefore=%#v\nafter=%#v", beforeSources, afterSources)
+	}
+	if !bytes.Equal(afterCheckout, beforeCheckout) {
+		t.Fatalf("failed update changed source checkout:\nbefore=%q\nafter=%q", beforeCheckout, afterCheckout)
+	}
+}
+
+func TestGitSourceUpdateRevalidatesPersistedBinding(t *testing.T) {
+	storage := sourceStore(t)
+	if err := storage.SaveSources(domain.Sources{Sources: []domain.Source{{
+		Name: "../../outside", URL: t.TempDir(),
+	}}}); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, _, err := NewGitManager(storage, catalog.New(storage)).Update(nil); err == nil || !strings.Contains(err.Error(), "invalid source name") {
+		t.Fatalf("corrupt persisted source should be rejected, got %v", err)
 	}
 }
 

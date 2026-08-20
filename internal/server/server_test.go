@@ -42,6 +42,108 @@ func TestHandlerServesEmbeddedUIWithSecurityHeaders(t *testing.T) {
 	}
 }
 
+func TestEmbeddedUIProvidesPersistentSettingsAndThemeChoices(t *testing.T) {
+	handler := New(testStore(t)).Handler()
+
+	checks := []struct {
+		path    string
+		markers []string
+	}{
+		{path: "/", markers: []string{`id="settings-toggle"`, `id="mobile-settings-toggle"`, `src="/theme-init.js"`}},
+		{path: "/theme-init.js", markers: []string{`localStorage.getItem('skm-theme')`, `dataset.theme`}},
+		{path: "/app.js", markers: []string{"openSettings", "settings-dark-mode", "data-settings-lang", "setTheme", "skm-lang", "skm-theme"}},
+		{path: "/app.css", markers: []string{`[data-theme="light"]`, ".settings-segmented", ".settings-switch"}},
+	}
+
+	for _, check := range checks {
+		recorder := httptest.NewRecorder()
+		handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, check.path, nil))
+		body := recorder.Body.String()
+		if recorder.Code != http.StatusOK {
+			t.Fatalf("GET %s = %d, body=%s", check.path, recorder.Code, body)
+		}
+		for _, marker := range check.markers {
+			if !strings.Contains(body, marker) {
+				t.Fatalf("GET %s is missing %q", check.path, marker)
+			}
+		}
+	}
+}
+
+func TestEmbeddedUIProvidesGitSettingsAndBrandSync(t *testing.T) {
+	handler := New(testStore(t)).Handler()
+
+	checks := []struct {
+		path    string
+		markers []string
+	}{
+		{path: "/", markers: []string{`id="sync-toggle"`, `id="mobile-sync-toggle"`, "sidebar-brand-row"}},
+		{path: "/app.js", markers: []string{"runGitSync", "openSettings('git')", "/api/workspace/preview", "/api/workspace/sync", "/api/sources", "data-remove-git-source", "workspaceConflictChoices"}},
+		{path: "/app.css", markers: []string{".brand-sync-button", ".workspace-card", ".workspace-change-row", ".git-source-form", ".sync-result-row", ".settings-layout"}},
+	}
+
+	for _, check := range checks {
+		recorder := httptest.NewRecorder()
+		handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, check.path, nil))
+		body := recorder.Body.String()
+		if recorder.Code != http.StatusOK {
+			t.Fatalf("GET %s = %d, body=%s", check.path, recorder.Code, body)
+		}
+		for _, marker := range check.markers {
+			if !strings.Contains(body, marker) {
+				t.Fatalf("GET %s is missing %q", check.path, marker)
+			}
+		}
+	}
+}
+
+func TestWorkspaceSyncAPIConfiguresPreviewsAndPublishesSkillsAndPrompts(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git is not installed")
+	}
+	remoteRoot := t.TempDir()
+	remote := filepath.Join(remoteRoot, "workspace.git")
+	runGitTest(t, remoteRoot, "init", "--bare", "-b", "main", remote)
+	storage := testStore(t)
+	handler := New(storage).Handler()
+	skillPath := makeSkill(t, "workspace-skill")
+	requestJSON(t, handler, http.MethodPost, "/api/skills", map[string]any{"path": skillPath}, http.StatusCreated, nil)
+	requestJSON(t, handler, http.MethodPost, "/api/prompts", map[string]any{
+		"name": "workspace-prompt", "description": "Workspace Prompt", "tags": []string{"general"}, "body": "Synchronize this Prompt.",
+	}, http.StatusCreated, nil)
+
+	var configured workspaceView
+	requestJSON(t, handler, http.MethodPut, "/api/workspace", map[string]any{
+		"url": remote, "ref": "main",
+	}, http.StatusOK, &configured)
+	if !configured.Configured || configured.Config == nil || configured.Config.URL != remote {
+		t.Fatalf("configured workspace = %#v", configured)
+	}
+	var preview struct {
+		Uploads   int `json:"uploads"`
+		Downloads int `json:"downloads"`
+		Conflicts int `json:"conflicts"`
+	}
+	requestJSON(t, handler, http.MethodGet, "/api/workspace/preview", nil, http.StatusOK, &preview)
+	if preview.Uploads != 2 || preview.Downloads != 0 || preview.Conflicts != 0 {
+		t.Fatalf("workspace preview = %#v", preview)
+	}
+	var synced struct {
+		Revision string `json:"revision"`
+		Applied  bool   `json:"applied"`
+	}
+	requestJSON(t, handler, http.MethodPost, "/api/workspace/sync", map[string]any{
+		"resolutions": map[string]string{},
+	}, http.StatusOK, &synced)
+	if !synced.Applied || synced.Revision == "" {
+		t.Fatalf("workspace sync = %#v", synced)
+	}
+	requestJSON(t, handler, http.MethodGet, "/api/workspace", nil, http.StatusOK, &configured)
+	if configured.State == nil || configured.State.Revision != synced.Revision {
+		t.Fatalf("workspace state = %#v", configured.State)
+	}
+}
+
 func TestEmbeddedProjectUIUsesAgentScopedDetailsWithoutPlanSection(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	New(testStore(t)).Handler().ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/components/projects.js", nil))
@@ -66,13 +168,16 @@ func TestEmbeddedLibraryUIUsesScannedManageableAgents(t *testing.T) {
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("GET /components/library.js = %d, body=%s", recorder.Code, body)
 	}
-	for _, marker := range []string{"btn-scan-agents", "agent.detected", "btn-new-custom-agent", "tagPickerMarkup", "btn-create-tag", "/api/skill-tags"} {
+	for _, marker := range []string{"btn-scan-agents", "agent.detected", "btn-new-custom-agent", "tagPickerMarkup", "btn-create-tag", "/api/skill-tags", "detail-new-tag", "createSkillDetailTag", "syncSkillTagState"} {
 		if !strings.Contains(body, marker) {
 			t.Fatalf("Agent management UI is missing %q", marker)
 		}
 	}
 	if strings.Contains(body, "agent.required") || strings.Contains(body, "lib.fixedAgent") {
 		t.Fatal("Agent management UI still contains fixed Agent behavior")
+	}
+	if strings.Contains(body, "await openSkillDetails(id)") {
+		t.Fatal("Skill tag save still reopens the details modal and causes a visible refresh")
 	}
 }
 
@@ -373,6 +478,103 @@ func TestAddSourceFromSkillsCommand(t *testing.T) {
 	requestJSON(t, handler, http.MethodPost, "/api/sources", map[string]any{
 		"input": "npx skills add owner/repo --agent codex",
 	}, http.StatusBadRequest, nil)
+}
+
+func TestGitSyncIsolatesSourceFailuresRefreshesDeploymentsAndRemovesBindings(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git is not installed")
+	}
+	storage := testStore(t)
+	handler := New(storage).Handler()
+	requestJSON(t, handler, http.MethodPost, "/api/sync", map[string]any{}, http.StatusConflict, nil)
+
+	goodRepository := createGitRepository(t, "good-skill")
+	badRepository := createGitRepository(t, "bad-skill")
+	var goodCreated struct {
+		Source domain.Source  `json:"source"`
+		Skills []domain.Skill `json:"skills"`
+	}
+	requestJSON(t, handler, http.MethodPost, "/api/sources", map[string]any{
+		"input": goodRepository, "name": "good",
+	}, http.StatusCreated, &goodCreated)
+	var badCreated struct {
+		Source domain.Source  `json:"source"`
+		Skills []domain.Skill `json:"skills"`
+	}
+	requestJSON(t, handler, http.MethodPost, "/api/sources", map[string]any{
+		"input": badRepository, "name": "bad",
+	}, http.StatusCreated, &badCreated)
+	if len(goodCreated.Skills) != 1 || len(badCreated.Skills) != 1 {
+		t.Fatalf("created Git Skills: good=%#v bad=%#v", goodCreated.Skills, badCreated.Skills)
+	}
+	oldGood := goodCreated.Skills[0]
+	requestJSON(t, handler, http.MethodPost, "/api/enable", map[string]any{
+		"skills": []string{oldGood.ID}, "agents": []string{"codex"}, "mode": "auto",
+	}, http.StatusOK, nil)
+	deploymentTarget := filepath.Join(storage.Paths.UserHome, ".codex", "skills", oldGood.Name)
+	resolvedBefore, err := filepath.EvalSymlinks(deploymentTarget)
+	expectedBefore, expectedErr := filepath.EvalSymlinks(oldGood.Path)
+	if err != nil || expectedErr != nil || filepath.Clean(resolvedBefore) != filepath.Clean(expectedBefore) {
+		t.Fatalf("initial deployment = %q, err=%v, want %q", resolvedBefore, err, oldGood.Path)
+	}
+
+	updatedContent := "---\nname: good-skill\ndescription: Updated repository Skill\n---\n\n# good-skill\n\nversion two\n"
+	if err := os.WriteFile(filepath.Join(goodRepository, "skills", "good-skill", "SKILL.md"), []byte(updatedContent), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	runGitTest(t, goodRepository, "add", ".")
+	runGitTest(t, goodRepository, "-c", "user.name=skm-test", "-c", "user.email=skm@example.invalid", "commit", "-m", "update")
+
+	sources, err := storage.LoadSources()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for index := range sources.Sources {
+		if sources.Sources[index].Name == "bad" {
+			sources.Sources[index].URL = filepath.Join(t.TempDir(), "missing-repository")
+		}
+	}
+	if err := storage.SaveSources(sources); err != nil {
+		t.Fatal(err)
+	}
+
+	var synced sourceSyncResult
+	requestJSON(t, handler, http.MethodPost, "/api/sync", map[string]any{}, http.StatusOK, &synced)
+	if synced.Configured != 2 || synced.Updated != 1 || synced.Failed != 1 || synced.SkillCount != 1 || !synced.Applied || synced.DeploymentError != "" {
+		t.Fatalf("sync result = %#v", synced)
+	}
+	statuses := make(map[string]string)
+	for _, item := range synced.Results {
+		statuses[item.Name] = item.Status
+	}
+	if statuses["good"] != "updated" || statuses["bad"] != "error" {
+		t.Fatalf("sync item statuses = %#v", statuses)
+	}
+	newGood, err := catalog.New(storage).ResolveLibrary(oldGood.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if newGood.Hash == oldGood.Hash || newGood.Description != "Updated repository Skill" {
+		t.Fatalf("updated Git Skill = %#v", newGood)
+	}
+	resolvedAfter, err := filepath.EvalSymlinks(deploymentTarget)
+	expectedAfter, expectedErr := filepath.EvalSymlinks(newGood.Path)
+	if err != nil || expectedErr != nil || filepath.Clean(resolvedAfter) != filepath.Clean(expectedAfter) {
+		t.Fatalf("refreshed deployment = %q, err=%v, want %q", resolvedAfter, err, newGood.Path)
+	}
+
+	var removed struct {
+		BindingRemoved  bool `json:"bindingRemoved"`
+		CheckoutRemoved bool `json:"checkoutRemoved"`
+	}
+	requestJSON(t, handler, http.MethodDelete, "/api/sources/bad", nil, http.StatusOK, &removed)
+	if !removed.BindingRemoved || !removed.CheckoutRemoved {
+		t.Fatalf("removed source = %#v", removed)
+	}
+	if _, err := catalog.New(storage).ResolveLibrary(badCreated.Skills[0].ID); err != nil {
+		t.Fatalf("removing Git binding removed imported Library Skill: %v", err)
+	}
+	requestJSON(t, handler, http.MethodDelete, "/api/sources/bad", nil, http.StatusBadRequest, nil)
 }
 
 func TestProjectLifecycleAPI(t *testing.T) {
@@ -775,6 +977,16 @@ func makeRepositorySkill(t *testing.T, root, relative, name string) {
 	if err := os.WriteFile(filepath.Join(directory, "SKILL.md"), []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}
+}
+
+func createGitRepository(t *testing.T, name string) string {
+	t.Helper()
+	repository := t.TempDir()
+	runGitTest(t, repository, "init", "-b", "main")
+	makeRepositorySkill(t, repository, filepath.Join("skills", name), name)
+	runGitTest(t, repository, "add", ".")
+	runGitTest(t, repository, "-c", "user.name=skm-test", "-c", "user.email=skm@example.invalid", "commit", "-m", "initial")
+	return repository
 }
 
 func runGitTest(t *testing.T, directory string, args ...string) {

@@ -9,6 +9,8 @@ const SchemaVersion = 2
 
 const PromptSchemaVersion = 1
 
+const WorkspaceSchemaVersion = 1
+
 type SkillLocation string
 
 const (
@@ -178,6 +180,38 @@ type Source struct {
 type Sources struct {
 	Version int      `yaml:"version" json:"version"`
 	Sources []Source `yaml:"sources" json:"sources"`
+}
+
+// WorkspaceConfig identifies the one personal Git repository used to carry
+// portable Skill and Prompt content between devices. Credentials deliberately
+// remain in the device's Git/SSH configuration rather than this file.
+type WorkspaceConfig struct {
+	Version   int       `yaml:"version" json:"version"`
+	URL       string    `yaml:"url" json:"url"`
+	Ref       string    `yaml:"ref" json:"ref"`
+	Root      string    `yaml:"root,omitempty" json:"root,omitempty"`
+	UpdatedAt time.Time `yaml:"updatedAt,omitempty" json:"updatedAt,omitempty"`
+}
+
+type WorkspaceState struct {
+	Version      int               `yaml:"version" json:"version"`
+	Revision     string            `yaml:"revision,omitempty" json:"revision,omitempty"`
+	SkillBases   map[string]string `yaml:"skillBases,omitempty" json:"skillBases,omitempty"`
+	PromptBases  map[string]string `yaml:"promptBases,omitempty" json:"promptBases,omitempty"`
+	LastSyncedAt time.Time         `yaml:"lastSyncedAt,omitempty" json:"lastSyncedAt,omitempty"`
+}
+
+type WorkspaceEntry struct {
+	ID   string   `yaml:"id" json:"id"`
+	Path string   `yaml:"path" json:"path"`
+	Hash string   `yaml:"hash" json:"hash"`
+	Tags []string `yaml:"tags,omitempty" json:"tags,omitempty"`
+}
+
+type WorkspaceManifest struct {
+	Version int              `yaml:"version" json:"version"`
+	Skills  []WorkspaceEntry `yaml:"skills,omitempty" json:"skills"`
+	Prompts []WorkspaceEntry `yaml:"prompts,omitempty" json:"prompts"`
 }
 
 type PromptVariable struct {

@@ -199,6 +199,9 @@ func removableCheckoutExists(root, path string) (bool, error) {
 }
 
 func (m *GitManager) syncOne(value domain.Source) (domain.Source, []domain.Skill, error) {
+	if err := validateSource(&value); err != nil {
+		return domain.Source{}, nil, err
+	}
 	return m.fetch(value, true)
 }
 
@@ -267,12 +270,7 @@ func (m *GitManager) fetchSelected(value domain.Source, persist bool, requestedS
 		if preserved := existingTags[value.Name+"/"+document.Name]; len(preserved) > 0 {
 			tagValues = preserved
 		}
-		var importedSkill domain.Skill
-		if persist {
-			importedSkill, err = m.Catalog.Import(document, value.Name, revision, tagValues)
-		} else {
-			importedSkill, err = m.Catalog.Snapshot(document, value.Name, revision, tagValues)
-		}
+		importedSkill, err := m.Catalog.Snapshot(document, value.Name, revision, tagValues)
 		if err != nil {
 			return domain.Source{}, imported, err
 		}
@@ -281,21 +279,33 @@ func (m *GitManager) fetchSelected(value domain.Source, persist bool, requestedS
 			return domain.Source{}, imported, relErr
 		}
 		importedSkill.SourcePath = filepath.ToSlash(relative)
-		if persist {
-			if err := m.Store.UpsertSkill(importedSkill); err != nil {
-				return domain.Source{}, imported, err
-			}
-		}
 		imported = append(imported, importedSkill)
 	}
 	if persist {
 		if err := fsx.ReplacePath(checkout, m.Store.SourcePath(value.Name)); err != nil {
 			return domain.Source{}, imported, err
 		}
+		updatedCatalog := existingCatalog
+		for _, importedSkill := range imported {
+			updatedCatalog.Skills = upsertSourceSkill(updatedCatalog.Skills, importedSkill)
+		}
+		if err := m.Store.SaveCatalog(updatedCatalog); err != nil {
+			return domain.Source{}, imported, err
+		}
 	}
 	value.Revision = revision
 	value.UpdatedAt = m.Now().UTC()
 	return value, imported, nil
+}
+
+func upsertSourceSkill(values []domain.Skill, value domain.Skill) []domain.Skill {
+	for index := range values {
+		if values[index].ID == value.ID {
+			values[index] = value
+			return values
+		}
+	}
+	return append(values, value)
 }
 
 func selectDocuments(root string, documents []skill.Document, requestedSkills []string) ([]skill.Document, []string, error) {
@@ -360,6 +370,7 @@ func validateSource(value *domain.Source) error {
 
 func (m *GitManager) runGit(secret string, args ...string) error {
 	command := exec.Command(m.GitPath, args...)
+	command.Env = append(os.Environ(), "GIT_TERMINAL_PROMPT=0")
 	output, err := command.CombinedOutput()
 	if err == nil {
 		return nil

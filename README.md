@@ -89,7 +89,9 @@ skm ui
 默认监听 `http://localhost:9527` 并打开浏览器。可用 `--port` 更换端口，或用
 `--no-browser` 只启动服务。Web UI 与 CLI 使用同一份 Library、Project 注册和 Activation
 数据；Prompt 页面可填写名称、描述、标签和正文，校验后保存，并将正文直接复制到设备剪贴板；
-Projects 页面可完成本机项目登记、Skill 软链/复制、状态检查和解绑。
+Projects 页面可完成本机项目登记、Skill 软链/复制、状态检查和解绑。设置中的“个人工作区”可连接
+一个私有 Git 仓库，通过 Logo 右侧同步入口在多台电脑间双向同步独立的本地 Skill 和 Prompt；
+同步前会预览上传、下载、删除和冲突，冲突可逐项选择本地或远程状态。
 
 Library 的仓库导入框支持 Git URL、GitHub `owner/repo` 简写，也可以直接粘贴安装命令：
 
@@ -103,8 +105,8 @@ SKM 只解析命令中的来源和 `--skill` 选项，不会执行 `npx`；导�
 
 ### 管理 Prompt
 
-Prompt 使用带 YAML frontmatter 的 `PROMPT.md`，第一版只进行本地管理和变量替换，不调用
-模型 API，也不会把 Prompt 部署到 Agent Skill 目录：
+Prompt 使用带 YAML frontmatter 的 `PROMPT.md`，支持本地管理、变量替换和个人工作区同步，
+不调用模型 API，也不会把 Prompt 部署到 Agent Skill 目录：
 
 ```bash
 skm prompt validate ./PROMPT.md
@@ -169,7 +171,8 @@ skm sync
 ```
 
 Git 凭证由系统 Git、SSH Agent 或 Credential Helper 管理。不要把 Token 写入 URL。
-skm 不会自动执行 `git init`、提交或配置远程；纯本地 Library 不需要 Git。
+外部 Git Source 不会执行提交或推送；个人工作区同步会在完整校验和冲突预览后创建普通
+fast-forward 提交并推送，绝不使用 force push。纯本地 Library 不需要 Git。
 
 将个人 Skill 发布并绑定到远程 Git：
 

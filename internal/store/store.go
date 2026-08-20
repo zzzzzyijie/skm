@@ -98,6 +98,7 @@ func (s *Store) Ensure() error {
 		filepath.Join(s.Paths.Home, "objects"),
 		filepath.Join(s.Paths.Home, "prompt-objects"),
 		filepath.Join(s.Paths.Home, "sources"),
+		filepath.Join(s.Paths.Home, "workspace"),
 		filepath.Join(s.Paths.Home, "state"),
 		filepath.Join(s.Paths.Home, "locks"),
 	} {
@@ -294,6 +295,44 @@ func (s *Store) SaveSources(sources domain.Sources) error {
 	}
 	sort.Slice(sources.Sources, func(i, j int) bool { return sources.Sources[i].Name < sources.Sources[j].Name })
 	return saveYAML(filepath.Join(s.Paths.Home, "sources.yaml"), sources)
+}
+
+func (s *Store) LoadWorkspaceConfig() (domain.WorkspaceConfig, error) {
+	config := domain.WorkspaceConfig{Version: domain.WorkspaceSchemaVersion, Ref: "main"}
+	if err := loadYAML(filepath.Join(s.Paths.Home, "workspace.yaml"), &config); err != nil {
+		return domain.WorkspaceConfig{}, err
+	}
+	return config, nil
+}
+
+func (s *Store) SaveWorkspaceConfig(config domain.WorkspaceConfig) error {
+	config.Version = domain.WorkspaceSchemaVersion
+	return saveYAML(filepath.Join(s.Paths.Home, "workspace.yaml"), config)
+}
+
+func (s *Store) LoadWorkspaceState() (domain.WorkspaceState, error) {
+	state := domain.WorkspaceState{
+		Version: domain.WorkspaceSchemaVersion, SkillBases: map[string]string{}, PromptBases: map[string]string{},
+	}
+	if err := loadYAML(filepath.Join(s.Paths.Home, "workspace", "state.yaml"), &state); err != nil {
+		return domain.WorkspaceState{}, err
+	}
+	if state.SkillBases == nil {
+		state.SkillBases = map[string]string{}
+	}
+	if state.PromptBases == nil {
+		state.PromptBases = map[string]string{}
+	}
+	return state, nil
+}
+
+func (s *Store) SaveWorkspaceState(state domain.WorkspaceState) error {
+	state.Version = domain.WorkspaceSchemaVersion
+	return saveYAML(filepath.Join(s.Paths.Home, "workspace", "state.yaml"), state)
+}
+
+func (s *Store) WorkspaceCheckoutPath() string {
+	return filepath.Join(s.Paths.Home, "workspace", "checkout")
 }
 
 func (s *Store) LoadPromptCatalog() (domain.PromptCatalog, error) {

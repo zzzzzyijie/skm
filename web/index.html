@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SKM — AI Skill Manager</title>
     <meta name="description" content="Manage and deploy AI Agent Skills with a visual interface">
+    <script src="/theme-init.js"></script>
     <link rel="stylesheet" href="/app.css">
 </head>
 <body>
@@ -13,14 +14,26 @@
             <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
         </button>
         <span class="mobile-brand"><span class="mobile-brand-mark">S</span> SKM</span>
-        <button class="btn-lang" id="mobile-lang-toggle" type="button">中文</button>
+        <div class="mobile-header-actions">
+            <button class="icon-btn brand-sync-button" id="mobile-sync-toggle" type="button" aria-label="Sync Git sources" title="Sync">
+                <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.1 8.5A7 7 0 0 1 18.8 7L20 12M4 12l1.2 5A7 7 0 0 0 17.9 15.5"/></svg>
+            </button>
+            <button class="icon-btn mobile-settings-toggle" id="mobile-settings-toggle" type="button" aria-label="Open settings" title="Settings">
+                <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V2.8h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"/></svg>
+            </button>
+        </div>
     </header>
     <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
     <nav class="sidebar" id="sidebar">
         <div class="sidebar-header">
-            <div class="logo">
-                <span class="logo-mark">S</span>
-                <span class="logo-text">SKM</span>
+            <div class="sidebar-brand-row">
+                <div class="logo">
+                    <span class="logo-mark">S</span>
+                    <span class="logo-text">SKM</span>
+                </div>
+                <button class="icon-btn brand-sync-button" id="sync-toggle" type="button" aria-label="Sync Git sources" title="Sync">
+                    <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.1 8.5A7 7 0 0 1 18.8 7L20 12M4 12l1.2 5A7 7 0 0 0 17.9 15.5"/></svg>
+                </button>
             </div>
             <p class="logo-sub">AI Skill Manager</p>
         </div>
@@ -39,9 +52,12 @@
             </button>
         </div>
         <div class="sidebar-footer">
+            <button class="settings-entry" id="settings-toggle" type="button">
+                <span class="nav-icon"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V2.8h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"/></svg></span>
+                <span class="nav-label">Settings</span>
+            </button>
             <div class="sidebar-footer-row">
                 <span class="version-label" id="version-label">v...</span>
-                <button class="btn-lang" id="lang-toggle" type="button" title="Switch language">中文</button>
             </div>
         </div>
     </nav>

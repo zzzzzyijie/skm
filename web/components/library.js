@@ -1,6 +1,7 @@
 /* global api, showToast, showModal, closeModal, displayTag, formatDate, shortHash, shortRevision, escapeHtml, isCurrentPage, t, uiIcon, confirmationMarkup */
 
 var libraryState = { skills: [], tags: [], agents: [], activeTag: '', query: '', enabled: {}, gitSources: {}, summary: {} };
+var skillDetailState = { skill: null, savedTags: [] };
 var agentIcons = {
     claude: 'claude.svg', codex: 'codex.svg', cursor: 'cursor.svg', copilot: 'copilot.svg', gemini: 'gemini.svg',
     windsurf: 'windsurf.svg', kiro: 'kiro.svg', cline: 'cline.svg', opencode: 'opencode.svg', trae: 'trae.svg',
@@ -45,7 +46,7 @@ function paintLibrary() {
         return !query || [skill.name, skill.id, skill.description, skill.source].join(' ').toLowerCase().includes(query);
     });
     var html = '<div class="page"><div class="page-header"><div><h1 class="page-title">' + t('lib.title') + '</h1>' +
-        '<p class="page-subtitle">' + t('lib.skillCount').replace('{0}', visible.length) + '</p></div><div class="header-actions">' +
+        '<p class="page-subtitle" id="library-skill-count">' + t('lib.skillCount').replace('{0}', visible.length) + '</p></div><div class="header-actions">' +
         '<button class="btn btn-secondary" type="button" id="btn-manage-tags">' + uiIcon('tags') + t('lib.manageTags') + '</button>' +
         '<button class="btn btn-primary" type="button" id="btn-add-skill">' + uiIcon('plus') + t('lib.addSkill') + '</button></div></div>';
 
@@ -55,19 +56,14 @@ function paintLibrary() {
     html += '<div class="library-tools"><label class="search-box"><span class="sr-only">' + t('lib.search') + '</span>' +
         '<span class="search-mark" aria-hidden="true">' + uiIcon('search') + '</span><input class="input" id="skill-search" value="' + escapeHtml(libraryState.query) +
         '" placeholder="' + t('lib.searchPlaceholder') + '"></label>';
-    html += '<div class="filter-bar"><span class="filter-label">' + t('lib.tags') + '</span><div class="tag-filter-list">' +
-        '<button class="tag clickable' + (!libraryState.activeTag ? ' active' : '') + '" type="button" data-tag="">' + t('lib.all') + '</button>';
-    libraryState.tags.filter(function (tag) { return tag.skillCount > 0; }).forEach(function (tag) {
-        html += '<button class="tag clickable' + (libraryState.activeTag === tag.name ? ' active' : '') + '" type="button" data-tag="' +
-            escapeHtml(tag.name) + '">' + escapeHtml(displayTag(tag.name)) + ' <small>' + tag.skillCount + '</small></button>';
-    });
-    html += '</div></div></div>';
+    html += '<div class="filter-bar"><span class="filter-label">' + t('lib.tags') + '</span><div class="tag-filter-list" id="skill-tag-filters">' +
+        libraryTagFiltersMarkup() + '</div></div></div>';
 
     if (!visible.length) {
         html += '<div class="empty-state"><div class="empty-state-mark">' + uiIcon('library') + '</div><div class="empty-state-title">' + t('lib.noSkills') +
             '</div><div class="empty-state-desc">' + t('lib.noSkillsDesc') + '</div></div>';
     } else {
-        html += '<div class="card-grid">';
+        html += '<div class="card-grid" id="library-skill-grid">';
         visible.forEach(function (skill) { html += skillCard(skill); });
         html += '</div>';
     }
@@ -84,9 +80,7 @@ function paintLibrary() {
         next.focus();
         next.setSelectionRange(libraryState.query.length, libraryState.query.length);
     });
-    container.querySelectorAll('[data-tag]').forEach(function (button) {
-        button.addEventListener('click', function () { libraryState.activeTag = button.dataset.tag; renderLibrary(); });
-    });
+    bindLibraryTagFilters();
     container.querySelectorAll('.btn-details-skill').forEach(function (button) {
         button.addEventListener('click', function () { openSkillDetails(button.dataset.id); });
     });
@@ -95,6 +89,23 @@ function paintLibrary() {
     });
     container.querySelectorAll('.btn-remove-skill').forEach(function (button) {
         button.addEventListener('click', function () { confirmRemoveSkill(button.dataset.id); });
+    });
+}
+
+function libraryTagFiltersMarkup() {
+    var html = '<button class="tag clickable' + (!libraryState.activeTag ? ' active' : '') + '" type="button" data-tag="">' + t('lib.all') + '</button>';
+    libraryState.tags.filter(function (tag) { return tag.skillCount > 0 || libraryState.activeTag === tag.name; }).forEach(function (tag) {
+        html += '<button class="tag clickable' + (libraryState.activeTag === tag.name ? ' active' : '') + '" type="button" data-tag="' +
+            escapeHtml(tag.name) + '">' + escapeHtml(displayTag(tag.name)) + ' <small>' + Number(tag.skillCount || 0) + '</small></button>';
+    });
+    return html;
+}
+
+function bindLibraryTagFilters() {
+    var filters = document.getElementById('skill-tag-filters');
+    if (!filters) return;
+    filters.querySelectorAll('[data-tag]').forEach(function (button) {
+        button.addEventListener('click', function () { libraryState.activeTag = button.dataset.tag; renderLibrary(); });
     });
 }
 
@@ -120,7 +131,7 @@ function skillCard(skill) {
     var agents = libraryState.enabled[skill.id] || {};
     var hasActivation = Object.keys(agents).some(function (agent) { return agents[agent]; });
     var health = skillHealthMarkup(skill);
-    return '<article class="card skill-card"><div class="skill-header"><div><div class="skill-name">' + escapeHtml(skill.name) +
+    return '<article class="card skill-card" data-skill-card-id="' + escapeHtml(skill.id) + '"><div class="skill-header"><div><div class="skill-name">' + escapeHtml(skill.name) +
         '</div><div class="skill-id mono">' + escapeHtml(skill.id) + '</div></div><span class="badge badge-source">' + escapeHtml(displaySource(skill.source || 'local')) +
         '</span></div>' + health + '<p class="skill-desc">' + escapeHtml(skill.description || 'No description') + '</p><div class="tag-list">' + tags +
         '</div><div class="skill-meta"><span>' + shortHash(skill.hash) + '</span><span>' + formatDate(skill.addedAt) + '</span></div>' +
@@ -394,6 +405,8 @@ async function openSkillDetails(id) {
 
 function showSkillDetails(skill) {
     if (!skill) return;
+    skillDetailState.skill = skill;
+    skillDetailState.savedTags = (skill.tags || []).slice().sort();
     var source = libraryState.gitSources[skill.source];
     var skillTags = skill.tags || [];
     var tagPicker = tagPickerMarkup('detail-skill-tags', skillTags, libraryState.tags, false);
@@ -403,21 +416,33 @@ function showSkillDetails(skill) {
     var health = skillHealthMarkup(skill);
     var originDetails = linked ? '<div><dt>' + t('lib.source') + '</dt><dd class="mono detail-path">' + escapeHtml(skill.sourcePath || skill.path) + '</dd></div>' +
         '<div><dt>' + t('lib.effectivePath') + '</dt><dd class="mono detail-path">' + escapeHtml(skill.effectivePath || skill.path) + '</dd></div>' : '';
-    var content = '<div class="detail-hero"><div><div class="detail-name">' + escapeHtml(skill.name) + '</div><div class="mono muted">' + escapeHtml(skill.id) +
-        '</div></div><span class="badge badge-source">' + escapeHtml(displaySource(skill.source || 'local')) + '</span></div><dl class="detail-list"><div><dt>' +
-        t('lib.description') + '</dt><dd>' + escapeHtml(skill.description || '-') + '</dd></div><div><dt>' + t('lib.path') + '</dt><dd class="mono detail-path">' +
-        escapeHtml(skill.path) + '</dd></div><div><dt>' + t('lib.hash') + '</dt><dd class="mono">' + escapeHtml(skill.hash) + '</dd></div><div><dt>' +
-        t('lib.revision') + '</dt><dd class="mono">' + shortRevision(skill.revision) + '</dd></div>' + originDetails + sourceDetails + '<div><dt>' + t('lib.added') +
-        '</dt><dd>' + formatDate(skill.addedAt) + '</dd></div></dl><section class="skill-detail-section"><div class="skill-detail-section-heading"><span class="form-label">' + t('lib.tags') +
-        '</span><button class="btn btn-secondary btn-sm" type="button" id="btn-save-skill-tags">' + uiIcon('check') + t('lib.saveTags') + '</button></div>' + tagPicker + '</section>' +
-        health + '<section class="skill-detail-section skill-content-section"><div class="skill-detail-section-heading"><span class="form-label">' + t('lib.content') + '</span><span class="mono muted">SKILL.md</span></div>' +
-        (skill.body ? '<pre class="skill-detail-content">' + escapeHtml(skill.body) + '</pre>' : '<div class="inline-empty">' + t('lib.noContent') + '</div>') + '</section>';
+    var metadata = '<dl class="detail-list"><div><dt>' + t('lib.path') + '</dt><dd class="mono detail-path">' + escapeHtml(skill.path) + '</dd></div><div><dt>' +
+        t('lib.hash') + '</dt><dd class="mono detail-hash">' + escapeHtml(skill.hash) + '</dd></div><div><dt>' + t('lib.revision') + '</dt><dd class="mono">' +
+        shortRevision(skill.revision) + '</dd></div>' + originDetails + sourceDetails + '<div><dt>' + t('lib.added') + '</dt><dd>' + formatDate(skill.addedAt) + '</dd></div></dl>';
+    var tagEditor = '<section class="skill-detail-panel skill-detail-tags"><div class="skill-detail-section-heading"><div><span class="form-label">' + t('lib.tags') +
+        '</span><span class="skill-tag-state" id="skill-tag-state">' + escapeHtml(t('lib.tagsSaved')) + '</span></div><span class="muted" id="skill-tag-count">' +
+        escapeHtml(t('lib.tagSelectionCount').replace('{0}', skillTags.length)) + '</span></div><div class="skill-tag-create"><input class="input" id="detail-new-tag" autocomplete="off" placeholder="' +
+        escapeHtml(t('lib.tagNamePlaceholder')) + '" aria-label="' + escapeHtml(t('lib.newTag')) + '"><button class="btn btn-secondary btn-sm" type="button" id="btn-create-detail-tag">' +
+        uiIcon('plus') + t('lib.createAndSelectTag') + '</button></div><p class="skill-tag-create-hint">' + escapeHtml(t('lib.quickAddTag')) + '</p>' + tagPicker +
+        '<div class="skill-tag-actions"><button class="btn btn-primary" type="button" id="btn-save-skill-tags" disabled>' + uiIcon('check') + t('lib.saveTags') + '</button></div></section>';
+    var content = '<div class="skill-detail-shell"><div class="detail-hero"><div class="skill-detail-identity"><span class="skill-detail-mark" aria-hidden="true">' + uiIcon('library') +
+        '</span><div><div class="detail-name">' + escapeHtml(skill.name) + '</div><div class="mono muted">' + escapeHtml(skill.id) + '</div></div></div><div class="skill-detail-badges"><span class="badge badge-source">' +
+        escapeHtml(displaySource(skill.source || 'local')) + '</span>' + health + '</div></div><div class="skill-detail-layout"><main class="skill-detail-main"><section class="skill-detail-panel skill-detail-overview"><div class="skill-detail-section-heading"><span class="form-label">' +
+        t('lib.skillOverview') + '</span></div><p class="skill-detail-description">' + escapeHtml(skill.description || '-') + '</p></section><section class="skill-detail-panel skill-content-section"><div class="skill-detail-section-heading"><span class="form-label">' +
+        t('lib.content') + '</span><span class="mono muted">SKILL.md</span></div>' + (skill.body ? '<pre class="skill-detail-content">' + escapeHtml(skill.body) + '</pre>' : '<div class="inline-empty">' +
+        t('lib.noContent') + '</div>') + '</section></main><aside class="skill-detail-aside">' + tagEditor + '<section class="skill-detail-panel skill-detail-metadata"><div class="skill-detail-section-heading"><span class="form-label">' +
+        t('lib.metadata') + '</span></div>' + metadata + '</section></aside></div></div>';
     var actions = '<button class="btn btn-ghost" type="button" data-close-modal>' + t('lib.close') + '</button>' +
         (linked ? '<button class="btn btn-primary" type="button" id="btn-detach-skill">' + t('lib.detach') + '</button>' : '') +
         (source ? '<button class="btn btn-primary" type="button" id="btn-update-source">' + t('lib.updateSource') + '</button>' : '');
     showModal(t('lib.details'), content, actions);
     document.querySelector('.modal').classList.add('skill-detail-modal');
     document.getElementById('btn-save-skill-tags').addEventListener('click', function () { saveSkillTags(skill.id); });
+    document.getElementById('btn-create-detail-tag').addEventListener('click', createSkillDetailTag);
+    document.getElementById('detail-new-tag').addEventListener('keydown', function (event) {
+        if (event.key === 'Enter') { event.preventDefault(); createSkillDetailTag(); }
+    });
+    bindSkillDetailTagChanges();
     if (source) document.getElementById('btn-update-source').addEventListener('click', function () { updateGitSource(source.name); });
     if (linked) document.getElementById('btn-detach-skill').addEventListener('click', function () { confirmDetachLibrarySkill(skill.id); });
 }
@@ -458,14 +483,119 @@ async function updateGitSource(name) {
 async function saveSkillTags(id) {
     var button = document.getElementById('btn-save-skill-tags');
     button.disabled = true;
+    button.innerHTML = '<span class="spinner spinner-sm" aria-hidden="true"></span>' + t('lib.savingTags');
     try {
-        await api.put('/api/skill-tags', { skill: id, tags: selectedTagValues('detail-skill-tags') });
-        await refreshLibraryAfterTagChange();
+        var updated = await api.put('/api/skill-tags', { skill: id, tags: selectedTagValues('detail-skill-tags') });
+        var managedTags = await api.get('/api/tags') || [];
+        syncSkillTagState(updated, managedTags);
         showToast(t('lib.tagsUpdated'));
-        await openSkillDetails(id);
     } catch (err) {
         button.disabled = false;
+        button.innerHTML = uiIcon('check') + t('lib.saveTags');
         showToast(err.message, 'error');
+    }
+}
+
+function bindSkillDetailTagChanges() {
+    var picker = document.getElementById('detail-skill-tags');
+    if (!picker) return;
+    picker.querySelectorAll('input[type="checkbox"]').forEach(function (input) {
+        input.addEventListener('change', updateSkillDetailTagState);
+    });
+    updateSkillDetailTagState();
+}
+
+function updateSkillDetailTagState() {
+    var values = selectedTagValues('detail-skill-tags').slice().sort();
+    var dirty = values.join('\n') !== skillDetailState.savedTags.join('\n');
+    var state = document.getElementById('skill-tag-state');
+    var count = document.getElementById('skill-tag-count');
+    var button = document.getElementById('btn-save-skill-tags');
+    if (state) {
+        state.textContent = t(dirty ? 'lib.tagsUnsaved' : 'lib.tagsSaved');
+        state.classList.toggle('is-dirty', dirty);
+    }
+    if (count) count.textContent = t('lib.tagSelectionCount').replace('{0}', values.length);
+    if (button) {
+        button.disabled = !dirty;
+        button.innerHTML = uiIcon('check') + t('lib.saveTags');
+    }
+}
+
+async function createSkillDetailTag() {
+    var input = document.getElementById('detail-new-tag');
+    var button = document.getElementById('btn-create-detail-tag');
+    var name = input.value.trim();
+    if (!name || button.disabled) {
+        if (!name) input.focus();
+        return;
+    }
+    var selected = selectedTagValues('detail-skill-tags');
+    button.disabled = true;
+    input.removeAttribute('aria-invalid');
+    try {
+        var created = await api.post('/api/tags', { name: name });
+        var managedTags = await api.get('/api/tags') || [];
+        libraryState.tags = managedTags;
+        if (typeof promptState !== 'undefined') promptState.tags = managedTags;
+        if (!selected.includes(created.name)) selected.push(created.name);
+        var picker = document.getElementById('detail-skill-tags');
+        picker.outerHTML = tagPickerMarkup('detail-skill-tags', selected, managedTags, false);
+        input.value = '';
+        bindSkillDetailTagChanges();
+        showToast(t('lib.tagCreated'));
+        input.focus();
+    } catch (err) {
+        input.setAttribute('aria-invalid', 'true');
+        showToast(err.message, 'error');
+    } finally {
+        button.disabled = false;
+    }
+}
+
+function syncSkillTagState(updated, managedTags) {
+    var detailSkill = Object.assign({}, skillDetailState.skill || {}, updated);
+    skillDetailState.skill = detailSkill;
+    skillDetailState.savedTags = (updated.tags || []).slice().sort();
+    libraryState.tags = managedTags;
+    if (typeof promptState !== 'undefined') promptState.tags = managedTags;
+    var index = libraryState.skills.findIndex(function (skill) { return skill.id === updated.id; });
+    var remainsVisible = !libraryState.activeTag || (updated.tags || []).includes(libraryState.activeTag);
+    if (index >= 0 && remainsVisible) libraryState.skills[index] = Object.assign({}, libraryState.skills[index], updated);
+    if (index >= 0 && !remainsVisible) libraryState.skills.splice(index, 1);
+
+    var picker = document.getElementById('detail-skill-tags');
+    if (picker) picker.outerHTML = tagPickerMarkup('detail-skill-tags', updated.tags || [], managedTags, false);
+    bindSkillDetailTagChanges();
+    refreshLibraryTagSurface(updated, remainsVisible);
+}
+
+function refreshLibraryTagSurface(updated, remainsVisible) {
+    var cards = Array.prototype.slice.call(document.querySelectorAll('[data-skill-card-id]'));
+    var card = cards.find(function (element) { return element.dataset.skillCardId === updated.id; });
+    if (card && remainsVisible) {
+        var list = card.querySelector('.tag-list');
+        if (list) list.innerHTML = (updated.tags || []).map(function (tag) {
+            return '<span class="tag">' + escapeHtml(displayTag(tag)) + '</span>';
+        }).join('');
+    } else if (card) {
+        card.remove();
+    }
+    var filters = document.getElementById('skill-tag-filters');
+    if (filters) {
+        filters.innerHTML = libraryTagFiltersMarkup();
+        bindLibraryTagFilters();
+    }
+    var visibleCount = libraryState.skills.filter(function (skill) {
+        var query = libraryState.query.toLowerCase();
+        return !query || [skill.name, skill.id, skill.description, skill.source].join(' ').toLowerCase().includes(query);
+    }).length;
+    var count = document.getElementById('library-skill-count');
+    if (count) count.textContent = t('lib.skillCount').replace('{0}', visibleCount);
+    var grid = document.getElementById('library-skill-grid');
+    if (grid && !grid.querySelector('.skill-card')) {
+        grid.outerHTML = '<div class="empty-state"><div class="empty-state-mark">' + uiIcon('library') + '</div><div class="empty-state-title">' +
+            t('lib.noSkills') + '</div><div class="empty-state-desc">' + t('lib.noSkillsDesc') + '</div></div>';
     }
 }
 
@@ -488,7 +618,8 @@ function tagPickerMarkup(id, selectedValues, availableTags, useDefaults) {
     if (!(selectedValues || []).length && useDefaults) {
         values.forEach(function (tag) { if (tag.default) selected[tag.name] = true; });
     }
-    if (!values.length) return '<div class="tag-picker-empty">' + escapeHtml(t('lib.noManagedTags')) + '</div>';
+    if (!values.length) return '<div class="tag-picker-empty" id="' + escapeHtml(id) + '" role="group" aria-label="' +
+        escapeHtml(t('lib.selectTags')) + '">' + escapeHtml(t('lib.noManagedTags')) + '</div>';
     return '<div class="tag-picker" id="' + escapeHtml(id) + '" role="group" aria-label="' + escapeHtml(t('lib.selectTags')) + '">' + values.map(function (tag) {
         return '<label class="tag-picker-option"><input type="checkbox" value="' + escapeHtml(tag.name) + '"' + (selected[tag.name] ? ' checked' : '') +
             '><span class="tag-picker-copy"><strong>' + escapeHtml(displayTag(tag.name)) + '</strong><span>' +
