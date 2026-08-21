@@ -11,8 +11,62 @@ import (
 	"github.com/zzzzzyijie/skm/internal/catalog"
 	"github.com/zzzzzyijie/skm/internal/domain"
 	promptpkg "github.com/zzzzzyijie/skm/internal/prompt"
+	skillpkg "github.com/zzzzzyijie/skm/internal/skill"
 	"github.com/zzzzzyijie/skm/internal/store"
 )
+
+func TestWorkspaceSyncsProjectMigratedSkill(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git is not installed")
+	}
+	remote := filepath.Join(t.TempDir(), "workspace.git")
+	runGit(t, "", "init", "--bare", "-b", "main", remote)
+
+	deviceA := workspaceStore(t)
+	projectRoot := filepath.Join(t.TempDir(), "proj")
+	projectSkill := filepath.Join(projectRoot, ".claude", "skills", "commit")
+	if err := os.MkdirAll(projectSkill, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	content := "---\nname: commit\ndescription: Project migrated Skill\n---\n\nCommit workflow.\n"
+	if err := os.WriteFile(filepath.Join(projectSkill, "SKILL.md"), []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	document, err := skillpkg.Validate(projectSkill)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := catalog.New(deviceA).ImportProject(document, projectRoot, domain.AgentClaude, domain.ModeCopy, []string{"git"}); err != nil {
+		t.Fatal(err)
+	}
+
+	managerA := New(deviceA)
+	if _, err := managerA.Configure(domain.WorkspaceConfig{URL: remote}); err != nil {
+		t.Fatal(err)
+	}
+	preview, err := managerA.Preview()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if preview.Uploads != 1 || preview.Conflicts != 0 {
+		t.Fatalf("project-migrated Skill preview = %#v", preview)
+	}
+	if _, err := managerA.Apply(); err != nil {
+		t.Fatal(err)
+	}
+
+	deviceB := workspaceStore(t)
+	managerB := New(deviceB)
+	if _, err := managerB.Configure(domain.WorkspaceConfig{URL: remote}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := managerB.Apply(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := catalog.New(deviceB).ResolveLibrary("local/commit"); err != nil {
+		t.Fatalf("device B restored project-migrated Skill: %v", err)
+	}
+}
 
 func TestWorkspaceSyncAcrossDevicesAndDetectsConflict(t *testing.T) {
 	if _, err := exec.LookPath("git"); err != nil {

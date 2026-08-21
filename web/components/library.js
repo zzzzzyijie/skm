@@ -16,15 +16,17 @@ async function renderLibrary() {
     var container = document.getElementById('main-content');
     try {
         var url = '/api/skills' + (libraryState.activeTag ? '?tag=' + encodeURIComponent(libraryState.activeTag) : '');
-        var results = await Promise.all([api.get(url), api.get('/api/tags'), api.get('/api/status'), api.get('/api/sources'), api.get('/api/agents'), api.get('/api/dashboard')]);
+        var results = await Promise.all([api.get(url), api.get('/api/tags'), api.get('/api/agents'), api.get('/api/sources'), api.get('/api/dashboard')]);
+        var status = null;
+        try { status = await api.get('/api/status'); } catch (statusErr) { console.warn('status unavailable:', statusErr.message); }
         if (!isCurrentPage('library')) return;
         libraryState.skills = results[0] || [];
         libraryState.tags = results[1] || [];
-        libraryState.agents = results[4] || [];
-        libraryState.summary = results[5] || {};
+        libraryState.agents = results[2] || [];
+        libraryState.summary = results[4] || {};
         libraryState.enabled = {};
         libraryState.gitSources = {};
-        (results[2].operations || []).forEach(function (operation) {
+        ((status && status.operations) || []).forEach(function (operation) {
             if (operation.placement !== 'user') return;
             if (!libraryState.enabled[operation.skillId]) libraryState.enabled[operation.skillId] = {};
             libraryState.enabled[operation.skillId][operation.agent] = true;

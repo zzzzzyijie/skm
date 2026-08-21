@@ -854,6 +854,58 @@ func TestProjectSkillMigrationAPI(t *testing.T) {
 		t.Fatalf("removing project Skill removed Library entry: %v", err)
 	}
 
+	makeProjectSkill(t, projectPath, "claude", "followed-project-skill")
+	var followed struct {
+		Skill domain.Skill `json:"skill"`
+	}
+	requestJSON(t, handler, http.MethodPost, "/api/projects/migration-project/skills/followed-project-skill/migrate", map[string]any{
+		"agent": "claude", "mode": "symlink",
+	}, http.StatusCreated, &followed)
+	requestJSON(t, handler, http.MethodPost, "/api/enable", map[string]any{
+		"skills": []string{followed.Skill.ID}, "agents": []string{"codex"}, "mode": "auto",
+	}, http.StatusOK, nil)
+	userFollowedLink := filepath.Join(filepath.Dir(storage.Paths.Home), ".codex", "skills", "followed-project-skill")
+	requestJSON(t, handler, http.MethodDelete, "/api/projects/migration-project/skills/followed-project-skill", nil, http.StatusOK, nil)
+	var preserved struct {
+		Health        string          `json:"health"`
+		Mode          domain.LinkMode `json:"mode"`
+		SnapshotPath  string          `json:"snapshotPath"`
+		EffectivePath string          `json:"effectivePath"`
+	}
+	requestJSON(t, handler, http.MethodGet, "/api/skills/local/followed-project-skill", nil, http.StatusOK, &preserved)
+	if preserved.Health != "available" || preserved.Mode != domain.ModeCopy || preserved.EffectivePath == "" {
+		t.Fatalf("followed Skill after project removal = %#v", preserved)
+	}
+	if _, err := os.Stat(preserved.EffectivePath); err != nil {
+		t.Fatalf("followed Skill snapshot after project removal: %v", err)
+	}
+	var statusAfterRemoval domain.Plan
+	requestJSON(t, handler, http.MethodGet, "/api/status", nil, http.StatusOK, &statusAfterRemoval)
+	var followedUnchanged bool
+	for _, operation := range statusAfterRemoval.Operations {
+		if operation.SkillID != followed.Skill.ID {
+			continue
+		}
+		if operation.Status == domain.StatusUnchanged || operation.Status == domain.StatusReplaceManaged || operation.Status == domain.StatusCreate {
+			followedUnchanged = operation.Status != domain.StatusCreate
+		}
+	}
+	if !followedUnchanged {
+		t.Fatalf("followed Skill deployment after project removal = %#v", statusAfterRemoval.Operations)
+	}
+	resolvedFollowed, err := filepath.EvalSymlinks(userFollowedLink)
+	if err != nil {
+		t.Fatalf("followed Skill deployment link missing after project removal: %v", err)
+	}
+	resolvedSnapshot, snapshotErr := filepath.EvalSymlinks(preserved.EffectivePath)
+	if snapshotErr != nil || filepath.Clean(resolvedFollowed) != filepath.Clean(resolvedSnapshot) {
+		t.Fatalf("followed Skill deployment target = %q, snapshot = %q (err=%v)", resolvedFollowed, resolvedSnapshot, snapshotErr)
+	}
+	requestJSON(t, handler, http.MethodPost, "/api/disable", map[string]any{
+		"skills": []string{followed.Skill.ID}, "agents": []string{"codex"},
+	}, http.StatusOK, nil)
+	requestJSON(t, handler, http.MethodDelete, "/api/skills/local/followed-project-skill", nil, http.StatusOK, nil)
+
 	externalSkill := makeSkill(t, "external-linked-skill")
 	externalLinkRoot := filepath.Join(projectPath, ".cursor", "skills")
 	if err := os.MkdirAll(externalLinkRoot, 0o755); err != nil {

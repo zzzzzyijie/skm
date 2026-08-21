@@ -372,7 +372,7 @@ func (m *Manager) scanLocal() (map[string]contentItem, map[string]contentItem, e
 	}
 	skills := make(map[string]contentItem)
 	for _, value := range library.Skills {
-		if value.Location != domain.LocationLibrary || value.Source != "local" || value.ProjectRoot != "" {
+		if !syncableLocalSkill(value) {
 			continue
 		}
 		document, err := skill.Validate(value.Path)
@@ -405,6 +405,17 @@ func (m *Manager) scanLocal() (map[string]contentItem, map[string]contentItem, e
 		prompts[value.ID] = contentItem{Entry: entry, Path: document.Path}
 	}
 	return skills, prompts, nil
+}
+
+// syncableLocalSkill reports whether a Library Skill publishes to the personal
+// workspace. Skills still following a live project directory (symlink mode)
+// stay device-local; independent snapshots, including Skills migrated from a
+// project in copy mode, publish like any other local Skill.
+func syncableLocalSkill(value domain.Skill) bool {
+	if value.Location != domain.LocationLibrary || value.Source != "local" {
+		return false
+	}
+	return value.ProjectRoot == "" || value.Mode == domain.ModeCopy
 }
 
 func (m *Manager) buildPreview(config domain.WorkspaceConfig, state domain.WorkspaceState, revision string, remoteAvailable bool, localSkills, localPrompts, remoteSkills, remotePrompts map[string]contentItem) (Preview, error) {
@@ -615,7 +626,7 @@ func (m *Manager) applyLocal(root string, skills, prompts map[string]contentItem
 	updatedSkills := beforeSkills
 	keptSkills := updatedSkills.Skills[:0]
 	for _, value := range updatedSkills.Skills {
-		if value.Source == "local" && value.ProjectRoot == "" {
+		if syncableLocalSkill(value) {
 			if _, keep := skills[value.ID]; !keep {
 				continue
 			}

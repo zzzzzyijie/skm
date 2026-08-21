@@ -677,11 +677,18 @@ func (s *Server) handleRemoveProjectSkill(w http.ResponseWriter, r *http.Request
 				}
 			}
 		}
+		detached, err := s.detachProjectFollowers(project.Path, skillID)
+		if err != nil {
+			return err
+		}
 		for _, path := range paths {
 			if err := os.RemoveAll(path); err != nil {
 				return fmt.Errorf("remove project Skill %s: %w", path, err)
 			}
 			removedPaths = append(removedPaths, path)
+		}
+		if err := s.repointDetachedDeployments(detached); err != nil {
+			return err
 		}
 		return nil
 	})
@@ -692,6 +699,66 @@ func (s *Server) handleRemoveProjectSkill(w http.ResponseWriter, r *http.Request
 	writeJSON(w, http.StatusOK, map[string]any{
 		"project": project, "skill": r.PathValue("skill"), "removedPaths": removedPaths,
 	})
+}
+
+// detachProjectFollowers converts Library entries that follow a project Skill
+// (symlink mode) into independent snapshots so the Library keeps working when
+// the project source is deleted. It must run before the source is removed.
+func (s *Server) detachProjectFollowers(projectRoot, skillID string) ([]string, error) {
+	library, err := s.store.LoadCatalog()
+	if err != nil {
+		return nil, err
+	}
+	manager := catalog.New(s.store)
+	detached := make([]string, 0)
+	for _, value := range library.Skills {
+		if value.Mode != domain.ModeSymlink || value.ProjectRoot == "" || value.Name != skillID || filepath.Clean(value.ProjectRoot) != filepath.Clean(projectRoot) {
+			continue
+		}
+		if _, err := manager.DetachProjectLink(value.ID); err != nil {
+			return nil, fmt.Errorf("preserve Library Skill %s before removing its project source: %w", value.ID, err)
+		}
+		detached = append(detached, value.ID)
+	}
+	return detached, nil
+}
+
+// repointDetachedDeployments re-links existing deployments of detached Skills
+// to their new snapshot source. The plan is scoped to the detached Skills so
+// an unrelated broken Skill cannot block project Skill removal.
+func (s *Server) repointDetachedDeployments(detached []string) error {
+	if len(detached) == 0 {
+		return nil
+	}
+	ids := make(map[string]struct{}, len(detached))
+	for _, id := range detached {
+		ids[id] = struct{}{}
+	}
+	state, err := s.store.LoadState()
+	if err != nil {
+		return err
+	}
+	skills, err := s.store.LoadAllSkills()
+	if err != nil {
+		return err
+	}
+	scoped := domain.State{Version: state.Version}
+	for _, activation := range state.Activations {
+		if _, ok := ids[activation.SkillID]; ok {
+			scoped.Activations = append(scoped.Activations, activation)
+		}
+	}
+	for _, deployment := range state.Deployments {
+		if _, ok := ids[deployment.SkillID]; ok {
+			scoped.Deployments = append(scoped.Deployments, deployment)
+		}
+	}
+	engine := planner.New(s.store)
+	plan, err := engine.Build(skills, scoped)
+	if err != nil {
+		return err
+	}
+	return engine.Apply(plan, &state)
 }
 
 func projectSkillPaths(projectRoot, skillID string) ([]string, error) {

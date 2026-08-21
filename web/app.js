@@ -96,7 +96,7 @@ var translations = {
         'lib.addedSuccess': 'Skill 添加成功', 'lib.pathRequired': '路径不能为空', 'lib.loadFailed': '加载 Skill 库失败',
         'lib.addSkillTitle': '添加 Skill 到库', 'lib.enabled': '已启用', 'lib.disabled': '已禁用', 'lib.removed': '已移除',
         'lib.details': 'Skill 详情', 'lib.description': '描述', 'lib.source': '来源', 'lib.local': '本地', 'lib.location': '位置',
-        'lib.healthAvailable': '可用', 'lib.healthChanged': '来源已变更', 'lib.healthMissing': '当前分支缺失', 'lib.healthUnreachable': '项目不可达', 'lib.healthInvalid': '来源无效', 'lib.usingFallback': '正在使用最后快照', 'lib.followingProject': '跟随项目', 'lib.detach': '转为独立副本', 'lib.detachConfirm': '确认从当前来源或最后快照创建独立的 Library 副本？', 'lib.detached': 'Skill 已转为独立副本', 'lib.effectivePath': '当前使用路径',
+        'lib.healthAvailable': '可用', 'lib.healthChanged': '来源已变更', 'lib.healthMissing': '当前skill源缺失', 'lib.healthUnreachable': '项目不可达', 'lib.healthInvalid': '来源无效', 'lib.usingFallback': '正在使用最后快照', 'lib.followingProject': '跟随项目', 'lib.detach': '转为独立副本', 'lib.detachConfirm': '确认从当前来源或最后快照创建独立的 Library 副本？', 'lib.detached': 'Skill 已转为独立副本', 'lib.effectivePath': '当前使用路径',
         'lib.path': '存储路径', 'lib.revision': '版本', 'lib.addTag': '添加标签', 'lib.tagName': '标签名称',
         'lib.tagAdded': '标签已添加', 'lib.tagRemoved': '标签已移除', 'lib.renameTag': '重命名标签',
         'lib.newTagName': '新标签名称', 'lib.renamedTag': '标签已重命名', 'lib.noTags': '暂无标签',

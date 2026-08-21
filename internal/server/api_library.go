@@ -38,7 +38,7 @@ func (s *Server) handleListSkills(w http.ResponseWriter, r *http.Request) {
 	}
 	result := make([]librarySkillView, len(skills))
 	for index := range skills {
-		result[index], _ = inspectLibrarySkill(skills[index])
+		result[index], _ = inspectLibrarySkill(skills[index], s.store)
 	}
 	writeJSON(w, http.StatusOK, result)
 }
@@ -50,7 +50,7 @@ func (s *Server) handleShowSkill(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, err)
 		return
 	}
-	view, document := inspectLibrarySkill(value)
+	view, document := inspectLibrarySkill(value, s.store)
 	body := ""
 	if document != nil {
 		body = document.Body
@@ -58,7 +58,7 @@ func (s *Server) handleShowSkill(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, librarySkillDetails{librarySkillView: view, Body: body})
 }
 
-func inspectLibrarySkill(value domain.Skill) (librarySkillView, *skill.Document) {
+func inspectLibrarySkill(value domain.Skill, storage objectPathResolver) (librarySkillView, *skill.Document) {
 	view := librarySkillView{Skill: value, Health: "available", EffectivePath: value.Path}
 	document, err := skill.Validate(value.Path)
 	if err == nil {
@@ -94,8 +94,21 @@ func inspectLibrarySkill(value domain.Skill) (librarySkillView, *skill.Document)
 			return view, &fallback
 		}
 		view.HealthDetail += "; fallback snapshot: " + fallbackErr.Error()
+	} else if storage != nil {
+		if objectDocument, objectErr := skill.Validate(storage.ObjectPath(value.Hash, value.Name)); objectErr == nil && objectDocument.Hash == value.Hash {
+			view.EffectivePath = objectDocument.Path
+			view.Hash = objectDocument.Hash
+			view.Description = objectDocument.Description
+			view.Metadata = objectDocument.Metadata
+			view.UsingFallback = true
+			return view, &objectDocument
+		}
 	}
 	return view, nil
+}
+
+type objectPathResolver interface {
+	ObjectPath(hash, name string) string
 }
 
 func (s *Server) handleDetachSkill(w http.ResponseWriter, r *http.Request) {

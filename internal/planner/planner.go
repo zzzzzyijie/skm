@@ -157,6 +157,11 @@ func (e *Engine) resolveActivation(activation domain.Activation, byID map[string
 				return value, nil
 			}
 			if value.SnapshotPath == "" {
+				objectPath := e.Store.ObjectPath(value.Hash, value.Name)
+				if document, objectErr := skill.Validate(objectPath); objectErr == nil && document.Hash == value.Hash {
+					value.Path = objectPath
+					return value, nil
+				}
 				return domain.Skill{}, fmt.Errorf("project source for enabled Skill %s is unavailable and no fallback snapshot exists", value.ID)
 			}
 			document, snapshotErr := skill.Validate(value.SnapshotPath)
