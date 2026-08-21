@@ -798,16 +798,14 @@ type projectSkillRoot struct {
 }
 
 // projectSkillRoots discovers Agent directories using the shared convention
-// <project>/.<agent>/skills. This keeps scanning independent of deploy support.
+// <project>/.<agent>/skills, plus the known nested layouts that do not fit it.
 func projectSkillRoots(projectRoot string) ([]projectSkillRoot, error) {
 	entries, err := os.ReadDir(projectRoot)
-	if os.IsNotExist(err) {
-		return []projectSkillRoot{}, nil
-	}
-	if err != nil {
+	if err != nil && !os.IsNotExist(err) {
 		return nil, err
 	}
 	roots := make([]projectSkillRoot, 0)
+	seen := make(map[string]bool)
 	for _, entry := range entries {
 		name := entry.Name()
 		if !strings.HasPrefix(name, ".") || len(name) == 1 {
@@ -824,10 +822,38 @@ func projectSkillRoots(projectRoot string) ([]projectSkillRoot, error) {
 			continue
 		}
 		id := strings.TrimPrefix(name, ".")
+		if seen[id] {
+			continue
+		}
+		seen[id] = true
 		roots = append(roots, projectSkillRoot{ID: id, Label: projectAgentLabel(id), Path: skillsPath})
+	}
+	for _, special := range projectSpecialSkillPaths {
+		if seen[special.id] {
+			continue
+		}
+		skillsPath := filepath.Join(projectRoot, special.path)
+		info, statErr := os.Stat(skillsPath)
+		if statErr != nil || !info.IsDir() {
+			continue
+		}
+		seen[special.id] = true
+		roots = append(roots, projectSkillRoot{ID: special.id, Label: projectAgentLabel(special.id), Path: skillsPath})
 	}
 	sort.Slice(roots, func(i, j int) bool { return roots[i].ID < roots[j].ID })
 	return roots, nil
+}
+
+type projectSpecialSkillPath struct {
+	id   string
+	path string
+}
+
+// projectSpecialSkillPaths covers Agents whose Skill directories live at a
+// nested path that the generic .<agent>/skills scan cannot reach.
+var projectSpecialSkillPaths = []projectSpecialSkillPath{
+	{id: "windsurf", path: filepath.Join(".codeium", "windsurf", "skills")},
+	{id: "opencode", path: filepath.Join(".config", "opencode", "skills")},
 }
 
 func projectAgentLabel(id string) string {
@@ -842,6 +868,24 @@ func projectAgentLabel(id string) string {
 		return "Agent"
 	case "agents":
 		return "Agents"
+	case "copilot":
+		return "Copilot"
+	case "gemini":
+		return "Gemini"
+	case "windsurf":
+		return "Windsurf"
+	case "kiro":
+		return "Kiro"
+	case "cline":
+		return "Cline"
+	case "opencode":
+		return "OpenCode"
+	case "trae":
+		return "Trae"
+	case "hermes":
+		return "Hermes"
+	case "openclaw":
+		return "OpenClaw"
 	default:
 		return "." + id
 	}

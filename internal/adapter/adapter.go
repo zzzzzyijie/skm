@@ -124,7 +124,7 @@ func DisplayName(agent domain.Agent) string {
 	case domain.AgentOpenCode:
 		return "OpenCode"
 	case domain.AgentHermes:
-		return "Hermes"
+		return "Hermes Agent"
 	case domain.AgentOpenClaw:
 		return "OpenClaw"
 	default:

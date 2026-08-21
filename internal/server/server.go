@@ -42,6 +42,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /api/skills/detach", s.handleDetachSkill)
 	mux.HandleFunc("POST /api/skills", s.handleAddSkill)
 	mux.HandleFunc("POST /api/dialogs/skill-directory", s.handleChooseSkillDirectory)
+	mux.HandleFunc("POST /api/dialogs/skill-archive", s.handleChooseSkillArchive)
 	mux.HandleFunc("POST /api/dialogs/project-directory", s.handleChooseProjectDirectory)
 	mux.HandleFunc("DELETE /api/skills/{id...}", s.handleRemoveSkill)
 	mux.HandleFunc("GET /api/prompts", s.handleListPrompts)

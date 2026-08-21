@@ -93,7 +93,9 @@ Projects 页面可完成本机项目登记、Skill 软链/复制、状态检查�
 一个私有 Git 仓库，通过 Logo 右侧同步入口在多台电脑间双向同步独立的本地 Skill 和 Prompt；
 同步前会预览上传、下载、删除和冲突，冲突可逐项选择本地或远程状态。
 
-Library 的仓库导入框支持 Git URL、GitHub `owner/repo` 简写，也可以直接粘贴安装命令：
+“添加 Skill 到库”提供三种明确的导入方式：本地导入支持 Skill 文件夹和仅包含一个
+Skill 的 `.zip`；仓库来源支持 Git URL 与 GitHub `owner/repo` 简写；安装命令支持直接
+粘贴 `npx skills add` 命令：
 
 ```text
 npx skills add jakubkrehel/skills

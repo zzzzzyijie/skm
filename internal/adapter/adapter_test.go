@@ -62,3 +62,25 @@ func TestCustomUserTarget(t *testing.T) {
 		t.Fatal("custom target outside user home should be rejected")
 	}
 }
+
+func TestDisplayNamesUseOfficialProductNames(t *testing.T) {
+	tests := map[domain.Agent]string{
+		domain.AgentClaude:   "Claude Code",
+		domain.AgentCodex:    "Codex",
+		domain.AgentCursor:   "Cursor",
+		domain.AgentCopilot:  "GitHub Copilot",
+		domain.AgentGemini:   "Gemini CLI",
+		domain.AgentWindsurf: "Windsurf",
+		domain.AgentKiro:     "Kiro",
+		domain.AgentCline:    "Cline",
+		domain.AgentOpenCode: "OpenCode",
+		domain.AgentTrae:     "Trae",
+		domain.AgentHermes:   "Hermes Agent",
+		domain.AgentOpenClaw: "OpenClaw",
+	}
+	for agent, want := range tests {
+		if got := DisplayName(agent); got != want {
+			t.Errorf("DisplayName(%s) = %q, want %q", agent, got, want)
+		}
+	}
+}

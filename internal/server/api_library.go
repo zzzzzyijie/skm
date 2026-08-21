@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -149,10 +150,36 @@ func (s *Server) handleAddSkill(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, fmt.Errorf("path is required"))
 		return
 	}
+	path := body.Path
+	cleanup := func() {}
+	info, statErr := os.Stat(path)
+	if statErr != nil {
+		writeError(w, http.StatusBadRequest, statErr)
+		return
+	}
+	if !info.IsDir() {
+		if !info.Mode().IsRegular() || !strings.EqualFold(filepath.Ext(path), ".zip") {
+			writeError(w, http.StatusBadRequest, fmt.Errorf("local import must be a Skill directory or .zip archive"))
+			return
+		}
+		temporary, err := os.MkdirTemp("", "skm-skill-import-*")
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, err)
+			return
+		}
+		cleanup = func() { _ = os.RemoveAll(temporary) }
+		path, err = skill.ExtractZIP(path, temporary)
+		if err != nil {
+			cleanup()
+			writeError(w, http.StatusBadRequest, err)
+			return
+		}
+	}
+	defer cleanup()
 	var value domain.Skill
 	err := s.withLock(func() error {
 		var addErr error
-		value, addErr = catalog.New(s.store).AddLocal(body.Path, body.Source, body.Tags)
+		value, addErr = catalog.New(s.store).AddLocal(path, body.Source, body.Tags)
 		return addErr
 	})
 	if err != nil {

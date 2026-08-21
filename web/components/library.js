@@ -56,7 +56,7 @@ function paintLibrary() {
     html += '<div class="library-tools"><label class="search-box"><span class="sr-only">' + t('lib.search') + '</span>' +
         '<span class="search-mark" aria-hidden="true">' + uiIcon('search') + '</span><input class="input" id="skill-search" value="' + escapeHtml(libraryState.query) +
         '" placeholder="' + t('lib.searchPlaceholder') + '"></label>';
-    html += '<div class="filter-bar"><span class="filter-label">' + t('lib.tags') + '</span><div class="tag-filter-list" id="skill-tag-filters">' +
+    html += '<div class="filter-bar"><span class="filter-label">' + uiIcon('tags') + t('lib.tags') + '</span><div class="tag-filter-list" id="skill-tag-filters">' +
         libraryTagFiltersMarkup() + '</div></div></div>';
 
     if (!visible.length) {
@@ -323,40 +323,50 @@ async function toggleSkillAgent(skillID, agent, button) {
 function showAddSkillModal() {
     var localTags = tagPickerMarkup('add-skill-tags', [], libraryState.tags, true);
     var sourceTags = tagPickerMarkup('git-source-tags', [], libraryState.tags, true);
-    var content = '<div class="import-mode" role="tablist"><button class="import-mode-option active" type="button" data-import-mode="local">' +
-        t('lib.importLocal') + '</button><button class="import-mode-option" type="button" data-import-mode="git">' + t('lib.importGit') + '</button></div>' +
+    var commandTags = tagPickerMarkup('command-source-tags', [], libraryState.tags, true);
+    var content = '<div class="import-mode" role="tablist"><button class="import-mode-option active" role="tab" aria-selected="true" type="button" data-import-mode="local">' +
+        t('lib.importLocal') + '</button><button class="import-mode-option" role="tab" aria-selected="false" type="button" data-import-mode="git">' + t('lib.importGit') +
+        '</button><button class="import-mode-option" role="tab" aria-selected="false" type="button" data-import-mode="command">' + t('lib.importCommand') + '</button></div>' +
         '<div class="import-pane" data-import-pane="local"><div class="form-group"><label class="form-label" for="add-skill-path">' + t('lib.skillPath') +
-        '</label><div class="path-picker"><input class="input" id="add-skill-path" readonly placeholder="' + t('lib.chooseSkillPath') + '"><button class="btn btn-secondary" type="button" id="btn-choose-skill-path">' + t('lib.choosePath') + '</button></div></div><div class="form-group"><label class="form-label" for="add-skill-tags">' +
+        '</label><div class="path-picker"><input class="input" id="add-skill-path" readonly placeholder="' + t('lib.chooseSkillPath') + '"><div class="path-picker-actions"><button class="btn btn-secondary" type="button" id="btn-choose-skill-path">' +
+        uiIcon('folder') + t('lib.choosePath') + '</button><button class="btn btn-secondary" type="button" id="btn-choose-skill-zip">' + uiIcon('archive') + t('lib.chooseZIP') + '</button></div></div><p class="form-hint">' +
+        t('lib.localImportHint') + '</p></div><div class="form-group"><label class="form-label" for="add-skill-tags">' +
         t('lib.selectTags') + '</label>' + localTags + '</div></div>' +
         '<div class="import-pane is-hidden" data-import-pane="git"><div class="form-group"><label class="form-label" for="git-source-input">' +
-        t('lib.gitInput') + '</label><input class="input mono" id="git-source-input" placeholder="npx skills add jakubkrehel/skills"></div><div class="form-group"><label class="form-label" for="git-source-name">' +
+        t('lib.gitInput') + '</label><input class="input mono" id="git-source-input" placeholder="https://github.com/owner/skills.git"></div><div class="form-group"><label class="form-label" for="git-source-name">' +
         t('lib.gitSourceName') + '</label><input class="input" id="git-source-name" placeholder="' + t('lib.gitNamePlaceholder') + '"></div><div class="form-group"><label class="form-label" for="git-source-tags">' +
-        t('lib.selectTags') + '</label>' + sourceTags + '</div></div>';
+        t('lib.selectTags') + '</label>' + sourceTags + '</div></div>' +
+        '<div class="import-pane is-hidden" data-import-pane="command"><div class="form-group"><label class="form-label" for="command-source-input">' +
+        t('lib.commandInput') + '</label><input class="input mono" id="command-source-input" placeholder="npx skills add owner/skills"><p class="form-hint">' + t('lib.commandHint') +
+        '</p></div><div class="form-group"><label class="form-label" for="command-source-name">' + t('lib.gitSourceName') + '</label><input class="input" id="command-source-name" placeholder="' +
+        t('lib.gitNamePlaceholder') + '"></div><div class="form-group"><label class="form-label" for="command-source-tags">' + t('lib.selectTags') + '</label>' + commandTags + '</div></div>';
     var actions = '<button class="btn btn-ghost" type="button" data-close-modal>' + t('lib.cancel') + '</button>' +
         '<button class="btn btn-primary" type="button" id="btn-confirm-add">' + t('lib.addSkill') + '</button>';
     showModal(t('lib.addSkillTitle'), content, actions);
     var mode = 'local';
-    document.getElementById('btn-choose-skill-path').addEventListener('click', chooseSkillDirectory);
+    document.getElementById('btn-choose-skill-path').addEventListener('click', function () { chooseSkillSource('directory'); });
+    document.getElementById('btn-choose-skill-zip').addEventListener('click', function () { chooseSkillSource('archive'); });
     document.querySelectorAll('[data-import-mode]').forEach(function (button) {
         button.addEventListener('click', function () {
             mode = button.dataset.importMode;
             document.querySelectorAll('[data-import-mode]').forEach(function (item) { item.classList.toggle('active', item === button); });
+            document.querySelectorAll('[data-import-mode]').forEach(function (item) { item.setAttribute('aria-selected', String(item === button)); });
             document.querySelectorAll('[data-import-pane]').forEach(function (pane) { pane.classList.toggle('is-hidden', pane.dataset.importPane !== mode); });
-            document.getElementById('btn-confirm-add').textContent = mode === 'git' ? t('lib.import') : t('lib.addSkill');
+            document.getElementById('btn-confirm-add').textContent = mode === 'local' ? t('lib.addSkill') : t('lib.import');
             var input = document.querySelector('[data-import-pane="' + mode + '"] input');
             if (input) input.focus();
         });
     });
     document.getElementById('btn-confirm-add').addEventListener('click', function () {
-        if (mode === 'git') doImportGitSource(); else doAddSkill();
+        if (mode === 'local') doAddSkill(); else doImportGitSource(mode);
     });
 }
 
-async function chooseSkillDirectory() {
-    var button = document.getElementById('btn-choose-skill-path');
+async function chooseSkillSource(kind) {
+    var button = document.getElementById(kind === 'archive' ? 'btn-choose-skill-zip' : 'btn-choose-skill-path');
     button.disabled = true;
     try {
-        var result = await api.post('/api/dialogs/skill-directory', {});
+        var result = await api.post('/api/dialogs/skill-' + kind, {});
         document.getElementById('add-skill-path').value = result.path;
     } catch (err) {
         showToast(err.message, 'error');
@@ -378,15 +388,16 @@ async function doAddSkill() {
     } catch (err) { button.disabled = false; showToast(err.message, 'error'); }
 }
 
-async function doImportGitSource() {
-    var name = document.getElementById('git-source-name').value.trim();
-    var input = document.getElementById('git-source-input').value.trim();
-    if (!input) { showToast(t('lib.gitRequired'), 'error'); return; }
+async function doImportGitSource(mode) {
+    var prefix = mode === 'command' ? 'command' : 'git';
+    var name = document.getElementById(prefix + '-source-name').value.trim();
+    var input = document.getElementById(prefix + '-source-input').value.trim();
+    if (!input) { showToast(t(mode === 'command' ? 'lib.commandRequired' : 'lib.gitRequired'), 'error'); return; }
     var button = document.getElementById('btn-confirm-add');
     button.disabled = true;
     try {
         var result = await api.post('/api/sources', {
-            input: input, name: name, ref: '', paths: [], tags: selectedTagValues('git-source-tags'),
+            input: input, name: name, ref: '', paths: [], tags: selectedTagValues(prefix + '-source-tags'),
         });
         closeModal();
         showToast(t('lib.importedSource').replace('{0}', (result.skills || []).length).replace('{1}', result.source.name));

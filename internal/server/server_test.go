@@ -1,6 +1,7 @@
 package server
 
 import (
+	"archive/zip"
 	"bytes"
 	"encoding/json"
 	"io"
@@ -68,6 +69,15 @@ func TestEmbeddedUIProvidesPersistentSettingsAndThemeChoices(t *testing.T) {
 			}
 		}
 	}
+	app := fetchEmbeddedAsset(t, handler, "/app.js")
+	if strings.Contains(app, "App.navigate(App.currentPage, false)") {
+		t.Fatal("language switching still navigates through a loading state")
+	}
+	for _, marker := range []string{"suppressTransitionsForSwap", "repaintCurrentPageLanguage", "refreshOpenSettingsLanguage"} {
+		if !strings.Contains(app, marker) {
+			t.Fatalf("language switching is missing %q", marker)
+		}
+	}
 }
 
 func TestEmbeddedUIProvidesGitSettingsAndBrandSync(t *testing.T) {
@@ -79,7 +89,7 @@ func TestEmbeddedUIProvidesGitSettingsAndBrandSync(t *testing.T) {
 	}{
 		{path: "/", markers: []string{`id="sync-toggle"`, `id="mobile-sync-toggle"`, "sidebar-brand-row"}},
 		{path: "/app.js", markers: []string{"runGitSync", "openSettings('git')", "/api/workspace/preview", "/api/workspace/sync", "/api/sources", "data-remove-git-source", "workspaceConflictChoices"}},
-		{path: "/app.css", markers: []string{".brand-sync-button", ".workspace-card", ".workspace-change-row", ".git-source-form", ".sync-result-row", ".settings-layout"}},
+		{path: "/app.css", markers: []string{".brand-sync-button", ".workspace-card", ".workspace-change-row", ".git-source-list", ".sync-result-row", ".settings-layout"}},
 	}
 
 	for _, check := range checks {
@@ -94,6 +104,10 @@ func TestEmbeddedUIProvidesGitSettingsAndBrandSync(t *testing.T) {
 				t.Fatalf("GET %s is missing %q", check.path, marker)
 			}
 		}
+	}
+	app := fetchEmbeddedAsset(t, handler, "/app.js")
+	if strings.Contains(app, "btn-save-git-source") || strings.Contains(app, "function saveGitSource") {
+		t.Fatal("Git settings still exposes the removed add-source form")
 	}
 }
 
@@ -162,15 +176,16 @@ func TestEmbeddedProjectUIUsesAgentScopedDetailsWithoutPlanSection(t *testing.T)
 }
 
 func TestEmbeddedLibraryUIUsesScannedManageableAgents(t *testing.T) {
+	handler := New(testStore(t)).Handler()
 	recorder := httptest.NewRecorder()
-	New(testStore(t)).Handler().ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/components/library.js", nil))
+	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/components/library.js", nil))
 	body := recorder.Body.String()
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("GET /components/library.js = %d, body=%s", recorder.Code, body)
 	}
-	for _, marker := range []string{"btn-scan-agents", "agent.detected", "btn-new-custom-agent", "tagPickerMarkup", "btn-create-tag", "/api/skill-tags", "detail-new-tag", "createSkillDetailTag", "syncSkillTagState"} {
+	for _, marker := range []string{"btn-scan-agents", "agent.detected", "btn-new-custom-agent", "tagPickerMarkup", "btn-create-tag", "/api/skill-tags", "detail-new-tag", "createSkillDetailTag", "syncSkillTagState", `data-import-mode="command"`, "btn-choose-skill-zip", "/api/dialogs/skill-"} {
 		if !strings.Contains(body, marker) {
-			t.Fatalf("Agent management UI is missing %q", marker)
+			t.Fatalf("Library UI is missing %q", marker)
 		}
 	}
 	if strings.Contains(body, "agent.required") || strings.Contains(body, "lib.fixedAgent") {
@@ -178,6 +193,54 @@ func TestEmbeddedLibraryUIUsesScannedManageableAgents(t *testing.T) {
 	}
 	if strings.Contains(body, "await openSkillDetails(id)") {
 		t.Fatal("Skill tag save still reopens the details modal and causes a visible refresh")
+	}
+
+	agentIcons := map[string]string{
+		"claude": "Claude Code", "codex": "Codex", "cursor": "Cursor", "copilot": "GitHub Copilot",
+		"gemini": "Gemini CLI", "windsurf": "Windsurf", "kiro": "Kiro", "cline": "Cline",
+		"opencode": "OpenCode", "trae": "Trae", "hermes": "Hermes Agent", "openclaw": "OpenClaw",
+	}
+	for id, name := range agentIcons {
+		icon := fetchEmbeddedAsset(t, handler, "/assets/"+id+".svg")
+		for _, marker := range []string{"<svg", "<title>" + name + "</title>"} {
+			if !strings.Contains(icon, marker) {
+				t.Errorf("Agent icon %s is missing %q", id, marker)
+			}
+		}
+	}
+}
+
+func TestAddSkillImportsZIPArchive(t *testing.T) {
+	archivePath := filepath.Join(t.TempDir(), "zip-skill.zip")
+	file, err := os.Create(archivePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	writer := zip.NewWriter(file)
+	entry, err := writer.Create("zip-skill/SKILL.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := entry.Write([]byte("---\nname: zip-skill\ndescription: Imported archive\n---\n\nUse it.\n")); err != nil {
+		t.Fatal(err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := file.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	handler := New(testStore(t)).Handler()
+	var imported domain.Skill
+	requestJSON(t, handler, http.MethodPost, "/api/skills", map[string]any{
+		"path": archivePath, "tags": []string{"general"},
+	}, http.StatusCreated, &imported)
+	if imported.ID != "local/zip-skill" || !strings.Contains(imported.Path, filepath.Join("objects", imported.Hash)) {
+		t.Fatalf("imported Skill = %#v", imported)
+	}
+	if _, err := os.Stat(filepath.Join(imported.Path, "SKILL.md")); err != nil {
+		t.Fatalf("imported snapshot is missing: %v", err)
 	}
 }
 
@@ -957,13 +1020,48 @@ func makeSkill(t *testing.T, name string) string {
 
 func makeProjectSkill(t *testing.T, projectPath, agent, name string) {
 	t.Helper()
-	directory := filepath.Join(projectPath, "."+agent, "skills", name)
+	makeProjectSkillAt(t, projectPath, filepath.Join("."+agent, "skills"), name)
+}
+
+func makeProjectSkillAt(t *testing.T, projectPath, skillsRelative, name string) {
+	t.Helper()
+	directory := filepath.Join(projectPath, skillsRelative, name)
 	if err := os.MkdirAll(directory, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	content := "---\nname: " + name + "\ndescription: Project scan test Skill\n---\n\n# " + name + "\n"
 	if err := os.WriteFile(filepath.Join(directory, "SKILL.md"), []byte(content), 0o644); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestProjectSkillRootsDiscoversNestedAgentDirectories(t *testing.T) {
+	projectRoot := t.TempDir()
+	makeProjectSkill(t, projectRoot, "claude", "claude-skill")
+	makeProjectSkillAt(t, projectRoot, filepath.Join(".codeium", "windsurf", "skills"), "windsurf-skill")
+	makeProjectSkillAt(t, projectRoot, filepath.Join(".config", "opencode", "skills"), "opencode-skill")
+
+	roots, err := projectSkillRoots(projectRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	labels := make(map[string]string)
+	paths := make(map[string]string)
+	for _, root := range roots {
+		labels[root.ID] = root.Label
+		paths[root.ID] = root.Path
+	}
+	if len(roots) != 3 {
+		t.Fatalf("project Skill roots = %#v", roots)
+	}
+	if labels["claude"] != "Claude Code" || labels["windsurf"] != "Windsurf" || labels["opencode"] != "OpenCode" {
+		t.Fatalf("project Skill root labels = %#v", labels)
+	}
+	if paths["windsurf"] != filepath.Join(projectRoot, ".codeium", "windsurf", "skills") {
+		t.Fatalf("Windsurf Skill root path = %q", paths["windsurf"])
+	}
+	if paths["opencode"] != filepath.Join(projectRoot, ".config", "opencode", "skills") {
+		t.Fatalf("OpenCode Skill root path = %q", paths["opencode"])
 	}
 }
 
@@ -1024,6 +1122,16 @@ func requestJSON(t *testing.T, handler http.Handler, method, url string, body an
 			t.Fatal(err)
 		}
 	}
+}
+
+func fetchEmbeddedAsset(t *testing.T, handler http.Handler, path string) string {
+	t.Helper()
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, path, nil))
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("GET %s = %d, body=%s", path, recorder.Code, recorder.Body.String())
+	}
+	return recorder.Body.String()
 }
 
 func hasTag(values []tagCount, name string) bool {

@@ -5,7 +5,7 @@ var translations = {
     en: {
         'nav.library': 'My Skills', 'nav.prompts': 'Prompts', 'nav.projects': 'Projects', 'nav.settings': 'Settings', 'nav.openSettings': 'Open settings', 'nav.openMenu': 'Open navigation',
         'settings.title': 'Settings', 'settings.intro': 'Personalize how SKM looks and reads on this device.', 'settings.language': 'Language', 'settings.languageDesc': 'Choose the language used throughout the interface.', 'settings.english': 'English', 'settings.chinese': '简体中文', 'settings.appearance': 'Appearance', 'settings.darkMode': 'Dark mode', 'settings.darkModeDesc': 'Use the darker color theme for comfortable low-light viewing.',
-        'settings.general': 'General', 'settings.gitSync': 'Git sync', 'settings.gitIntro': 'Configure remote Skill sources and update them from the brand sync button.', 'settings.gitSources': 'Configured sources', 'settings.gitNone': 'No Git sources configured', 'settings.gitNoneDesc': 'Add a repository below. Existing SSH keys or the system Git credential helper will be used.', 'settings.gitAdd': 'Add Git source', 'settings.gitName': 'Source name (optional)', 'settings.gitRepository': 'Repository or install command', 'settings.gitRef': 'Branch, tag, or commit (optional)', 'settings.gitPaths': 'Skill paths (optional)', 'settings.gitPathsHint': 'Comma-separated repository-relative paths. Leave empty to scan the repository.', 'settings.gitCredentials': 'Credentials stay on this device', 'settings.gitCredentialsDesc': 'SKM uses your SSH keys or system Git credential helper and never stores credentials in the source URL.', 'settings.gitSave': 'Add and verify', 'settings.gitSaving': 'Adding source…', 'settings.gitAdded': 'Git source added', 'settings.gitRemove': 'Remove source', 'settings.gitRemoveTitle': 'Remove Git source', 'settings.gitRemoveConfirm': 'Remove the “{0}” Git source binding?', 'settings.gitRemoveNote': 'The cached checkout will be removed. Imported Library Skills and snapshots are retained.', 'settings.gitRemoved': 'Git source removed', 'settings.gitUpdatedAt': 'Updated {0}', 'settings.gitDefaultRef': 'Default branch', 'settings.gitSkillCount': '{0} Skill(s)',
+        'settings.general': 'General', 'settings.gitSync': 'Git sync', 'settings.gitIntro': 'Manage your personal workspace and existing external Skill sources.', 'settings.gitSources': 'Configured sources', 'settings.gitNone': 'No Git sources configured', 'settings.gitNoneDesc': 'Add one from My Skills → Add Skill → Repository.', 'settings.gitRemove': 'Remove source', 'settings.gitRemoveTitle': 'Remove Git source', 'settings.gitRemoveConfirm': 'Remove the “{0}” Git source binding?', 'settings.gitRemoveNote': 'The cached checkout will be removed. Imported Library Skills and snapshots are retained.', 'settings.gitRemoved': 'Git source removed', 'settings.gitUpdatedAt': 'Updated {0}', 'settings.gitDefaultRef': 'Default branch', 'settings.gitSkillCount': '{0} Skill(s)',
         'workspace.title': 'Personal workspace', 'workspace.desc': 'Synchronize your local Skills and Prompts through one private Git repository on every computer.', 'workspace.url': 'Workspace repository', 'workspace.ref': 'Branch', 'workspace.root': 'Repository subdirectory (optional)', 'workspace.rootHint': 'Only independent local Skills and local Prompts are published. Agent deployments, device paths, caches, and credentials stay local.', 'workspace.connect': 'Connect and verify', 'workspace.connecting': 'Verifying workspace…', 'workspace.connected': 'Workspace connected', 'workspace.notConfigured': 'No personal workspace configured', 'workspace.lastSync': 'Last sync {0}', 'workspace.neverSynced': 'Not synced yet', 'workspace.externalTitle': 'External Skill sources', 'workspace.externalDesc': 'Read-only repositories that supply additional Skills. Their contents are not duplicated into your personal workspace.',
         'sync.action': 'Sync', 'sync.open': 'Sync Git sources', 'sync.running': 'Syncing Git sources…', 'sync.configureFirst': 'Configure a Git source before syncing.', 'sync.success': 'Synced {0} source(s) and refreshed {1} Skill(s).', 'sync.partial': 'Sync completed with {0} failed source(s).', 'sync.failed': 'Git sync failed', 'sync.results': 'Sync results', 'sync.sourceUpdated': '{0} Skill(s) refreshed', 'sync.deploymentFailed': 'Sources were updated, but managed deployments could not be refreshed: {0}',
         'sync.workspaceOpen': 'Sync Skills and Prompts', 'sync.workspaceRunning': 'Synchronizing workspace…', 'sync.workspaceConfigure': 'Configure a personal workspace before syncing.', 'sync.workspacePreview': 'Workspace sync preview', 'sync.workspaceSummary': '{0} upload(s), {1} download(s), {2} deletion(s)', 'sync.workspaceEmpty': 'This computer and the remote workspace are already in sync.', 'sync.workspaceConfirm': 'Sync now', 'sync.workspaceConflict': '{0} conflict(s) must be resolved before syncing.', 'sync.workspaceUpload': 'Publish local version', 'sync.workspaceDownload': 'Use remote version', 'sync.workspaceUseLocal': 'Keep local state', 'sync.workspaceUseRemote': 'Use remote state', 'sync.workspaceDeleteLocal': 'Remove from this computer', 'sync.workspaceDeleteRemote': 'Publish deletion', 'sync.workspaceDone': 'Skills and Prompts synchronized.', 'sync.workspaceRevision': 'Revision {0}', 'sync.kindSkill': 'Skill', 'sync.kindPrompt': 'Prompt', 'sync.reason.created-both': 'Created differently on both computers.', 'sync.reason.changed-both': 'Changed differently locally and remotely.', 'sync.reason.deleted-local-changed-remote': 'Deleted locally but changed remotely.', 'sync.reason.changed-local-deleted-remote': 'Changed locally but deleted remotely.', 'sync.reason.enabled-skill-delete': 'This Skill is enabled on this computer. Disable it before accepting the remote deletion.',
@@ -16,13 +16,13 @@ var translations = {
         'lib.searchPlaceholder': 'Search by name, ID, description, or source', 'lib.manageTags': 'Manage tags',
         'lib.selectTags': 'Select tags', 'lib.saveTags': 'Save tags', 'lib.savingTags': 'Saving…', 'lib.tagsUpdated': 'Tags updated', 'lib.tagsSaved': 'Saved', 'lib.tagsUnsaved': 'Unsaved changes', 'lib.tagSelectionCount': '{0} selected', 'lib.newTag': 'New tag', 'lib.createTag': 'Create tag', 'lib.createAndSelectTag': 'Create & select', 'lib.quickAddTag': 'Create a tag without leaving this Skill', 'lib.tagCreated': 'Tag created and selected', 'lib.tagDeleted': 'Tag deleted', 'lib.tagNamePlaceholder': 'e.g. development', 'lib.defaultTag': 'Default', 'lib.tagUsage': '{0} item(s)', 'lib.defaultTagLocked': 'The default tag cannot be deleted.', 'lib.tagInUse': 'Remove this tag from every Skill and Prompt before deleting it.', 'lib.noManagedTags': 'Create a tag before selecting one.',
         'lib.noSkills': 'No Skills found', 'lib.noSkillsDesc': 'Add a Skill to your personal Library with the button above.',
-        'lib.skillPath': 'Skill Path', 'lib.tagsComma': 'Tags (comma-separated)',
-        'lib.chooseSkillPath': 'Choose a Skill directory in Finder', 'lib.choosePath': 'Choose directory', 'lib.skillTagsPlaceholder': 'Skill tags',
-        'lib.importLocal': 'Local import', 'lib.importGit': 'Repository', 'lib.gitSourceName': 'Source name (optional)',
-        'lib.gitInput': 'Repository or install command', 'lib.gitNamePlaceholder': 'Generated automatically',
+        'lib.skillPath': 'Local source', 'lib.tagsComma': 'Tags (comma-separated)',
+        'lib.chooseSkillPath': 'Choose a Skill folder or .zip archive', 'lib.choosePath': 'Choose folder', 'lib.chooseZIP': 'Choose .zip', 'lib.localImportHint': 'Import one Skill folder, or a .zip containing exactly one Skill.', 'lib.skillTagsPlaceholder': 'Skill tags',
+        'lib.importLocal': 'Local import', 'lib.importGit': 'Repository', 'lib.importCommand': 'Install command', 'lib.gitSourceName': 'Source name (optional)',
+        'lib.gitInput': 'Git repository', 'lib.commandInput': 'Install command', 'lib.commandHint': 'Paste an npx skills add command. SKM parses the command and imports its Git source.', 'lib.gitNamePlaceholder': 'Generated automatically',
         'lib.gitUrl': 'Git repository URL', 'lib.gitRef': 'Ref (branch, tag, or commit)', 'lib.import': 'Import',
         'lib.importedSource': 'Imported {0} Skill(s) from {1}', 'lib.updateSource': 'Update source',
-        'lib.updatingSource': 'Updating source...', 'lib.gitRequired': 'Repository or install command is required',
+        'lib.updatingSource': 'Updating source...', 'lib.gitRequired': 'Git repository is required', 'lib.commandRequired': 'Install command is required',
         'lib.agentClaude': 'Claude Code', 'lib.agentCodex': 'Codex', 'lib.agentsUpdated': 'Agents updated', 'lib.agentScanUpdated': 'Device scan refreshed', 'lib.scanAgents': 'Scan device', 'lib.detectedAgents': 'Detected on this device', 'lib.otherAgents': 'Other supported Agents', 'lib.customAgents': 'Custom Agents', 'lib.detectedAgent': 'Detected', 'lib.notDetectedAgent': 'Not detected', 'lib.noDetectedAgents': 'No known Agent directory was detected. You can still select a supported Agent or add a custom one.', 'lib.noManagedAgents': 'No managed Agents yet', 'lib.customAgent': 'Custom Agent', 'lib.addCustomAgent': 'Add custom Agent', 'lib.agentId': 'Agent ID', 'lib.agentName': 'Display name', 'lib.agentPath': 'User Skill directory', 'lib.agentIcon': 'Icon (optional)', 'lib.chooseIcon': 'Choose icon', 'lib.deleteAgent': 'Delete Agent',
         'lib.cancel': 'Cancel', 'lib.remove': 'Remove',
         'lib.confirmRemoveTitle': 'Remove Skill', 'lib.confirmRemove': 'Are you sure you want to remove',
@@ -69,26 +69,26 @@ var translations = {
         'proj.removeSkill': 'Remove', 'proj.confirmRemoveSkillTitle': 'Remove project Skill', 'proj.confirmRemoveSkillDesc': 'Remove "{0}" from this project?', 'proj.confirmRemoveSkillNote': 'Every copy in this project’s Agent directories will be permanently deleted. This cannot be undone.', 'proj.projectSkillRemoved': 'Project Skill removed',
     },
     zh: {
-        'nav.library': '我的 skill', 'nav.prompts': 'Prompt', 'nav.projects': '项目', 'nav.settings': '设置', 'nav.openSettings': '打开设置', 'nav.openMenu': '打开导航',
+        'nav.library': 'Skill', 'nav.prompts': 'Prompt', 'nav.projects': 'Project', 'nav.settings': '设置', 'nav.openSettings': '打开设置', 'nav.openMenu': '打开导航',
         'settings.title': '设置', 'settings.intro': '自定义这台设备上的 SKM 显示与语言偏好。', 'settings.language': '语言', 'settings.languageDesc': '选择界面中使用的语言。', 'settings.english': 'English', 'settings.chinese': '简体中文', 'settings.appearance': '外观', 'settings.darkMode': '暗黑模式', 'settings.darkModeDesc': '在弱光环境中使用更舒适的深色主题。',
-        'settings.general': '通用', 'settings.gitSync': 'Git 同步', 'settings.gitIntro': '配置远程 Skill 来源，并通过品牌区的同步按钮统一更新。', 'settings.gitSources': '已配置来源', 'settings.gitNone': '尚未配置 Git 来源', 'settings.gitNoneDesc': '在下方添加仓库；同步会使用现有 SSH Key 或系统 Git 凭据。', 'settings.gitAdd': '添加 Git 来源', 'settings.gitName': '来源名称（可选）', 'settings.gitRepository': '仓库地址或安装命令', 'settings.gitRef': '分支、Tag 或提交（可选）', 'settings.gitPaths': 'Skill 路径（可选）', 'settings.gitPathsHint': '多个仓库内相对路径用逗号分隔；留空则扫描整个仓库。', 'settings.gitCredentials': '凭据仅保留在本机', 'settings.gitCredentialsDesc': 'SKM 使用 SSH Key 或系统 Git Credential Helper，不会把凭据写入来源地址。', 'settings.gitSave': '添加并校验', 'settings.gitSaving': '正在添加来源…', 'settings.gitAdded': 'Git 来源已添加', 'settings.gitRemove': '移除来源', 'settings.gitRemoveTitle': '移除 Git 来源', 'settings.gitRemoveConfirm': '确定移除 Git 来源“{0}”吗？', 'settings.gitRemoveNote': '缓存的仓库副本会被删除；已导入的 Library Skill 和快照会保留。', 'settings.gitRemoved': 'Git 来源已移除', 'settings.gitUpdatedAt': '更新于 {0}', 'settings.gitDefaultRef': '默认分支', 'settings.gitSkillCount': '{0} 个 Skill',
+        'settings.general': '通用', 'settings.gitSync': 'Git 同步', 'settings.gitIntro': '管理个人工作区与已有的外部 Skill 来源。', 'settings.gitSources': '已配置来源', 'settings.gitNone': '尚未配置 Git 来源', 'settings.gitNoneDesc': '请从“Skill → 添加 Skill → 仓库来源”添加。', 'settings.gitRemove': '移除来源', 'settings.gitRemoveTitle': '移除 Git 来源', 'settings.gitRemoveConfirm': '确定移除 Git 来源“{0}”吗？', 'settings.gitRemoveNote': '缓存的仓库副本会被删除；已导入的 Library Skill 和快照会保留。', 'settings.gitRemoved': 'Git 来源已移除', 'settings.gitUpdatedAt': '更新于 {0}', 'settings.gitDefaultRef': '默认分支', 'settings.gitSkillCount': '{0} 个 Skill',
         'workspace.title': '个人工作区', 'workspace.desc': '通过一个私有 Git 仓库，在多台电脑之间同步本地 Skill 和 Prompt。', 'workspace.url': '工作区仓库', 'workspace.ref': '分支', 'workspace.root': '仓库子目录（可选）', 'workspace.rootHint': '只发布独立的本地 Skill 和本地 Prompt；Agent 部署、本机路径、缓存和凭据始终留在当前电脑。', 'workspace.connect': '连接并校验', 'workspace.connecting': '正在校验工作区…', 'workspace.connected': '个人工作区已连接', 'workspace.notConfigured': '尚未配置个人工作区', 'workspace.lastSync': '上次同步 {0}', 'workspace.neverSynced': '尚未同步', 'workspace.externalTitle': '外部 Skill 来源', 'workspace.externalDesc': '以只读方式提供额外 Skill 的仓库，其内容不会重复写入个人工作区。',
         'sync.action': '同步', 'sync.open': '同步 Git 来源', 'sync.running': '正在同步 Git 来源…', 'sync.configureFirst': '请先配置 Git 来源再同步。', 'sync.success': '已同步 {0} 个来源，并刷新 {1} 个 Skill。', 'sync.partial': '同步完成，但有 {0} 个来源失败。', 'sync.failed': 'Git 同步失败', 'sync.results': '同步结果', 'sync.sourceUpdated': '已刷新 {0} 个 Skill', 'sync.deploymentFailed': '来源已更新，但托管部署刷新失败：{0}',
         'sync.workspaceOpen': '同步 Skill 和 Prompt', 'sync.workspaceRunning': '正在同步个人工作区…', 'sync.workspaceConfigure': '请先配置个人工作区再同步。', 'sync.workspacePreview': '工作区同步预览', 'sync.workspaceSummary': '上传 {0} 项，下载 {1} 项，删除 {2} 项', 'sync.workspaceEmpty': '当前电脑与远程工作区已经一致。', 'sync.workspaceConfirm': '立即同步', 'sync.workspaceConflict': '存在 {0} 个冲突，处理后才能同步。', 'sync.workspaceUpload': '发布本地版本', 'sync.workspaceDownload': '使用远程版本', 'sync.workspaceUseLocal': '保留本地状态', 'sync.workspaceUseRemote': '使用远程状态', 'sync.workspaceDeleteLocal': '从当前电脑移除', 'sync.workspaceDeleteRemote': '发布删除', 'sync.workspaceDone': 'Skill 和 Prompt 已完成同步。', 'sync.workspaceRevision': '版本 {0}', 'sync.kindSkill': 'Skill', 'sync.kindPrompt': 'Prompt', 'sync.reason.created-both': '两台电脑分别创建了不同内容。', 'sync.reason.changed-both': '本地和远程都修改了此内容。', 'sync.reason.deleted-local-changed-remote': '本地已删除，但远程又有修改。', 'sync.reason.changed-local-deleted-remote': '本地已有修改，但远程已删除。', 'sync.reason.enabled-skill-delete': '此 Skill 正在当前电脑启用；请先禁用，再接受远程删除。',
         'prompt.title': 'Prompt', 'prompt.count': '{0} 个 Prompt', 'prompt.new': '新建 Prompt', 'prompt.import': '导入 PROMPT.md', 'prompt.search': '搜索 Prompt', 'prompt.searchPlaceholder': '按名称、ID、描述或来源搜索', 'prompt.all': '全部', 'prompt.noPrompts': '暂无 Prompt', 'prompt.noPromptsDesc': '创建可复用的 Prompt 模板，或导入 PROMPT.md 文件。', 'prompt.edit': '编辑', 'prompt.export': '导出', 'prompt.remove': '删除', 'prompt.newTitle': '新建 Prompt', 'prompt.editorTitle': '编辑 Prompt', 'prompt.nameLabel': '名称', 'prompt.namePlaceholder': '例如：code-review', 'prompt.nameHint': '使用小写字母、数字和连字符。', 'prompt.nameLocked': '名称创建后不可修改。', 'prompt.descriptionLabel': '描述', 'prompt.descriptionPlaceholder': '简单说明这个 Prompt 的用途和适用场景', 'prompt.tagsLabel': '标签', 'prompt.tagsPlaceholder': '例如：review, coding', 'prompt.contentLabel': 'Prompt 内容', 'prompt.contentPlaceholder': '输入需要复用并复制到剪贴板的完整 Prompt 内容…', 'prompt.editorHint': '填写基本信息和 Prompt 内容即可，SKM 会自动生成 PROMPT.md 元数据。', 'prompt.validate': '校验', 'prompt.valid': 'Prompt 格式有效', 'prompt.notValidated': '尚未校验', 'prompt.unsaved': '有未保存修改', 'prompt.lines': '{0} 行', 'prompt.characters': '{0} 个字符', 'prompt.shortcuts': '⌘/Ctrl+S 保存 · ⌘/Ctrl+Enter 校验 · Tab 插入两个空格', 'prompt.save': '保存 Prompt', 'prompt.created': 'Prompt 已创建', 'prompt.updated': 'Prompt 已更新', 'prompt.removed': 'Prompt 已删除', 'prompt.imported': '已载入 PROMPT.md', 'prompt.copy': '复制 Prompt', 'prompt.copied': 'Prompt 已复制到设备剪贴板', 'prompt.copiedShort': '已复制', 'prompt.noVariables': '这个 Prompt 不包含变量。', 'prompt.confirmRemoveTitle': '删除 Prompt', 'prompt.confirmRemove': '确定从 Prompt 库删除“{0}”吗？', 'prompt.confirmRemoveNote': '对应的托管快照将被删除，此操作不可撤销。', 'prompt.loadFailed': '加载 Prompt 失败', 'prompt.invalidFile': '请选择 PROMPT.md 或 Markdown 文件。',
         'prompt.required': '请填写{0}',
-        'lib.title': '我的 skill', 'lib.addSkill': '添加 Skill', 'lib.manageAgents': 'Agent 管理', 'lib.addAgentTitle': 'Agent 管理', 'lib.saveAgents': '保存', 'lib.all': '全部', 'lib.search': '搜索 Skill',
+        'lib.title': 'Skill', 'lib.addSkill': '添加 Skill', 'lib.manageAgents': 'Agent 管理', 'lib.addAgentTitle': 'Agent 管理', 'lib.saveAgents': '保存', 'lib.all': '全部', 'lib.search': '搜索 Skill',
         'lib.summaryLabel': 'Skill 库概览', 'lib.totalSkills': 'Skill 总数', 'lib.gitSources': '来源数量', 'lib.tags': '标签', 'lib.added': '添加时间', 'lib.hash': '哈希',
         'lib.searchPlaceholder': '按名称、ID、描述或来源搜索', 'lib.manageTags': '管理标签',
         'lib.selectTags': '选择标签', 'lib.saveTags': '保存标签', 'lib.savingTags': '正在保存…', 'lib.tagsUpdated': '标签已更新', 'lib.tagsSaved': '已保存', 'lib.tagsUnsaved': '有未保存修改', 'lib.tagSelectionCount': '已选择 {0} 个', 'lib.newTag': '新建标签', 'lib.createTag': '创建标签', 'lib.createAndSelectTag': '新建并选择', 'lib.quickAddTag': '无需离开当前 Skill，直接创建新标签', 'lib.tagCreated': '标签已创建并选中', 'lib.tagDeleted': '标签已删除', 'lib.tagNamePlaceholder': '例如：development', 'lib.defaultTag': '默认', 'lib.tagUsage': '{0} 个引用', 'lib.defaultTagLocked': '默认标签不能删除。', 'lib.tagInUse': '请先从所有 Skill 和 Prompt 中取消此标签。', 'lib.noManagedTags': '请先在标签管理中创建标签。',
         'lib.noSkills': '暂无 Skill', 'lib.noSkillsDesc': '点击上方按钮将 Skill 添加到个人库。',
-        'lib.skillPath': 'Skill 路径', 'lib.tagsComma': '标签（逗号分隔）',
-        'lib.chooseSkillPath': '在 Finder 中选择 Skill 文件夹', 'lib.choosePath': '选择文件夹', 'lib.skillTagsPlaceholder': 'skill所属标签',
-        'lib.importLocal': '本地导入', 'lib.importGit': '仓库来源', 'lib.gitSourceName': '来源名称（可选）',
-        'lib.gitInput': '仓库地址或安装命令', 'lib.gitNamePlaceholder': '自动生成',
+        'lib.skillPath': '本地来源', 'lib.tagsComma': '标签（逗号分隔）',
+        'lib.chooseSkillPath': '选择 Skill 文件夹或 .zip 压缩包', 'lib.choosePath': '选择文件夹', 'lib.chooseZIP': '选择 .zip', 'lib.localImportHint': '支持一个 Skill 文件夹，或仅包含一个 Skill 的 .zip 压缩包。', 'lib.skillTagsPlaceholder': 'skill所属标签',
+        'lib.importLocal': '本地导入', 'lib.importGit': '仓库来源', 'lib.importCommand': '安装命令', 'lib.gitSourceName': '来源名称（可选）',
+        'lib.gitInput': 'Git 仓库地址', 'lib.commandInput': '安装命令', 'lib.commandHint': '粘贴 npx skills add 命令；SKM 会解析命令并导入其中的 Git 来源。', 'lib.gitNamePlaceholder': '自动生成',
         'lib.gitUrl': 'Git 仓库地址', 'lib.gitRef': '引用（分支、Tag 或提交）', 'lib.import': '导入',
         'lib.importedSource': '已从 {1} 导入 {0} 个 Skill', 'lib.updateSource': '更新来源',
-        'lib.updatingSource': '正在更新来源...', 'lib.gitRequired': '请填写仓库地址或安装命令',
+        'lib.updatingSource': '正在更新来源...', 'lib.gitRequired': '请填写 Git 仓库地址', 'lib.commandRequired': '请填写安装命令',
         'lib.agentClaude': 'Claude Code', 'lib.agentCodex': 'Codex', 'lib.agentsUpdated': 'Agent 已更新', 'lib.agentScanUpdated': '已重新扫描设备', 'lib.scanAgents': '扫描设备', 'lib.detectedAgents': '本机已检测到', 'lib.otherAgents': '其他支持的 Agent', 'lib.customAgents': '自定义 Agent', 'lib.detectedAgent': '已检测', 'lib.notDetectedAgent': '未检测到', 'lib.noDetectedAgents': '暂未检测到已知 Agent，仍可手动选择支持的 Agent，或添加自定义 Agent。', 'lib.noManagedAgents': '尚未管理任何 Agent', 'lib.customAgent': '自定义 Agent', 'lib.addCustomAgent': '添加自定义 Agent', 'lib.agentId': 'Agent ID', 'lib.agentName': '显示名称', 'lib.agentPath': '用户级 Skill 目录', 'lib.agentIcon': '图标（可选）', 'lib.chooseIcon': '选择图标', 'lib.deleteAgent': '删除 Agent',
         'lib.cancel': '取消', 'lib.remove': '移除',
         'lib.confirmRemoveTitle': '移除 Skill', 'lib.confirmRemove': '确定要移除',
@@ -113,7 +113,7 @@ var translations = {
         'act.linkMode': '链接模式', 'act.modeAuto': '自动', 'act.modeSymlink': '软链接', 'act.modeCopy': '复制',
         'act.summary': '{0} 个激活操作', 'act.noChanges': '当前状态已是最新',
         'loading': '加载中...', 'loadingSKM': '正在加载 SKM...',
-        'proj.title': '项目', 'proj.add': '添加项目', 'proj.empty': '暂无项目',
+        'proj.title': 'Project', 'proj.add': '添加项目', 'proj.empty': '暂无项目',
         'proj.emptyDesc': '登记本机项目后，可将 Skill 库中的 Skill 部署到项目 Agent 目录。',
         'proj.path': '项目路径', 'proj.chooseProjectPath': '在 Finder 中选择项目文件夹',
         'proj.register': '添加项目', 'proj.registered': '项目已添加', 'proj.list': '项目列表',
@@ -131,7 +131,7 @@ var translations = {
         'proj.chooseSkill': '请选择 Skill', 'proj.unregistered': '项目已移除',
         'proj.deployed': 'Skill 已部署', 'proj.deployedWithSkipped': 'Skill 已添加；{0} 中已存在，因此已自动跳过。', 'proj.alreadyExists': '“{0}”已存在于所选 Agent，无需重复添加。', 'proj.modeAlreadyExists': '“{0}”已使用{1}模式；如需切换，请先解绑。', 'proj.unlinked': 'Skill 已解绑', 'proj.confirmUnregister': '确认移除该项目？必须先解绑已管理的 Skill。',
         'proj.noProjects': '暂无项目', 'proj.pathRequired': '项目路径不能为空', 'proj.viewDetails': '查看详情', 'proj.skillDetails': '项目 Skill 详情', 'proj.skillPath': 'Skill 路径', 'proj.metadata': '元数据', 'proj.content': 'Skill 内容', 'proj.noContent': '暂无 Skill 内容',
-        'proj.migrate': '迁移到我的 skill', 'proj.migrateTitle': '迁移项目 Skill', 'proj.migrateSource': '来源 Agent', 'proj.migrateLink': '跟随项目', 'proj.migrateCopy': '复制', 'proj.migrateLinkDesc': '以项目目录为实时来源；切换到不含此 Skill 的分支时，将临时使用最后快照，直到来源恢复。', 'proj.migrateCopyDesc': '推荐。在“我的 skill”中创建独立快照，不受项目修改或分支切换影响。', 'proj.removeAfterCopy': '复制成功后移除项目原件（移动）', 'proj.removeAfterCopyNote': '仅当所有 Agent 副本内容一致且未由 SKM 托管时可用，此操作不可撤销。', 'proj.migrateConfirm': '添加到我的 skill', 'proj.migrated': '已添加到我的 skill',
+        'proj.migrate': '迁移到 Skill', 'proj.migrateTitle': '迁移项目 Skill', 'proj.migrateSource': '来源 Agent', 'proj.migrateLink': '跟随项目', 'proj.migrateCopy': '复制', 'proj.migrateLinkDesc': '以项目目录为实时来源；切换到不含此 Skill 的分支时，将临时使用最后快照，直到来源恢复。', 'proj.migrateCopyDesc': '推荐。在Skill中创建独立快照，不受项目修改或分支切换影响。', 'proj.removeAfterCopy': '复制成功后移除项目原件（移动）', 'proj.removeAfterCopyNote': '仅当所有 Agent 副本内容一致且未由 SKM 托管时可用，此操作不可撤销。', 'proj.migrateConfirm': '添加到 Skill', 'proj.migrated': '已添加到 Skill',
         'proj.removeSkill': '移除', 'proj.confirmRemoveSkillTitle': '移除项目 Skill', 'proj.confirmRemoveSkillDesc': '确定要从当前项目移除“{0}”吗？', 'proj.confirmRemoveSkillNote': '该 Skill 在项目所有 Agent 目录中的副本都会被永久删除，此操作不可撤销。', 'proj.projectSkillRemoved': '项目 Skill 已移除',
     }
 };
@@ -155,11 +155,60 @@ function t(key) {
 
 function setLang(lang) {
     if (!translations[lang] || lang === currentLang) return;
-    currentLang = lang;
-    localStorage.setItem('skm-lang', lang);
-    document.documentElement.lang = lang;
-    updateStaticLabels();
-    App.navigate(App.currentPage, false);
+    suppressTransitionsForSwap(function () {
+        currentLang = lang;
+        localStorage.setItem('skm-lang', lang);
+        document.documentElement.lang = lang;
+        document.documentElement.dataset.language = lang;
+        updateStaticLabels();
+        repaintCurrentPageLanguage();
+        refreshOpenSettingsLanguage();
+    });
+}
+
+function suppressTransitionsForSwap(update) {
+    var style = document.createElement('style');
+    style.textContent = '*,*::before,*::after{transition:none !important}';
+    document.head.appendChild(style);
+    update();
+    void document.body.offsetHeight;
+    requestAnimationFrame(function () {
+        requestAnimationFrame(function () { style.remove(); });
+    });
+}
+
+function repaintCurrentPageLanguage() {
+    var container = document.getElementById('main-content');
+    var loading = container && container.querySelector('.loading-full');
+    if (loading) {
+        var label = loading.querySelector('p');
+        if (label) label.textContent = t('loading');
+        return;
+    }
+    if (App.currentPage === 'library' && typeof paintLibrary === 'function') paintLibrary();
+    if (App.currentPage === 'prompts' && typeof paintPrompts === 'function') paintPrompts();
+    if (App.currentPage === 'projects' && typeof paintProjects === 'function') paintProjects();
+}
+
+function refreshOpenSettingsLanguage() {
+    var modal = document.querySelector('.modal.settings-modal');
+    if (!modal) return;
+    modal.querySelector('.modal-title').textContent = t('settings.title');
+    var close = modal.querySelector('.modal-close');
+    close.setAttribute('aria-label', t('lib.close'));
+    var action = modal.querySelector('.modal-actions [data-close-modal]');
+    if (action) action.textContent = t('lib.close');
+    var nav = modal.querySelector('.settings-nav');
+    nav.setAttribute('aria-label', t('settings.title'));
+    var labels = { general: 'settings.general', git: 'settings.gitSync' };
+    nav.querySelectorAll('[data-settings-section]').forEach(function (button) {
+        button.querySelector('span').textContent = t(labels[button.dataset.settingsSection]);
+    });
+    renderSettingsSection();
+    requestAnimationFrame(function () {
+        var selected = modal.querySelector('[data-settings-lang="' + currentLang + '"]');
+        if (selected) selected.focus({ preventScroll: true });
+    });
 }
 
 function updateStaticLabels() {
@@ -185,16 +234,11 @@ function updateStaticLabels() {
 function setTheme(theme) {
     theme = theme === 'light' ? 'light' : 'dark';
     if (theme === currentTheme) return;
-    var style = document.createElement('style');
-    style.textContent = '*,*::before,*::after{transition:none !important}';
-    document.head.appendChild(style);
-    currentTheme = theme;
-    localStorage.setItem('skm-theme', theme);
-    document.documentElement.dataset.theme = theme;
-    document.documentElement.style.colorScheme = theme;
-    void document.body.offsetHeight;
-    requestAnimationFrame(function () {
-        requestAnimationFrame(function () { style.remove(); });
+    suppressTransitionsForSwap(function () {
+        currentTheme = theme;
+        localStorage.setItem('skm-theme', theme);
+        document.documentElement.dataset.theme = theme;
+        document.documentElement.style.colorScheme = theme;
     });
 }
 
@@ -218,6 +262,7 @@ function uiIcon(name) {
         trash: '<path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"/>',
         refresh: '<path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.1 8.5A7 7 0 0 1 18.8 7L20 12M4 12l1.2 5A7 7 0 0 0 17.9 15.5"/>',
         folder: '<path d="M3.5 6.5A2.5 2.5 0 0 1 6 4h4l2 2h6A2.5 2.5 0 0 1 20.5 8.5v8A2.5 2.5 0 0 1 18 19H6a2.5 2.5 0 0 1-2.5-2.5v-10Z"/>',
+        archive: '<path d="M5 4h14v4H5zM6 8h12v12H6zM10 12h4"/>',
         library: '<path d="M4 6.5A2.5 2.5 0 0 1 6.5 4H20v15.5H6.5A2.5 2.5 0 0 1 4 17V6.5Z"/><path d="M4 17a2.5 2.5 0 0 1 2.5-2.5H20M8 8h8"/>',
         check: '<path d="m5 12 4.5 4.5L19 7"/>',
         alert: '<path d="M10.3 4.2 2.8 17.3A1.8 1.8 0 0 0 4.4 20h15.2a1.8 1.8 0 0 0 1.6-2.7L13.7 4.2a2 2 0 0 0-3.4 0ZM12 9v4M12 17h.01"/>',
@@ -422,7 +467,6 @@ function bindGeneralSettings() {
             var lang = button.dataset.settingsLang;
             if (lang === currentLang) return;
             setLang(lang);
-            openSettings('general');
         });
     });
     document.getElementById('settings-dark-mode').addEventListener('change', function (event) {
@@ -475,22 +519,11 @@ function gitSettingsMarkup(workspace, sources) {
         uiIcon('link') + t('workspace.connect') + '</button></div></section><section class="git-source-section"><div class="git-settings-header"><div><h3>' +
         escapeHtml(t('workspace.externalTitle')) + '</h3><p>' + escapeHtml(t('workspace.externalDesc')) + '</p></div><span class="git-source-count">' + sources.length +
         '</span></div><span class="form-label">' +
-        escapeHtml(t('settings.gitSources')) + '</span><div class="git-source-list">' + sourceList + '</div></section>' +
-        '<section class="git-source-form"><div class="git-source-form-heading"><span class="settings-section-icon" aria-hidden="true">' + uiIcon('plus') +
-        '</span><strong>' + escapeHtml(t('settings.gitAdd')) + '</strong></div><div class="git-source-form-grid"><label class="form-group"><span class="form-label">' +
-        escapeHtml(t('settings.gitName')) + '</span><input class="input" id="settings-git-name" autocomplete="off" placeholder="personal"></label>' +
-        '<label class="form-group git-repository-field"><span class="form-label">' + escapeHtml(t('settings.gitRepository')) +
-        '</span><input class="input mono" id="settings-git-input" autocomplete="off" spellcheck="false" placeholder="git@github.com:owner/skills.git"></label>' +
-        '<label class="form-group"><span class="form-label">' + escapeHtml(t('settings.gitRef')) + '</span><input class="input mono" id="settings-git-ref" autocomplete="off" spellcheck="false" placeholder="main"></label>' +
-        '<label class="form-group git-paths-field"><span class="form-label">' + escapeHtml(t('settings.gitPaths')) + '</span><input class="input mono" id="settings-git-paths" autocomplete="off" spellcheck="false" placeholder="skills/review, skills/release"></label></div>' +
-        '<p class="form-hint">' + escapeHtml(t('settings.gitPathsHint')) + '</p><div class="git-credentials-note"><span aria-hidden="true">' + uiIcon('lock') +
-        '</span><div><strong>' + escapeHtml(t('settings.gitCredentials')) + '</strong><p>' + escapeHtml(t('settings.gitCredentialsDesc')) + '</p></div></div>' +
-        '<div class="git-source-form-actions"><button class="btn btn-primary" type="button" id="btn-save-git-source">' + uiIcon('plus') + t('settings.gitSave') + '</button></div></section></div>';
+        escapeHtml(t('settings.gitSources')) + '</span><div class="git-source-list">' + sourceList + '</div></section></div>';
 }
 
 function bindGitSettings() {
     document.getElementById('btn-save-workspace').addEventListener('click', saveWorkspace);
-    document.getElementById('btn-save-git-source').addEventListener('click', saveGitSource);
     document.querySelectorAll('[data-remove-git-source]').forEach(function (button) {
         button.addEventListener('click', function () { confirmRemoveGitSource(button.dataset.removeGitSource); });
     });
@@ -519,37 +552,6 @@ async function saveWorkspace() {
     } catch (err) {
         button.disabled = false;
         button.innerHTML = uiIcon('link') + t('workspace.connect');
-        showToast(err.message, 'error');
-    }
-}
-
-async function saveGitSource() {
-    var input = document.getElementById('settings-git-input');
-    var rawInput = input.value.trim();
-    if (!rawInput) {
-        input.setAttribute('aria-invalid', 'true');
-        input.focus();
-        showToast(t('lib.gitRequired'), 'error');
-        return;
-    }
-    var paths = document.getElementById('settings-git-paths').value.split(/[\n,]/).map(function (value) { return value.trim(); }).filter(Boolean);
-    paths = paths.filter(function (value, index) { return paths.indexOf(value) === index; });
-    var button = document.getElementById('btn-save-git-source');
-    button.disabled = true;
-    button.innerHTML = '<span class="spinner spinner-sm" aria-hidden="true"></span>' + t('settings.gitSaving');
-    try {
-        await api.post('/api/sources', {
-            input: rawInput,
-            name: document.getElementById('settings-git-name').value.trim(),
-            ref: document.getElementById('settings-git-ref').value.trim(),
-            paths: paths,
-            tags: [],
-        });
-        showToast(t('settings.gitAdded'));
-        await loadGitSettings();
-    } catch (err) {
-        button.disabled = false;
-        button.innerHTML = uiIcon('plus') + t('settings.gitSave');
         showToast(err.message, 'error');
     }
 }
@@ -698,6 +700,7 @@ var App = {
 
     init: function () {
         document.documentElement.lang = currentLang;
+        document.documentElement.dataset.language = currentLang;
         this.setupNav();
         this.setupSettings();
         this.setupGitSync();

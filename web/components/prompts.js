@@ -36,7 +36,7 @@ function paintPrompts() {
         '<button class="btn btn-primary" type="button" id="btn-new-prompt">' + uiIcon('plus') + t('prompt.new') + '</button></div></div>';
     html += '<div class="library-tools prompt-tools"><label class="search-box"><span class="sr-only">' + t('prompt.search') + '</span><span class="search-mark" aria-hidden="true">' +
         uiIcon('search') + '</span><input class="input" id="prompt-search" value="' + escapeHtml(promptState.query) + '" placeholder="' + t('prompt.searchPlaceholder') + '"></label>' +
-        '<div class="filter-bar"><span class="filter-label">' + t('lib.tags') + '</span><div class="tag-filter-list"><button class="tag clickable' +
+        '<div class="filter-bar"><span class="filter-label">' + uiIcon('tags') + t('lib.tags') + '</span><div class="tag-filter-list"><button class="tag clickable' +
         (!promptState.activeTag ? ' active' : '') + '" type="button" data-prompt-tag="">' + t('prompt.all') + '</button>';
     tags.forEach(function (tag) {
         html += '<button class="tag clickable' + (promptState.activeTag === tag.name ? ' active' : '') + '" type="button" data-prompt-tag="' +
