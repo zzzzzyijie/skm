@@ -198,6 +198,7 @@ type WorkspaceState struct {
 	Revision     string            `yaml:"revision,omitempty" json:"revision,omitempty"`
 	SkillBases   map[string]string `yaml:"skillBases,omitempty" json:"skillBases,omitempty"`
 	PromptBases  map[string]string `yaml:"promptBases,omitempty" json:"promptBases,omitempty"`
+	SourceBases  map[string]string `yaml:"sourceBases,omitempty" json:"sourceBases,omitempty"`
 	LastSyncedAt time.Time         `yaml:"lastSyncedAt,omitempty" json:"lastSyncedAt,omitempty"`
 }
 
@@ -208,10 +209,22 @@ type WorkspaceEntry struct {
 	Tags []string `yaml:"tags,omitempty" json:"tags,omitempty"`
 }
 
+// WorkspaceSource is the portable form of a Git source binding carried in the
+// personal workspace. Revision and UpdatedAt stay device-local because they
+// only describe the local checkout cache.
+type WorkspaceSource struct {
+	Name  string   `yaml:"name" json:"name"`
+	URL   string   `yaml:"url" json:"url"`
+	Ref   string   `yaml:"ref,omitempty" json:"ref,omitempty"`
+	Paths []string `yaml:"paths,omitempty" json:"paths,omitempty"`
+	Tags  []string `yaml:"tags,omitempty" json:"tags,omitempty"`
+}
+
 type WorkspaceManifest struct {
-	Version int              `yaml:"version" json:"version"`
-	Skills  []WorkspaceEntry `yaml:"skills,omitempty" json:"skills"`
-	Prompts []WorkspaceEntry `yaml:"prompts,omitempty" json:"prompts"`
+	Version int               `yaml:"version" json:"version"`
+	Skills  []WorkspaceEntry  `yaml:"skills,omitempty" json:"skills"`
+	Prompts []WorkspaceEntry  `yaml:"prompts,omitempty" json:"prompts"`
+	Sources []WorkspaceSource `yaml:"sources,omitempty" json:"sources,omitempty"`
 }
 
 type PromptVariable struct {

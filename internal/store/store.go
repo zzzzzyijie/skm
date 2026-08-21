@@ -323,6 +323,9 @@ func (s *Store) LoadWorkspaceState() (domain.WorkspaceState, error) {
 	if state.PromptBases == nil {
 		state.PromptBases = map[string]string{}
 	}
+	if state.SourceBases == nil {
+		state.SourceBases = map[string]string{}
+	}
 	return state, nil
 }
 

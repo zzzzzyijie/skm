@@ -5,8 +5,10 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/zzzzzyijie/skm/internal/catalog"
 	"github.com/zzzzzyijie/skm/internal/domain"
 	"github.com/zzzzzyijie/skm/internal/planner"
+	gitSource "github.com/zzzzzyijie/skm/internal/source"
 	"github.com/zzzzzyijie/skm/internal/workspace"
 )
 
@@ -53,11 +55,15 @@ func (s *Server) handleConfigureWorkspace(w http.ResponseWriter, r *http.Request
 	writeJSON(w, http.StatusOK, workspaceView{Configured: true, Config: &value})
 }
 
+func (s *Server) newWorkspaceManager() *workspace.Manager {
+	return workspace.New(s.store).WithSources(gitSource.NewGitManager(s.store, catalog.New(s.store)))
+}
+
 func (s *Server) handlePreviewWorkspace(w http.ResponseWriter, r *http.Request) {
 	var value workspace.Preview
 	err := s.withLock(func() error {
 		var previewErr error
-		value, previewErr = workspace.New(s.store).Preview()
+		value, previewErr = s.newWorkspaceManager().Preview()
 		return previewErr
 	})
 	if err != nil {
@@ -78,7 +84,7 @@ func (s *Server) handleWorkspaceSync(w http.ResponseWriter, r *http.Request) {
 	var result workspace.Result
 	err := s.withLock(func() error {
 		var syncErr error
-		result, syncErr = workspace.New(s.store).ApplyResolved(body.Resolutions)
+		result, syncErr = s.newWorkspaceManager().ApplyResolved(body.Resolutions)
 		if syncErr != nil {
 			return syncErr
 		}

@@ -12,8 +12,265 @@ import (
 	"github.com/zzzzzyijie/skm/internal/domain"
 	promptpkg "github.com/zzzzzyijie/skm/internal/prompt"
 	skillpkg "github.com/zzzzzyijie/skm/internal/skill"
+	gitSource "github.com/zzzzzyijie/skm/internal/source"
 	"github.com/zzzzzyijie/skm/internal/store"
 )
+
+// upstreamSkillRepo creates a bare git repository containing one Skill.
+func upstreamSkillRepo(t *testing.T, name string) string {
+	t.Helper()
+	remote := filepath.Join(t.TempDir(), name+".git")
+	runGit(t, "", "init", "--bare", "-b", "main", remote)
+	work := filepath.Join(t.TempDir(), name+"-work")
+	skillDir := filepath.Join(work, name)
+	if err := os.MkdirAll(skillDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	content := "---\nname: " + name + "\ndescription: Upstream Skill\n---\n\nUpstream body.\n"
+	if err := os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	runGit(t, work, "init", "-b", "main", ".")
+	runGit(t, work, "add", "-A")
+	runGit(t, work, "-c", "user.email=skm@example.com", "-c", "user.name=skm", "commit", "-m", "init")
+	runGit(t, work, "push", remote, "main")
+	return remote
+}
+
+func newTestWorkspaceManager(storage *store.Store) *Manager {
+	return New(storage).WithSources(gitSource.NewGitManager(storage, catalog.New(storage)))
+}
+
+func TestWorkspaceSyncsSourceBindingsAcrossDevices(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git is not installed")
+	}
+	upstream := upstreamSkillRepo(t, "review")
+	remote := filepath.Join(t.TempDir(), "workspace.git")
+	runGit(t, "", "init", "--bare", "-b", "main", remote)
+
+	deviceA := workspaceStore(t)
+	if _, _, err := gitSource.NewGitManager(deviceA, catalog.New(deviceA)).AddSelected(domain.Source{Name: "team", URL: upstream, Tags: []string{"shared"}}, nil); err != nil {
+		t.Fatal(err)
+	}
+	managerA := newTestWorkspaceManager(deviceA)
+	if _, err := managerA.Configure(domain.WorkspaceConfig{URL: remote}); err != nil {
+		t.Fatal(err)
+	}
+	preview, err := managerA.Preview()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var sourceUploads int
+	for _, change := range preview.Changes {
+		if change.Kind == "source" && change.Action == "upload" {
+			sourceUploads++
+		}
+	}
+	if sourceUploads != 1 {
+		t.Fatalf("source upload preview = %#v", preview.Changes)
+	}
+	if _, err := managerA.Apply(); err != nil {
+		t.Fatal(err)
+	}
+
+	deviceB := workspaceStore(t)
+	managerB := newTestWorkspaceManager(deviceB)
+	if _, err := managerB.Configure(domain.WorkspaceConfig{URL: remote}); err != nil {
+		t.Fatal(err)
+	}
+	result, err := managerB.Apply()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.SourceWarnings) != 0 {
+		t.Fatalf("device B source warnings = %#v", result.SourceWarnings)
+	}
+	sources, err := deviceB.LoadSources()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(sources.Sources) != 1 || sources.Sources[0].Name != "team" || sources.Sources[0].URL != upstream {
+		t.Fatalf("device B sources = %#v", sources.Sources)
+	}
+	if _, err := catalog.New(deviceB).ResolveLibrary("team/review"); err != nil {
+		t.Fatalf("device B restored source Skill: %v", err)
+	}
+}
+
+func TestWorkspaceSourceFetchFailureIsSoft(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git is not installed")
+	}
+	remote := filepath.Join(t.TempDir(), "workspace.git")
+	runGit(t, "", "init", "--bare", "-b", "main", remote)
+
+	// Device A carries a broken binding (URL never fetchable); publishing the
+	// binding itself must still succeed.
+	deviceA := workspaceStore(t)
+	brokenURL := filepath.Join(t.TempDir(), "missing.git")
+	if err := deviceA.SaveSources(domain.Sources{Sources: []domain.Source{{Name: "broken", URL: brokenURL, Tags: []string{"test"}}}}); err != nil {
+		t.Fatal(err)
+	}
+	managerA := newTestWorkspaceManager(deviceA)
+	if _, err := managerA.Configure(domain.WorkspaceConfig{URL: remote}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := managerA.Apply(); err != nil {
+		t.Fatal(err)
+	}
+
+	// Device B downloads the binding: it registers locally, the fetch fails,
+	// and the failure surfaces as a soft warning instead of a sync error.
+	deviceB := workspaceStore(t)
+	managerB := newTestWorkspaceManager(deviceB)
+	if _, err := managerB.Configure(domain.WorkspaceConfig{URL: remote}); err != nil {
+		t.Fatal(err)
+	}
+	result, err := managerB.Apply()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.SourceWarnings) != 1 || !strings.Contains(result.SourceWarnings[0], "broken") {
+		t.Fatalf("broken source warnings = %#v", result.SourceWarnings)
+	}
+	sources, err := deviceB.LoadSources()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(sources.Sources) != 1 || sources.Sources[0].Name != "broken" || sources.Sources[0].URL != brokenURL {
+		t.Fatalf("broken source binding = %#v", sources.Sources)
+	}
+}
+
+func TestWorkspaceSourceDeletionConflict(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git is not installed")
+	}
+	upstream := upstreamSkillRepo(t, "review")
+	remote := filepath.Join(t.TempDir(), "workspace.git")
+	runGit(t, "", "init", "--bare", "-b", "main", remote)
+
+	deviceA := workspaceStore(t)
+	if _, _, err := gitSource.NewGitManager(deviceA, catalog.New(deviceA)).AddSelected(domain.Source{Name: "team", URL: upstream}, nil); err != nil {
+		t.Fatal(err)
+	}
+	managerA := newTestWorkspaceManager(deviceA)
+	if _, err := managerA.Configure(domain.WorkspaceConfig{URL: remote}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := managerA.Apply(); err != nil {
+		t.Fatal(err)
+	}
+
+	deviceB := workspaceStore(t)
+	managerB := newTestWorkspaceManager(deviceB)
+	if _, err := managerB.Configure(domain.WorkspaceConfig{URL: remote}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := managerB.Apply(); err != nil {
+		t.Fatal(err)
+	}
+	if err := deviceB.SaveState(domain.State{Activations: []domain.Activation{{SkillID: "team/review", Name: "review"}}}); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := gitSource.NewGitManager(deviceA, catalog.New(deviceA)).Remove("team"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := managerA.Apply(); err != nil {
+		t.Fatal(err)
+	}
+	preview, err := managerB.Preview()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var sourceConflict *Change
+	for index := range preview.Changes {
+		if preview.Changes[index].Kind == "source" {
+			sourceConflict = &preview.Changes[index]
+		}
+	}
+	if sourceConflict == nil || sourceConflict.Action != "conflict" || sourceConflict.Reason != "enabled-source-delete" {
+		t.Fatalf("enabled source deletion preview = %#v", preview.Changes)
+	}
+	if _, err := managerB.ApplyResolved(map[string]string{"source:team": "remote"}); !errors.Is(err, ErrConflict) {
+		t.Fatalf("remote deletion of enabled source should stay blocked, got %v", err)
+	}
+	if err := deviceB.SaveState(domain.State{}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := managerB.ApplyResolved(map[string]string{"source:team": "remote"}); err != nil {
+		t.Fatalf("resolve source deletion after disabling: %v", err)
+	}
+	sources, err := deviceB.LoadSources()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(sources.Sources) != 0 {
+		t.Fatalf("source deletion applied = %#v", sources.Sources)
+	}
+}
+
+func TestWorkspaceSourceURLConflict(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git is not installed")
+	}
+	upstreamA := upstreamSkillRepo(t, "review")
+	upstreamB := upstreamSkillRepo(t, "deploy")
+	remote := filepath.Join(t.TempDir(), "workspace.git")
+	runGit(t, "", "init", "--bare", "-b", "main", remote)
+
+	deviceA := workspaceStore(t)
+	if _, _, err := gitSource.NewGitManager(deviceA, catalog.New(deviceA)).AddSelected(domain.Source{Name: "team", URL: upstreamA}, nil); err != nil {
+		t.Fatal(err)
+	}
+	managerA := newTestWorkspaceManager(deviceA)
+	if _, err := managerA.Configure(domain.WorkspaceConfig{URL: remote}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := managerA.Apply(); err != nil {
+		t.Fatal(err)
+	}
+
+	deviceB := workspaceStore(t)
+	if _, _, err := gitSource.NewGitManager(deviceB, catalog.New(deviceB)).AddSelected(domain.Source{Name: "team", URL: upstreamB}, nil); err != nil {
+		t.Fatal(err)
+	}
+	managerB := newTestWorkspaceManager(deviceB)
+	if _, err := managerB.Configure(domain.WorkspaceConfig{URL: remote}); err != nil {
+		t.Fatal(err)
+	}
+	preview, err := managerB.Preview()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var sourceConflict *Change
+	for index := range preview.Changes {
+		if preview.Changes[index].Kind == "source" {
+			sourceConflict = &preview.Changes[index]
+		}
+	}
+	if sourceConflict == nil || sourceConflict.Action != "conflict" {
+		t.Fatalf("source URL conflict preview = %#v", preview.Changes)
+	}
+	if _, err := managerB.Apply(); !errors.Is(err, ErrConflict) {
+		t.Fatalf("conflicting source sync should stop, got %v", err)
+	}
+	if _, err := managerB.ApplyResolved(map[string]string{"source:team": "local"}); err != nil {
+		t.Fatalf("resolve source conflict with local binding: %v", err)
+	}
+	sources, err := deviceB.LoadSources()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(sources.Sources) != 1 || sources.Sources[0].URL != upstreamB {
+		t.Fatalf("resolved source binding = %#v", sources.Sources)
+	}
+	if _, err := catalog.New(deviceB).ResolveLibrary("team/deploy"); err != nil {
+		t.Fatalf("local source Skill preserved: %v", err)
+	}
+}
 
 func TestWorkspaceSyncsProjectMigratedSkill(t *testing.T) {
 	if _, err := exec.LookPath("git"); err != nil {

@@ -18,6 +18,7 @@ import (
 	"github.com/zzzzzyijie/skm/internal/fsx"
 	promptpkg "github.com/zzzzzyijie/skm/internal/prompt"
 	"github.com/zzzzzyijie/skm/internal/skill"
+	"github.com/zzzzzyijie/skm/internal/source"
 	"github.com/zzzzzyijie/skm/internal/store"
 	"github.com/zzzzzyijie/skm/internal/tags"
 	"gopkg.in/yaml.v3"
@@ -44,6 +45,7 @@ type Preview struct {
 	RemoteRevision  string                  `json:"remoteRevision,omitempty"`
 	Skills          int                     `json:"skills"`
 	Prompts         int                     `json:"prompts"`
+	Sources         int                     `json:"sources"`
 	Uploads         int                     `json:"uploads"`
 	Downloads       int                     `json:"downloads"`
 	Deletes         int                     `json:"deletes"`
@@ -59,19 +61,29 @@ type Result struct {
 	Committed       bool         `json:"committed"`
 	Applied         bool         `json:"applied"`
 	DeploymentError string       `json:"deploymentError,omitempty"`
+	SourceWarnings  []string     `json:"sourceWarnings,omitempty"`
 	SyncedAt        time.Time    `json:"syncedAt"`
 	Plan            *domain.Plan `json:"plan,omitempty"`
 }
 
 type Manager struct {
 	Store   *store.Store
+	Sources *source.GitManager
 	GitPath string
 	Now     func() time.Time
 }
 
+// WithSources attaches a Git source manager so workspace sync can register
+// and fetch source bindings published from other devices.
+func (m *Manager) WithSources(g *source.GitManager) *Manager {
+	m.Sources = g
+	return m
+}
+
 type contentItem struct {
-	Entry domain.WorkspaceEntry
-	Path  string
+	Entry  domain.WorkspaceEntry
+	Path   string
+	Source domain.WorkspaceSource
 }
 
 type prepared struct {
@@ -85,8 +97,10 @@ type prepared struct {
 	manifestFound bool
 	localSkills   map[string]contentItem
 	localPrompts  map[string]contentItem
+	localSources  map[string]contentItem
 	remoteSkills  map[string]contentItem
 	remotePrompts map[string]contentItem
+	remoteSources map[string]contentItem
 }
 
 func New(storage *store.Store) *Manager {
@@ -165,12 +179,16 @@ func (m *Manager) ApplyResolved(resolutions map[string]string) (Result, error) {
 
 	finalSkills := cloneItems(value.remoteSkills)
 	finalPrompts := cloneItems(value.remotePrompts)
+	finalSources := cloneItems(value.remoteSources)
 	for _, change := range value.preview.Changes {
 		var local map[string]contentItem
 		var final map[string]contentItem
-		if change.Kind == "skill" {
+		switch change.Kind {
+		case "skill":
 			local, final = value.localSkills, finalSkills
-		} else {
+		case "source":
+			local, final = value.localSources, finalSources
+		default:
 			local, final = value.localPrompts, finalPrompts
 		}
 		switch change.Action {
@@ -179,15 +197,19 @@ func (m *Manager) ApplyResolved(resolutions map[string]string) (Result, error) {
 			if previous, ok := final[change.ID]; ok && previous.Entry.Path != "" {
 				item.Entry.Path = previous.Entry.Path
 			}
-			if err := m.writeItem(value.workspaceRoot, change.Kind, item); err != nil {
-				return Result{Preview: value.preview}, err
+			if change.Kind != "source" {
+				if err := m.writeItem(value.workspaceRoot, change.Kind, item); err != nil {
+					return Result{Preview: value.preview}, err
+				}
+				item.Path = workspaceItemPath(value.workspaceRoot, change.Kind, item.Entry.Path)
 			}
-			item.Path = workspaceItemPath(value.workspaceRoot, change.Kind, item.Entry.Path)
 			final[change.ID] = item
 		case "delete-remote":
-			if item, ok := final[change.ID]; ok {
-				if err := removeWorkspaceItem(value.workspaceRoot, change.Kind, item.Entry.Path); err != nil {
-					return Result{Preview: value.preview}, err
+			if change.Kind != "source" {
+				if item, ok := final[change.ID]; ok {
+					if err := removeWorkspaceItem(value.workspaceRoot, change.Kind, item.Entry.Path); err != nil {
+						return Result{Preview: value.preview}, err
+					}
 				}
 			}
 			delete(final, change.ID)
@@ -198,6 +220,7 @@ func (m *Manager) ApplyResolved(resolutions map[string]string) (Result, error) {
 		Version: domain.WorkspaceSchemaVersion,
 		Skills:  entriesFromItems(finalSkills),
 		Prompts: entriesFromItems(finalPrompts),
+		Sources: sourcesFromItems(finalSources),
 	}
 	manifestData, err := yaml.Marshal(manifest)
 	if err != nil {
@@ -224,14 +247,15 @@ func (m *Manager) ApplyResolved(resolutions map[string]string) (Result, error) {
 		}
 	}
 
-	if err := m.applyLocal(value.workspaceRoot, finalSkills, finalPrompts, revision); err != nil {
-		return Result{Preview: value.preview, Revision: revision, Committed: committed}, fmt.Errorf("workspace was published but local apply failed; retry sync to recover: %w", err)
+	sourceWarnings := m.applyLocalSources(finalSources)
+	if err := m.applyLocal(value.workspaceRoot, finalSkills, finalPrompts, finalSources, revision); err != nil {
+		return Result{Preview: value.preview, Revision: revision, Committed: committed, SourceWarnings: sourceWarnings}, fmt.Errorf("workspace was published but local apply failed; retry sync to recover: %w", err)
 	}
 	if err := fsx.ReplacePath(value.checkout, m.Store.WorkspaceCheckoutPath()); err != nil {
-		return Result{Preview: value.preview, Revision: revision, Committed: committed, Applied: true}, fmt.Errorf("workspace applied but checkout cache failed: %w", err)
+		return Result{Preview: value.preview, Revision: revision, Committed: committed, Applied: true, SourceWarnings: sourceWarnings}, fmt.Errorf("workspace applied but checkout cache failed: %w", err)
 	}
 	return Result{
-		Preview: value.preview, Revision: revision, Committed: committed, Applied: true, SyncedAt: m.Now().UTC(),
+		Preview: value.preview, Revision: revision, Committed: committed, Applied: true, SourceWarnings: sourceWarnings, SyncedAt: m.Now().UTC(),
 	}, nil
 }
 
@@ -251,10 +275,16 @@ func resolveConflicts(value *prepared, resolutions map[string]string) {
 		if change.Reason == "enabled-skill-delete" && choice == "remote" {
 			continue
 		}
+		if change.Reason == "enabled-source-delete" && choice == "remote" {
+			continue
+		}
 		var local, remote map[string]contentItem
-		if change.Kind == "skill" {
+		switch change.Kind {
+		case "skill":
 			local, remote = value.localSkills, value.remoteSkills
-		} else {
+		case "source":
+			local, remote = value.localSources, value.remoteSources
+		default:
 			local, remote = value.localPrompts, value.remotePrompts
 		}
 		_, hasLocal := local[change.ID]
@@ -322,12 +352,22 @@ func (m *Manager) prepare() (prepared, error) {
 		_ = os.RemoveAll(tempRoot)
 		return prepared{}, err
 	}
+	localSources, err := m.scanLocalSources()
+	if err != nil {
+		_ = os.RemoveAll(tempRoot)
+		return prepared{}, err
+	}
 	remoteSkills, remotePrompts, err := loadRemote(workspaceRoot, manifest)
 	if err != nil {
 		_ = os.RemoveAll(tempRoot)
 		return prepared{}, err
 	}
-	preview, err := m.buildPreview(config, state, remoteRevision, remoteAvailable, localSkills, localPrompts, remoteSkills, remotePrompts)
+	remoteSources, err := loadRemoteSources(manifest)
+	if err != nil {
+		_ = os.RemoveAll(tempRoot)
+		return prepared{}, err
+	}
+	preview, err := m.buildPreview(config, state, remoteRevision, remoteAvailable, localSkills, localPrompts, localSources, remoteSkills, remotePrompts, remoteSources)
 	if err != nil {
 		_ = os.RemoveAll(tempRoot)
 		return prepared{}, err
@@ -335,7 +375,8 @@ func (m *Manager) prepare() (prepared, error) {
 	return prepared{
 		preview: preview, config: config, state: state, checkout: checkout, tempRoot: tempRoot,
 		workspaceRoot: workspaceRoot, manifestPath: manifestPath, manifestFound: found,
-		localSkills: localSkills, localPrompts: localPrompts, remoteSkills: remoteSkills, remotePrompts: remotePrompts,
+		localSkills: localSkills, localPrompts: localPrompts, localSources: localSources,
+		remoteSkills: remoteSkills, remotePrompts: remotePrompts, remoteSources: remoteSources,
 	}, nil
 }
 
@@ -418,10 +459,66 @@ func syncableLocalSkill(value domain.Skill) bool {
 	return value.ProjectRoot == "" || value.Mode == domain.ModeCopy
 }
 
-func (m *Manager) buildPreview(config domain.WorkspaceConfig, state domain.WorkspaceState, revision string, remoteAvailable bool, localSkills, localPrompts, remoteSkills, remotePrompts map[string]contentItem) (Preview, error) {
+// scanLocalSources collects local Git source bindings as workspace items so
+// the binding itself (not the derived Skill content) syncs across devices.
+func (m *Manager) scanLocalSources() (map[string]contentItem, error) {
+	sources, err := m.Store.LoadSources()
+	if err != nil {
+		return nil, err
+	}
+	result := make(map[string]contentItem, len(sources.Sources))
+	for _, value := range sources.Sources {
+		result[value.Name] = sourceContentItem(value)
+	}
+	return result, nil
+}
+
+func sourceContentItem(value domain.Source) contentItem {
+	binding := domain.WorkspaceSource{Name: value.Name, URL: value.URL, Ref: value.Ref, Paths: append([]string(nil), value.Paths...), Tags: append([]string(nil), value.Tags...)}
+	return contentItem{
+		Entry:  domain.WorkspaceEntry{ID: value.Name, Hash: sourceFingerprint(binding)},
+		Source: binding,
+	}
+}
+
+// sourceFingerprint hashes the portable parts of a source binding. Revision
+// and UpdatedAt are local cache metadata and deliberately excluded so an
+// upstream refresh does not surface as a workspace change.
+func sourceFingerprint(binding domain.WorkspaceSource) string {
+	paths := append([]string(nil), binding.Paths...)
+	sort.Strings(paths)
+	tagList := append([]string(nil), binding.Tags...)
+	sort.Strings(tagList)
+	digest := sha256.Sum256([]byte(binding.Name + "\x00" + binding.URL + "\x00" + binding.Ref + "\x00" + strings.Join(paths, "\x00") + "\x00" + strings.Join(tagList, "\x00")))
+	return hex.EncodeToString(digest[:])
+}
+
+func loadRemoteSources(manifest domain.WorkspaceManifest) (map[string]contentItem, error) {
+	result := make(map[string]contentItem, len(manifest.Sources))
+	for _, binding := range manifest.Sources {
+		if !source.ValidName(binding.Name) {
+			return nil, fmt.Errorf("invalid workspace source name %q", binding.Name)
+		}
+		if err := source.ValidateURL(binding.URL); err != nil {
+			return nil, fmt.Errorf("workspace source %s: %w", binding.Name, err)
+		}
+		normalizedTags, err := tags.Normalize(binding.Tags, nil)
+		if err != nil {
+			return nil, err
+		}
+		binding.Tags = normalizedTags
+		result[binding.Name] = contentItem{
+			Entry:  domain.WorkspaceEntry{ID: binding.Name, Hash: sourceFingerprint(binding)},
+			Source: binding,
+		}
+	}
+	return result, nil
+}
+
+func (m *Manager) buildPreview(config domain.WorkspaceConfig, state domain.WorkspaceState, revision string, remoteAvailable bool, localSkills, localPrompts, localSources, remoteSkills, remotePrompts, remoteSources map[string]contentItem) (Preview, error) {
 	preview := Preview{
 		Configured: true, Config: &config, BaseRevision: state.Revision, RemoteRevision: revision,
-		Skills: len(localSkills), Prompts: len(localPrompts), LastSyncedAt: state.LastSyncedAt, RemoteAvailable: remoteAvailable,
+		Skills: len(localSkills), Prompts: len(localPrompts), Sources: len(localSources), LastSyncedAt: state.LastSyncedAt, RemoteAvailable: remoteAvailable,
 	}
 	changes, err := compareKind("skill", state.SkillBases, localSkills, remoteSkills)
 	if err != nil {
@@ -431,7 +528,12 @@ func (m *Manager) buildPreview(config domain.WorkspaceConfig, state domain.Works
 	if err != nil {
 		return Preview{}, err
 	}
+	sourceChanges, err := compareKind("source", state.SourceBases, localSources, remoteSources)
+	if err != nil {
+		return Preview{}, err
+	}
 	preview.Changes = append(changes, promptChanges...)
+	preview.Changes = append(preview.Changes, sourceChanges...)
 	stateValue, err := m.Store.LoadState()
 	if err != nil {
 		return Preview{}, err
@@ -440,6 +542,19 @@ func (m *Manager) buildPreview(config domain.WorkspaceConfig, state domain.Works
 	for _, activation := range stateValue.Activations {
 		enabled[activation.SkillID] = struct{}{}
 	}
+	enabledSources := make(map[string]struct{})
+	if len(sourceChanges) > 0 {
+		library, err := m.Store.LoadCatalog()
+		if err != nil {
+			return Preview{}, err
+		}
+		for _, value := range library.Skills {
+			if _, active := enabled[value.ID]; !active || value.Source == "" || value.Source == "local" {
+				continue
+			}
+			enabledSources[value.Source] = struct{}{}
+		}
+	}
 	for index := range preview.Changes {
 		change := &preview.Changes[index]
 		if change.Kind == "skill" && change.Action == "delete-local" {
@@ -447,6 +562,13 @@ func (m *Manager) buildPreview(config domain.WorkspaceConfig, state domain.Works
 				change.Action = "conflict"
 				change.Reason = "enabled-skill-delete"
 				change.Detail = "remote deletion cannot remove an enabled Skill; disable it on this device first"
+			}
+		}
+		if change.Kind == "source" && change.Action == "delete-local" {
+			if _, ok := enabledSources[change.ID]; ok {
+				change.Action = "conflict"
+				change.Reason = "enabled-source-delete"
+				change.Detail = "Skills from this source are enabled on this computer; disable them before accepting the remote deletion"
 			}
 		}
 		switch change.Action {
@@ -604,7 +726,7 @@ func (m *Manager) writeItem(root, kind string, item contentItem) error {
 	return fsx.AtomicWriteFile(target, []byte(document.Content), 0o644)
 }
 
-func (m *Manager) applyLocal(root string, skills, prompts map[string]contentItem, revision string) error {
+func (m *Manager) applyLocal(root string, skills, prompts, sources map[string]contentItem, revision string) error {
 	beforeSkills, err := m.Store.LoadCatalog()
 	if err != nil {
 		return err
@@ -694,12 +816,60 @@ func (m *Manager) applyLocal(root string, skills, prompts map[string]contentItem
 	}
 	state := domain.WorkspaceState{
 		Version: domain.WorkspaceSchemaVersion, Revision: revision,
-		SkillBases: fingerprints(skills), PromptBases: fingerprints(prompts), LastSyncedAt: now,
+		SkillBases: fingerprints(skills), PromptBases: fingerprints(prompts), SourceBases: fingerprints(sources), LastSyncedAt: now,
 	}
 	if err := m.Store.SaveWorkspaceState(state); err != nil {
 		return errors.Join(err, m.Store.SaveCatalog(beforeSkills), m.Store.SavePromptCatalog(beforePrompts))
 	}
 	return nil
+}
+
+// applyLocalSources registers or removes source bindings on this device after
+// the workspace has been published. Fetch failures are returned as soft
+// warnings because the binding itself is already synced; the next source sync
+// retries the fetch.
+func (m *Manager) applyLocalSources(finalSources map[string]contentItem) []string {
+	if len(finalSources) == 0 && m.Sources == nil {
+		return nil
+	}
+	local, err := m.scanLocalSources()
+	if err != nil {
+		return []string{fmt.Sprintf("read local source bindings: %v", err)}
+	}
+	var warnings []string
+	for name, item := range finalSources {
+		if existing, ok := local[name]; ok && existing.Entry.Hash == item.Entry.Hash {
+			continue
+		}
+		if m.Sources == nil {
+			warnings = append(warnings, fmt.Sprintf("source %s was synced but not fetched (source manager unavailable)", name))
+			continue
+		}
+		binding := item.Source
+		if err := m.Sources.RegisterBinding(domain.Source{
+			Name: binding.Name, URL: binding.URL, Ref: binding.Ref, Paths: binding.Paths, Tags: binding.Tags,
+		}); err != nil {
+			warnings = append(warnings, fmt.Sprintf("register source %s: %v", name, err))
+			continue
+		}
+		if _, _, err := m.Sources.Update([]string{name}); err != nil {
+			warnings = append(warnings, fmt.Sprintf("source %s registered but not fetched: %v", name, err))
+		}
+	}
+	for name := range local {
+		if _, keep := finalSources[name]; keep {
+			continue
+		}
+		if m.Sources == nil {
+			warnings = append(warnings, fmt.Sprintf("source %s was removed remotely but stays local (source manager unavailable)", name))
+			continue
+		}
+		if _, err := m.Sources.Remove(name); err != nil {
+			warnings = append(warnings, fmt.Sprintf("remove local source %s: %v", name, err))
+		}
+	}
+	sort.Strings(warnings)
+	return warnings
 }
 
 func loadManifest(path string) (domain.WorkspaceManifest, bool, error) {
@@ -932,6 +1102,15 @@ func entriesFromItems(values map[string]contentItem) []domain.WorkspaceEntry {
 		result = append(result, value.Entry)
 	}
 	sort.Slice(result, func(i, j int) bool { return result[i].ID < result[j].ID })
+	return result
+}
+
+func sourcesFromItems(values map[string]contentItem) []domain.WorkspaceSource {
+	result := make([]domain.WorkspaceSource, 0, len(values))
+	for _, value := range values {
+		result = append(result, value.Source)
+	}
+	sort.Slice(result, func(i, j int) bool { return result[i].Name < result[j].Name })
 	return result
 }
 

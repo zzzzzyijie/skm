@@ -77,6 +77,31 @@ func (m *GitManager) AddSelected(value domain.Source, skillNames []string) (doma
 	return updated, imported, nil
 }
 
+// RegisterBinding stores a validated source binding without fetching content.
+// Workspace sync uses it so a binding published from another device is adopted
+// even when the fetch itself fails; a later source sync retries the fetch.
+func (m *GitManager) RegisterBinding(value domain.Source) error {
+	if err := validateSource(&value); err != nil {
+		return err
+	}
+	sources, err := m.Store.LoadSources()
+	if err != nil {
+		return err
+	}
+	replaced := false
+	for index := range sources.Sources {
+		if sources.Sources[index].Name == value.Name {
+			sources.Sources[index] = value
+			replaced = true
+			break
+		}
+	}
+	if !replaced {
+		sources.Sources = append(sources.Sources, value)
+	}
+	return m.Store.SaveSources(sources)
+}
+
 // FetchPinned stores immutable snapshots for a project dependency without
 // changing the user's source binding or current Library entries.
 func (m *GitManager) FetchPinned(value domain.Source) ([]domain.Skill, error) {
@@ -356,13 +381,23 @@ func selectDocuments(root string, documents []skill.Document, requestedSkills []
 
 func validateSource(value *domain.Source) error {
 	value.Name = strings.ToLower(strings.TrimSpace(value.Name))
-	if !validSourceName.MatchString(value.Name) {
+	if !ValidName(value.Name) {
 		return fmt.Errorf("invalid source name %q", value.Name)
 	}
-	if strings.TrimSpace(value.URL) == "" {
+	return ValidateURL(value.URL)
+}
+
+// ValidName reports whether name is a usable source binding name.
+func ValidName(name string) bool {
+	return validSourceName.MatchString(name)
+}
+
+// ValidateURL rejects empty URLs and URLs with embedded credentials.
+func ValidateURL(raw string) error {
+	if strings.TrimSpace(raw) == "" {
 		return fmt.Errorf("source URL is required")
 	}
-	if parsed, err := url.Parse(value.URL); err == nil && parsed.User != nil {
+	if parsed, err := url.Parse(raw); err == nil && parsed.User != nil {
 		return fmt.Errorf("source URL must not contain credentials; use Git credential storage or SSH")
 	}
 	return nil
