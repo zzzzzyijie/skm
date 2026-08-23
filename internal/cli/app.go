@@ -68,6 +68,7 @@ func (a *App) RootCommand() *cobra.Command {
 		a.newListCommand(),
 		a.newShowCommand(),
 		a.newValidateCommand(),
+		a.newUpdateCommand(),
 		a.newRemoveCommand(),
 		a.newPruneCommand(),
 		a.newEnableCommand(),

@@ -16,6 +16,7 @@ import (
 
 	"github.com/zzzzzyijie/skm/internal/catalog"
 	"github.com/zzzzzyijie/skm/internal/domain"
+	"github.com/zzzzzyijie/skm/internal/skill"
 	"github.com/zzzzzyijie/skm/internal/store"
 )
 
@@ -183,7 +184,7 @@ func TestEmbeddedLibraryUIUsesScannedManageableAgents(t *testing.T) {
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("GET /components/library.js = %d, body=%s", recorder.Code, body)
 	}
-	for _, marker := range []string{"btn-scan-agents", "agent.detected", "btn-new-custom-agent", "tagPickerMarkup", "btn-create-tag", "/api/skill-tags", "detail-new-tag", "createSkillDetailTag", "syncSkillTagState", `data-import-mode="command"`, "btn-choose-skill-zip", "/api/dialogs/skill-"} {
+	for _, marker := range []string{"btn-scan-agents", "agent.detected", "btn-new-custom-agent", "tagPickerMarkup", "btn-create-tag", "/api/skill-tags", "detail-new-tag", "createSkillDetailTag", "syncSkillTagState", `data-import-mode="command"`, "btn-choose-skill-zip", "/api/dialogs/skill-", "/api/skills/validate", "baseHash", "skill-content-editor", "showSkillEditor"} {
 		if !strings.Contains(body, marker) {
 			t.Fatalf("Library UI is missing %q", marker)
 		}
@@ -261,6 +262,19 @@ func TestEmbeddedPromptUIUsesStructuredEditorAndClipboard(t *testing.T) {
 	}
 }
 
+func TestEmbeddedSkillEditorUsesNamedResponsiveGrid(t *testing.T) {
+	handler := New(testStore(t)).Handler()
+	stylesheet := fetchEmbeddedAsset(t, handler, "/app.css")
+	for _, marker := range []string{
+		`.skill-editor-shell { display: grid; height: 100%; min-height: 0; grid-template-areas: "content details";`,
+		`.prompt-editor-shell, .skill-editor-shell { height: auto; grid-template-areas: "details" "content"; grid-template-columns: 1fr; }`,
+	} {
+		if !strings.Contains(stylesheet, marker) {
+			t.Fatalf("Skill editor stylesheet is missing %q", marker)
+		}
+	}
+}
+
 func TestLibraryTagAndActivationLifecycle(t *testing.T) {
 	handler := New(testStore(t)).Handler()
 	requestJSON(t, handler, http.MethodPost, "/api/sources", map[string]any{}, http.StatusBadRequest, nil)
@@ -310,6 +324,71 @@ func TestLibraryTagAndActivationLifecycle(t *testing.T) {
 	if dashboard.SkillCount != 0 || dashboard.ActivatedCount != 0 {
 		t.Fatalf("dashboard after removal = %#v", dashboard)
 	}
+}
+
+func TestSkillEditAPIValidatesConflictsAndRefreshesUserActivation(t *testing.T) {
+	storage := testStore(t)
+	handler := New(storage).Handler()
+	skillPath := makeSkill(t, "editable-review")
+	if err := os.MkdirAll(filepath.Join(skillPath, "references"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(skillPath, "references", "guide.md"), []byte("preserved\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var created domain.Skill
+	requestJSON(t, handler, http.MethodPost, "/api/skills", map[string]any{"path": skillPath}, http.StatusCreated, &created)
+	var details librarySkillDetails
+	requestJSON(t, handler, http.MethodGet, "/api/skills/local/editable-review", nil, http.StatusOK, &details)
+	if !details.Editable || !strings.Contains(details.Content, "name: editable-review") {
+		t.Fatalf("editable details = %#v", details)
+	}
+
+	requestJSON(t, handler, http.MethodPost, "/api/enable", map[string]any{
+		"skills": []string{created.ID}, "agents": []string{"codex"}, "mode": "auto",
+	}, http.StatusOK, nil)
+	updatedContent := strings.Replace(details.Content, "Review changes safely", "Review edits carefully", 1)
+	var validated skill.Document
+	requestJSON(t, handler, http.MethodPost, "/api/skills/validate", map[string]any{
+		"skill": created.ID, "content": updatedContent,
+	}, http.StatusOK, &validated)
+	if validated.Description != "Review edits carefully" || validated.Files != 2 {
+		t.Fatalf("validated Skill = %#v", validated)
+	}
+	requestJSON(t, handler, http.MethodPut, "/api/skills/local/editable-review", map[string]any{
+		"content": updatedContent, "baseHash": "stale",
+	}, http.StatusConflict, nil)
+
+	var result skillUpdateResult
+	requestJSON(t, handler, http.MethodPut, "/api/skills/local/editable-review", map[string]any{
+		"content": updatedContent, "baseHash": created.Hash,
+	}, http.StatusOK, &result)
+	if !result.Applied || result.DeploymentError != "" || result.Skill.Hash == created.Hash {
+		t.Fatalf("Skill update result = %#v", result)
+	}
+	if data, err := os.ReadFile(filepath.Join(result.Skill.Path, "references", "guide.md")); err != nil || string(data) != "preserved\n" {
+		t.Fatalf("preserved reference = %q, %v", data, err)
+	}
+	target := filepath.Join(storage.Paths.UserHome, ".codex", "skills", "editable-review")
+	linked, err := filepath.EvalSymlinks(target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantLinked, err := filepath.EvalSymlinks(result.Skill.Path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if linked != wantLinked {
+		t.Fatalf("user Activation points to %q, want %q", linked, wantLinked)
+	}
+	if _, err := os.Stat(created.Path); !os.IsNotExist(err) {
+		t.Fatalf("old unreferenced snapshot still exists: %v", err)
+	}
+
+	rename := strings.Replace(updatedContent, "name: editable-review", "name: renamed-review", 1)
+	requestJSON(t, handler, http.MethodPut, "/api/skills/local/editable-review", map[string]any{
+		"content": rename, "baseHash": result.Skill.Hash,
+	}, http.StatusBadRequest, nil)
 }
 
 func TestPromptAPILifecycleRenderingAndConflict(t *testing.T) {

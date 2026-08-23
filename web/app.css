@@ -571,6 +571,22 @@ button.tag { font-family: var(--font-sans); }
 .prompt-validation-name { margin: 13px 0 4px; color: var(--text); font-size: 15px; font-weight: 700; }
 .prompt-validation p { margin-bottom: 13px; }
 
+.modal.skill-editor-modal {
+	display: flex;
+	width: min(1120px, calc(100vw - 48px));
+	height: min(820px, calc(100vh - 48px));
+	max-height: none;
+	flex-direction: column;
+	overflow: hidden;
+	padding: 0;
+}
+.skill-editor-modal .modal-header { flex: 0 0 auto; margin: 0; padding: 18px 22px; border-bottom: 1px solid var(--border); }
+.skill-editor-modal .modal-title { font-size: 18px; }
+.skill-editor-modal .modal-body { min-height: 0; flex: 1 1 auto; overflow: hidden; padding: 18px 22px; }
+.skill-editor-modal .modal-actions { flex: 0 0 auto; margin: 0; padding: 14px 22px; border-top: 1px solid var(--border); background: var(--modal-footer-bg); }
+.skill-editor-shell { display: grid; height: 100%; min-height: 0; grid-template-areas: "content details"; grid-template-columns: minmax(0, 2.5fr) minmax(280px, .8fr); gap: 16px; align-items: stretch; }
+.skill-content-editor { font-family: var(--font-mono); }
+
 .source-card { min-height: 220px; }
 .source-url { max-width: 520px; margin-top: 4px; color: var(--text-muted); font-size: 10px; overflow-wrap: anywhere; }
 .source-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 20px; margin: 20px 0; }
@@ -926,8 +942,8 @@ button.tag { font-family: var(--font-sans); }
     .skill-detail-content { max-height: 54vh; }
     .project-layout { grid-template-columns: 1fr; }
     .project-list { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
-    .prompt-editor-modal .modal-body { overflow-y: auto; }
-    .prompt-editor-shell { height: auto; grid-template-areas: "details" "content"; grid-template-columns: 1fr; }
+    .prompt-editor-modal .modal-body, .skill-editor-modal .modal-body { overflow-y: auto; }
+    .prompt-editor-shell, .skill-editor-shell { height: auto; grid-template-areas: "details" "content"; grid-template-columns: 1fr; }
     .prompt-content-editor { height: min(54vh, 520px); min-height: 400px; flex: 0 0 min(54vh, 520px); }
     .prompt-editor-aside { overflow: visible; }
     .project-skill-row { grid-template-columns: minmax(0, 1.5fr) minmax(140px, .9fr) auto; }
@@ -1010,6 +1026,11 @@ button.tag { font-family: var(--font-sans); }
     .prompt-editor-modal .modal-title { font-size: 16px; }
     .prompt-editor-modal .modal-body { padding: 14px 16px; }
     .prompt-editor-modal .modal-actions { padding: 12px 16px; }
+    .modal.skill-editor-modal { width: 100%; height: calc(100vh - 12px); height: calc(100dvh - 12px); max-height: calc(100vh - 12px); max-height: calc(100dvh - 12px); padding: 0; }
+    .skill-editor-modal .modal-header { padding: 14px 16px; }
+    .skill-editor-modal .modal-title { font-size: 16px; }
+    .skill-editor-modal .modal-body { padding: 14px 16px; }
+    .skill-editor-modal .modal-actions { padding: 12px 16px; }
     .modal-actions .btn { flex: 1; }
     .modal-actions .action-spacer { display: none; }
     .inline-form { align-items: stretch; flex-direction: column; }

@@ -12,7 +12,7 @@ Project     项目引用或独立维护哪些 Skill
 
 ## 功能
 
-- 个人 Library：添加、移除、查看和验证本地 Skill。
+- 个人 Library：添加、查看、验证、编辑和移除本地 Skill。
 - Library 标签：分类、组合筛选和批量启用。
 - Prompt Library：创建、导入、校验、编辑和变量化渲染可复用 Prompt。
 - Git Source：导入和更新个人或团队 Skill 仓库。
@@ -129,10 +129,14 @@ skm add "$HOME/my-skills/code-review" \
 
 skm list --tag development
 skm show local/code-review
+skm update local/code-review "$HOME/my-skills/code-review"
 ```
 
 `add` 只加入 Library，不自动启用。移除前必须先禁用；`remove` 会删除没有其他引用的
 物理快照，共享或被项目固定的快照会保留。历史孤立快照可先预览再清理：
+
+Web 管理界面可以直接编辑独立本地 Skill 的完整 `SKILL.md`。保存时创建新的不可变
+快照，并自动刷新用户级 Agent 部署；Git Source Skill 和仍在跟随项目的 Skill 保持只读。
 
 ```bash
 skm prune --dry-run
@@ -300,7 +304,7 @@ skm enable --tag development --tag review --agent claude
 
 ```text
 Library:
-  init, add, list, show, validate, remove, prune
+  init, add, list, show, validate, update, remove, prune
   source add|list|update|remove, sync
   tag list|add|remove|rename
 

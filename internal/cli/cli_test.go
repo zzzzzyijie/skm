@@ -54,6 +54,59 @@ func TestCLIAddTagEnableDisableAndPlan(t *testing.T) {
 	}
 }
 
+func TestCLIUpdateSkillRefreshesUserDeployment(t *testing.T) {
+	root, userHome, project, skmHome := cliPaths(t)
+	original := filepath.Join(root, "original-review")
+	writeCLISkill(t, original, "editable-review")
+	runCLI(t, "--home", skmHome, "--user-home", userHome, "--project", project, "add", original)
+	runCLI(t, "--home", skmHome, "--user-home", userHome, "--project", project, "enable", "local/editable-review", "--agent", "codex")
+	storage := openTestStore(t, skmHome, userHome, project)
+	library, err := storage.LoadCatalog()
+	if err != nil || len(library.Skills) != 1 {
+		t.Fatalf("Library = %#v, %v", library, err)
+	}
+	before := library.Skills[0]
+
+	replacement := filepath.Join(root, "replacement-review")
+	writeCLISkill(t, replacement, "editable-review")
+	path := filepath.Join(replacement, "SKILL.md")
+	content := strings.Replace(readTestFile(t, path), "CLI integration Skill", "Updated CLI Skill", 1)
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(replacement, "helper.txt"), []byte("helper\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out := runCLI(t, "--home", skmHome, "--user-home", userHome, "--project", project, "update", "local/editable-review", replacement, "--base-hash", before.Hash)
+	if !bytes.Contains(out, []byte("Updated local/editable-review")) {
+		t.Fatalf("update output = %s", out)
+	}
+	library, err = storage.LoadCatalog()
+	if err != nil {
+		t.Fatal(err)
+	}
+	after := library.Skills[0]
+	if after.Hash == before.Hash || after.Description != "Updated CLI Skill" {
+		t.Fatalf("updated Skill = %#v", after)
+	}
+	if _, err := os.Stat(filepath.Join(after.Path, "helper.txt")); err != nil {
+		t.Fatalf("updated auxiliary file is missing: %v", err)
+	}
+	target := filepath.Join(userHome, ".codex", "skills", "editable-review")
+	linked, err := filepath.EvalSymlinks(target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantLinked, err := filepath.EvalSymlinks(after.Path)
+	if err != nil || linked != wantLinked {
+		t.Fatalf("updated target = %q, %v; want %q", linked, err, wantLinked)
+	}
+	failure := runCLIFailure(t, "--home", skmHome, "--user-home", userHome, "--project", project, "update", "local/editable-review", replacement, "--base-hash", before.Hash)
+	if !bytes.Contains(failure, []byte("changed since editing started")) {
+		t.Fatalf("stale update error = %s", failure)
+	}
+}
+
 func TestCLIPromptLifecycleAndRendering(t *testing.T) {
 	root, _, project, skmHome := cliPaths(t)
 	runCLI(t, "--home", skmHome, "--project", project, "prompt", "create", "summary", "--description", "Summarize a topic", "--variable", "topic", "--body", "Summarize {{topic}}")

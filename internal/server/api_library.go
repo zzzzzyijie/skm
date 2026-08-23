@@ -1,6 +1,7 @@
 package server
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -18,7 +19,8 @@ import (
 
 type librarySkillDetails struct {
 	librarySkillView
-	Body string `json:"body"`
+	Content string `json:"content"`
+	Body    string `json:"body"`
 }
 
 type librarySkillView struct {
@@ -27,6 +29,8 @@ type librarySkillView struct {
 	HealthDetail  string `json:"healthDetail,omitempty"`
 	UsingFallback bool   `json:"usingFallback,omitempty"`
 	EffectivePath string `json:"effectivePath"`
+	Editable      bool   `json:"editable"`
+	EditReason    string `json:"editReason,omitempty"`
 }
 
 func (s *Server) handleListSkills(w http.ResponseWriter, r *http.Request) {
@@ -36,26 +40,142 @@ func (s *Server) handleListSkills(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err)
 		return
 	}
+	manager := catalog.New(s.store)
 	result := make([]librarySkillView, len(skills))
 	for index := range skills {
 		result[index], _ = inspectLibrarySkill(skills[index], s.store)
+		result[index].Editable, result[index].EditReason, err = manager.Editability(skills[index])
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, err)
+			return
+		}
 	}
 	writeJSON(w, http.StatusOK, result)
 }
 
 func (s *Server) handleShowSkill(w http.ResponseWriter, r *http.Request) {
 	id := splitSkillID(r)
-	value, err := catalog.New(s.store).Resolve(id)
+	manager := catalog.New(s.store)
+	value, err := manager.ResolveLibrary(id)
 	if err != nil {
 		writeError(w, http.StatusNotFound, err)
 		return
 	}
 	view, document := inspectLibrarySkill(value, s.store)
+	view.Editable, view.EditReason, err = manager.Editability(value)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+	content := ""
 	body := ""
 	if document != nil {
 		body = document.Body
 	}
-	writeJSON(w, http.StatusOK, librarySkillDetails{librarySkillView: view, Body: body})
+	if data, readErr := os.ReadFile(filepath.Join(view.EffectivePath, "SKILL.md")); readErr == nil && int64(len(data)) <= skill.MaxSkillMDSize {
+		content = string(data)
+	}
+	writeJSON(w, http.StatusOK, librarySkillDetails{librarySkillView: view, Content: content, Body: body})
+}
+
+type skillWriteRequest struct {
+	Skill    string `json:"skill"`
+	Content  string `json:"content"`
+	BaseHash string `json:"baseHash"`
+}
+
+type skillUpdateResult struct {
+	Skill           domain.Skill `json:"skill"`
+	Plan            domain.Plan  `json:"plan"`
+	Applied         bool         `json:"applied"`
+	DeploymentError string       `json:"deploymentError,omitempty"`
+	Warning         string       `json:"warning,omitempty"`
+}
+
+func (s *Server) handleValidateSkillEdit(w http.ResponseWriter, r *http.Request) {
+	var body skillWriteRequest
+	if err := readJSON(r, &body); err != nil {
+		writeError(w, http.StatusBadRequest, err)
+		return
+	}
+	if strings.TrimSpace(body.Skill) == "" {
+		writeError(w, http.StatusBadRequest, fmt.Errorf("skill is required"))
+		return
+	}
+	var document skill.Document
+	err := s.withLock(func() error {
+		var validateErr error
+		document, validateErr = catalog.New(s.store).ValidateContent(body.Skill, body.Content)
+		return validateErr
+	})
+	if err != nil {
+		writeSkillEditError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, document)
+}
+
+func (s *Server) handleUpdateSkill(w http.ResponseWriter, r *http.Request) {
+	var body skillWriteRequest
+	if err := readJSON(r, &body); err != nil {
+		writeError(w, http.StatusBadRequest, err)
+		return
+	}
+	id := splitSkillID(r)
+	var result skillUpdateResult
+	err := s.withLock(func() error {
+		manager := catalog.New(s.store)
+		before, err := manager.ResolveLibrary(id)
+		if err != nil {
+			return err
+		}
+		result.Skill, err = manager.UpdateContent(id, body.Content, body.BaseHash)
+		if err != nil {
+			return err
+		}
+		state, err := s.store.LoadState()
+		if err != nil {
+			result.DeploymentError = err.Error()
+			return nil
+		}
+		allSkills, err := s.store.LoadAllSkills()
+		if err != nil {
+			result.DeploymentError = err.Error()
+			return nil
+		}
+		engine := planner.New(s.store)
+		result.Plan, err = engine.BuildScoped(allSkills, state, domain.PlacementUser, "")
+		if err != nil {
+			result.DeploymentError = err.Error()
+			return nil
+		}
+		if err := engine.Apply(result.Plan, &state); err != nil {
+			result.DeploymentError = err.Error()
+			return nil
+		}
+		result.Applied = true
+		if before.Hash != result.Skill.Hash {
+			if _, cleanupErr := s.store.DeleteObjectIfUnreferenced(before.Hash, before.Name); cleanupErr != nil {
+				result.Warning = fmt.Sprintf("updated Skill but failed to clean old snapshot: %v", cleanupErr)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		writeSkillEditError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, result)
+}
+
+func writeSkillEditError(w http.ResponseWriter, err error) {
+	status := http.StatusBadRequest
+	if errors.Is(err, catalog.ErrEditConflict) {
+		status = http.StatusConflict
+	} else if errors.Is(err, catalog.ErrNotEditable) {
+		status = http.StatusForbidden
+	}
+	writeError(w, status, err)
 }
 
 func inspectLibrarySkill(value domain.Skill, storage objectPathResolver) (librarySkillView, *skill.Document) {

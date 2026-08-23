@@ -1,6 +1,7 @@
 package catalog
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -17,6 +18,11 @@ import (
 )
 
 var validSource = regexp.MustCompile(`^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$`)
+
+var (
+	ErrEditConflict = errors.New("Skill edit conflict")
+	ErrNotEditable  = errors.New("Skill is not editable")
+)
 
 type Manager struct {
 	Store *store.Store
@@ -84,6 +90,175 @@ func (m *Manager) Import(document skill.Document, sourceName, revision string, t
 		return domain.Skill{}, err
 	}
 	return value, nil
+}
+
+// Editability reports whether a Library Skill is an independent local
+// snapshot owned by skm. Git-backed and live project-backed Skills remain
+// read-only so updates continue to flow from their owning source.
+func (m *Manager) Editability(value domain.Skill) (bool, string, error) {
+	if value.Location != domain.LocationLibrary {
+		return false, "only personal Library Skills can be edited", nil
+	}
+	if value.Mode == domain.ModeSymlink && value.ProjectRoot != "" {
+		return false, "this Skill follows a project; edit the project source or detach it first", nil
+	}
+	sources, err := m.Store.LoadSources()
+	if err != nil {
+		return false, "", err
+	}
+	for _, source := range sources.Sources {
+		if source.Name == value.Source {
+			return false, "this Skill is managed by a Git source; edit the repository and update the source", nil
+		}
+	}
+	if value.Source != "local" && value.Revision != "" {
+		return false, "this Skill was imported from a versioned source and is read-only", nil
+	}
+	return true, "", nil
+}
+
+// ValidateContent validates a proposed SKILL.md in the context of the current
+// Skill tree. Auxiliary files are copied into a temporary staging directory
+// and remain unchanged.
+func (m *Manager) ValidateContent(query, content string) (skill.Document, error) {
+	value, err := m.ResolveLibrary(query)
+	if err != nil {
+		return skill.Document{}, err
+	}
+	if err := m.requireEditable(value); err != nil {
+		return skill.Document{}, err
+	}
+	document, cleanup, err := m.stageContent(value, content)
+	if cleanup != nil {
+		defer cleanup()
+	}
+	if err != nil {
+		return skill.Document{}, err
+	}
+	if err := checkDocumentName(value, document); err != nil {
+		return skill.Document{}, err
+	}
+	document.Path = ""
+	return document, nil
+}
+
+// UpdateContent creates a new immutable snapshot containing the proposed
+// SKILL.md and repoints the Library entry without mutating the old object.
+func (m *Manager) UpdateContent(query, content, baseHash string) (domain.Skill, error) {
+	value, err := m.ResolveLibrary(query)
+	if err != nil {
+		return domain.Skill{}, err
+	}
+	if err := m.requireEditable(value); err != nil {
+		return domain.Skill{}, err
+	}
+	if err := checkBaseHash(value, baseHash); err != nil {
+		return domain.Skill{}, err
+	}
+	document, cleanup, err := m.stageContent(value, content)
+	if cleanup != nil {
+		defer cleanup()
+	}
+	if err != nil {
+		return domain.Skill{}, err
+	}
+	return m.updateDocument(value, document)
+}
+
+// UpdateDirectory replaces an editable Skill from a complete validated
+// directory. It is used by the CLI so scripts, references, and assets can be
+// updated together with SKILL.md.
+func (m *Manager) UpdateDirectory(query, path, baseHash string) (domain.Skill, error) {
+	value, err := m.ResolveLibrary(query)
+	if err != nil {
+		return domain.Skill{}, err
+	}
+	if err := m.requireEditable(value); err != nil {
+		return domain.Skill{}, err
+	}
+	if err := checkBaseHash(value, baseHash); err != nil {
+		return domain.Skill{}, err
+	}
+	document, err := skill.Validate(path)
+	if err != nil {
+		return domain.Skill{}, err
+	}
+	return m.updateDocument(value, document)
+}
+
+func (m *Manager) requireEditable(value domain.Skill) error {
+	editable, reason, err := m.Editability(value)
+	if err != nil {
+		return err
+	}
+	if !editable {
+		return fmt.Errorf("%w: %s", ErrNotEditable, reason)
+	}
+	return nil
+}
+
+func checkBaseHash(value domain.Skill, baseHash string) error {
+	if baseHash != "" && baseHash != value.Hash {
+		return fmt.Errorf("%w: %s changed since editing started", ErrEditConflict, value.ID)
+	}
+	return nil
+}
+
+func (m *Manager) stageContent(value domain.Skill, content string) (skill.Document, func(), error) {
+	if int64(len(content)) > skill.MaxSkillMDSize {
+		return skill.Document{}, nil, fmt.Errorf("SKILL.md exceeds %d bytes", skill.MaxSkillMDSize)
+	}
+	if err := m.Store.Ensure(); err != nil {
+		return skill.Document{}, nil, err
+	}
+	temporary, err := os.MkdirTemp(m.Store.Paths.Home, ".skill-edit-")
+	if err != nil {
+		return skill.Document{}, nil, err
+	}
+	cleanup := func() { _ = os.RemoveAll(temporary) }
+	staged := filepath.Join(temporary, "skill")
+	if err := fsx.CopyDirAtomic(value.Path, staged); err != nil {
+		return skill.Document{}, cleanup, err
+	}
+	skillPath := filepath.Join(staged, "SKILL.md")
+	mode := os.FileMode(0o644)
+	if info, statErr := os.Stat(skillPath); statErr == nil {
+		mode = info.Mode().Perm()
+	}
+	if err := fsx.AtomicWriteFile(skillPath, []byte(content), mode); err != nil {
+		return skill.Document{}, cleanup, err
+	}
+	document, err := skill.Validate(staged)
+	return document, cleanup, err
+}
+
+func (m *Manager) updateDocument(value domain.Skill, document skill.Document) (domain.Skill, error) {
+	if err := checkDocumentName(value, document); err != nil {
+		return domain.Skill{}, err
+	}
+	snapshot, err := m.Snapshot(document, value.Source, value.Revision, value.Tags)
+	if err != nil {
+		return domain.Skill{}, err
+	}
+	changed := snapshot.Hash != value.Hash
+	value.Description = snapshot.Description
+	value.Hash = snapshot.Hash
+	value.Path = snapshot.Path
+	value.Metadata = snapshot.Metadata
+	if changed {
+		value.Revision = ""
+	}
+	if err := m.Store.UpsertSkill(value); err != nil {
+		return domain.Skill{}, err
+	}
+	return value, nil
+}
+
+func checkDocumentName(value domain.Skill, document skill.Document) error {
+	if document.Name != value.Name {
+		return fmt.Errorf("Skill name cannot change from %q to %q; add it as a new Skill instead", value.Name, document.Name)
+	}
+	return nil
 }
 
 // ImportProject adds a Skill discovered in a registered project to the

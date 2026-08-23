@@ -446,6 +446,7 @@ function showSkillDetails(skill) {
         t('lib.noContent') + '</div>') + '</section></main><aside class="skill-detail-aside">' + tagEditor + '<section class="skill-detail-panel skill-detail-metadata"><div class="skill-detail-section-heading"><span class="form-label">' +
         t('lib.metadata') + '</span></div>' + metadata + '</section></aside></div></div>';
     var actions = '<button class="btn btn-ghost" type="button" data-close-modal>' + t('lib.close') + '</button>' +
+		(skill.editable ? '<button class="btn btn-primary" type="button" id="btn-edit-skill">' + uiIcon('settings') + t('lib.edit') + '</button>' : '') +
         (linked ? '<button class="btn btn-primary" type="button" id="btn-detach-skill">' + t('lib.detach') + '</button>' : '') +
         (source ? '<button class="btn btn-primary" type="button" id="btn-update-source">' + t('lib.updateSource') + '</button>' : '');
     showModal(t('lib.details'), content, actions);
@@ -456,8 +457,98 @@ function showSkillDetails(skill) {
         if (event.key === 'Enter') { event.preventDefault(); createSkillDetailTag(); }
     });
     bindSkillDetailTagChanges();
+	if (skill.editable) document.getElementById('btn-edit-skill').addEventListener('click', function () { showSkillEditor(skill); });
     if (source) document.getElementById('btn-update-source').addEventListener('click', function () { updateGitSource(source.name); });
     if (linked) document.getElementById('btn-detach-skill').addEventListener('click', function () { confirmDetachLibrarySkill(skill.id); });
+}
+
+function showSkillEditor(skill) {
+	var editor = '<div class="skill-editor-shell"><div class="prompt-editor-main"><div class="prompt-editor-toolbar"><label class="form-label" for="skill-content-editor">' +
+		escapeHtml(t('lib.editorContent')) + '</label><div class="prompt-editor-meta"><span id="skill-editor-stats"></span><span class="prompt-editor-dirty" id="skill-editor-dirty" aria-live="polite">' +
+		escapeHtml(t('lib.notValidated')) + '</span></div></div><textarea class="input prompt-content-editor skill-content-editor" id="skill-content-editor" required spellcheck="false" aria-describedby="skill-editor-shortcuts">' +
+		escapeHtml(skill.content || '') + '</textarea><div class="prompt-editor-shortcuts" id="skill-editor-shortcuts">' + escapeHtml(t('lib.shortcuts')) +
+		'</div></div><aside class="prompt-editor-aside"><div class="prompt-editor-help">' + uiIcon('sparkles') + '<p>' + escapeHtml(t('lib.editorHint')) +
+		'</p></div><div class="prompt-validation" id="skill-validation" role="status" aria-live="polite"><span class="muted">' + escapeHtml(t('lib.notValidated')) + '</span></div></aside></div>';
+	var actions = '<button class="btn btn-ghost" type="button" data-close-modal>' + t('lib.cancel') + '</button><button class="btn btn-secondary" type="button" id="btn-validate-skill">' +
+		uiIcon('check') + t('lib.validate') + '</button><button class="btn btn-primary" type="button" id="btn-save-skill">' + uiIcon('sparkles') + t('lib.saveSkill') + '</button>';
+	showModal(t('lib.editorTitle'), editor, actions);
+	document.querySelector('.modal').classList.add('skill-editor-modal');
+	var textarea = document.getElementById('skill-content-editor');
+	updateSkillEditorStats(textarea.value, false);
+	textarea.addEventListener('input', function () {
+		document.getElementById('skill-validation').innerHTML = '<span class="muted">' + escapeHtml(t('lib.notValidated')) + '</span>';
+		updateSkillEditorStats(textarea.value, true);
+	});
+	textarea.addEventListener('keydown', function (event) {
+		var commandKey = event.metaKey || event.ctrlKey;
+		if (commandKey && event.key.toLowerCase() === 's') {
+			event.preventDefault();
+			saveSkillEditor(skill);
+			return;
+		}
+		if (commandKey && event.key === 'Enter') {
+			event.preventDefault();
+			validateSkillEditor(skill);
+			return;
+		}
+		if (event.key === 'Tab' && !event.metaKey && !event.ctrlKey && !event.altKey) {
+			event.preventDefault();
+			textarea.setRangeText('  ', textarea.selectionStart, textarea.selectionEnd, 'end');
+			textarea.dispatchEvent(new Event('input', { bubbles: true }));
+		}
+	});
+	document.getElementById('btn-validate-skill').addEventListener('click', function () { validateSkillEditor(skill); });
+	document.getElementById('btn-save-skill').addEventListener('click', function () { saveSkillEditor(skill); });
+	textarea.focus();
+}
+
+function updateSkillEditorStats(content, dirty) {
+	document.getElementById('skill-editor-stats').textContent = t('prompt.lines').replace('{0}', content ? content.split('\n').length : 1) + ' · ' +
+		t('prompt.characters').replace('{0}', content.length);
+	var indicator = document.getElementById('skill-editor-dirty');
+	indicator.textContent = t(dirty ? 'lib.unsaved' : 'lib.notValidated');
+	indicator.classList.toggle('is-dirty', dirty);
+	indicator.classList.remove('is-valid');
+}
+
+async function validateSkillEditor(skill) {
+	var button = document.getElementById('btn-validate-skill');
+	if (!button || button.disabled) return;
+	button.disabled = true;
+	try {
+		var documentData = await api.post('/api/skills/validate', { skill: skill.id, content: document.getElementById('skill-content-editor').value });
+		document.getElementById('skill-validation').innerHTML = '<div class="prompt-validation-ok">' + uiIcon('check') + '<strong>' + escapeHtml(t('lib.valid')) +
+			'</strong></div><div class="prompt-validation-name">' + escapeHtml(documentData.name) + '</div><p>' + escapeHtml(documentData.description) + '</p><div class="detail-list mono">' +
+			escapeHtml(documentData.files + ' files · ' + documentData.totalSize + ' bytes · ' + shortHash(documentData.hash)) + '</div>';
+		var indicator = document.getElementById('skill-editor-dirty');
+		indicator.textContent = t('lib.valid');
+		indicator.classList.remove('is-dirty');
+		indicator.classList.add('is-valid');
+	} catch (err) {
+		document.getElementById('skill-validation').innerHTML = '<div class="prompt-validation-error">' + uiIcon('alert') + '<span>' + escapeHtml(err.message) + '</span></div>';
+	} finally {
+		button.disabled = false;
+	}
+}
+
+async function saveSkillEditor(skill) {
+	var button = document.getElementById('btn-save-skill');
+	if (!button || button.disabled) return;
+	button.disabled = true;
+	try {
+		var result = await api.put('/api/skills/' + encodeURIComponent(skill.id), {
+			content: document.getElementById('skill-content-editor').value,
+			baseHash: skill.hash,
+		});
+		closeModal();
+		showToast(t('lib.updated'));
+		if (result.deploymentError) showToast(t('lib.deploymentWarning').replace('{0}', result.deploymentError), 'error');
+		if (result.warning) showToast(result.warning, 'info');
+		await renderLibrary();
+	} catch (err) {
+		button.disabled = false;
+		showToast(err.status === 409 ? t('lib.editConflict') : err.message, 'error');
+	}
 }
 
 function confirmDetachLibrarySkill(id) {

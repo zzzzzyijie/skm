@@ -35,6 +35,7 @@ var translations = {
         'lib.tagAdded': 'Tag added', 'lib.tagRemoved': 'Tag removed', 'lib.renameTag': 'Rename tag',
         'lib.newTagName': 'New tag name', 'lib.renamedTag': 'Tag renamed', 'lib.noTags': 'No tags yet',
         'lib.viewDetails': 'View details', 'lib.close': 'Close', 'lib.skillCount': '{0} Skill(s)', 'lib.content': 'Skill content', 'lib.noContent': 'No Skill content', 'lib.skillOverview': 'Overview', 'lib.metadata': 'Metadata',
+		'lib.edit': 'Edit', 'lib.editorTitle': 'Edit Skill', 'lib.editorContent': 'Complete SKILL.md', 'lib.editorHint': 'The Skill name cannot change. Saving creates a new immutable snapshot; scripts, references, and assets remain unchanged.', 'lib.validate': 'Validate', 'lib.valid': 'Skill is valid', 'lib.notValidated': 'Not validated', 'lib.unsaved': 'Unsaved changes', 'lib.shortcuts': '⌘/Ctrl+S to save · ⌘/Ctrl+Enter to validate · Tab inserts two spaces', 'lib.saveSkill': 'Save Skill', 'lib.updated': 'Skill updated', 'lib.deploymentWarning': 'The Skill was saved, but user deployments could not be refreshed: {0}', 'lib.editConflict': 'This Skill changed after the editor opened. Reload it before saving again.',
         'tag.general': 'General',
         'act.title': 'Activation Status', 'act.applyPlan': 'Apply Plan', 'act.quickEnable': 'Quick Enable',
         'act.planDigest': 'Plan digest', 'act.noActivations': 'No activations',
@@ -101,6 +102,7 @@ var translations = {
         'lib.tagAdded': '标签已添加', 'lib.tagRemoved': '标签已移除', 'lib.renameTag': '重命名标签',
         'lib.newTagName': '新标签名称', 'lib.renamedTag': '标签已重命名', 'lib.noTags': '暂无标签',
         'lib.viewDetails': '查看详情', 'lib.close': '关闭', 'lib.skillCount': '{0} 个 Skill', 'lib.content': 'Skill 内容', 'lib.noContent': '暂无 Skill 内容', 'lib.skillOverview': '概览', 'lib.metadata': '元数据',
+		'lib.edit': '编辑', 'lib.editorTitle': '编辑 Skill', 'lib.editorContent': '完整 SKILL.md', 'lib.editorHint': 'Skill 名称不可修改。保存时会创建新的不可变快照；scripts、references 和 assets 会保持不变。', 'lib.validate': '校验', 'lib.valid': 'Skill 格式有效', 'lib.notValidated': '尚未校验', 'lib.unsaved': '有未保存修改', 'lib.shortcuts': '⌘/Ctrl+S 保存 · ⌘/Ctrl+Enter 校验 · Tab 插入两个空格', 'lib.saveSkill': '保存 Skill', 'lib.updated': 'Skill 已更新', 'lib.deploymentWarning': 'Skill 已保存，但用户级部署刷新失败：{0}', 'lib.editConflict': '打开编辑器后此 Skill 已发生变化，请重新加载后再保存。',
         'tag.general': '通用',
         'act.title': '激活状态', 'act.applyPlan': '应用计划', 'act.quickEnable': '快速启用',
         'act.planDigest': '计划摘要', 'act.noActivations': '暂无激活',
@@ -293,7 +295,9 @@ var api = {
         var res = await fetch(url, options);
         if (!res.ok) {
             var body = await res.json().catch(function () { return {}; });
-            throw new Error(body.error || 'Request failed: ' + res.status);
+			var error = new Error(body.error || 'Request failed: ' + res.status);
+			error.status = res.status;
+			throw error;
         }
         if (res.status === 204) return null;
         return res.json();

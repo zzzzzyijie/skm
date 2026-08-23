@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/zzzzzyijie/skm/internal/catalog"
 	"github.com/zzzzzyijie/skm/internal/domain"
+	"github.com/zzzzzyijie/skm/internal/planner"
 	"github.com/zzzzzyijie/skm/internal/skill"
 	"github.com/zzzzzyijie/skm/internal/store"
 )
@@ -151,6 +152,90 @@ func (a *App) newValidateCommand() *cobra.Command {
 			})
 		},
 	}
+}
+
+func (a *App) newUpdateCommand() *cobra.Command {
+	var baseHash string
+	command := &cobra.Command{
+		Use:   "update <skill> <skill-path>",
+		Short: "Update an editable local Skill from a directory",
+		Args:  cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			storage, err := a.openStore()
+			if err != nil {
+				return err
+			}
+			var value domain.Skill
+			var plan domain.Plan
+			var applied bool
+			var deploymentError string
+			var warning string
+			err = withLock(storage, func() error {
+				manager := catalog.New(storage)
+				before, err := manager.ResolveLibrary(args[0])
+				if err != nil {
+					return err
+				}
+				value, err = manager.UpdateDirectory(args[0], args[1], baseHash)
+				if err != nil {
+					return err
+				}
+				state, err := storage.LoadState()
+				if err != nil {
+					deploymentError = err.Error()
+					return nil
+				}
+				skills, err := storage.LoadAllSkills()
+				if err != nil {
+					deploymentError = err.Error()
+					return nil
+				}
+				engine := planner.New(storage)
+				plan, err = engine.BuildScoped(skills, state, domain.PlacementUser, "")
+				if err != nil {
+					deploymentError = err.Error()
+					return nil
+				}
+				if err := engine.Apply(plan, &state); err != nil {
+					deploymentError = err.Error()
+					return nil
+				}
+				applied = true
+				if before.Hash != value.Hash {
+					if _, cleanupErr := storage.DeleteObjectIfUnreferenced(before.Hash, before.Name); cleanupErr != nil {
+						warning = fmt.Sprintf("failed to clean old snapshot: %v", cleanupErr)
+					}
+				}
+				return nil
+			})
+			if err != nil {
+				return err
+			}
+			result := map[string]any{"skill": value, "plan": plan, "applied": applied}
+			if deploymentError != "" {
+				result["deploymentError"] = deploymentError
+			}
+			if warning != "" {
+				result["warning"] = warning
+			}
+			return a.emit("update", result, func() error {
+				if _, err := fmt.Fprintf(a.Out, "Updated %s to %s\n", value.ID, value.Hash); err != nil {
+					return err
+				}
+				if deploymentError != "" {
+					_, err := fmt.Fprintf(a.Out, "Warning: Skill was updated but user deployments were not refreshed: %s\n", deploymentError)
+					return err
+				}
+				if warning != "" {
+					_, err := fmt.Fprintf(a.Out, "Warning: %s\n", warning)
+					return err
+				}
+				return nil
+			})
+		},
+	}
+	command.Flags().StringVar(&baseHash, "base-hash", "", "reject the update if the stored Skill hash changed")
+	return command
 }
 
 func (a *App) newRemoveCommand() *cobra.Command {
