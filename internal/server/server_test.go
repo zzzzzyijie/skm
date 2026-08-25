@@ -53,7 +53,7 @@ func TestEmbeddedUIProvidesPersistentSettingsAndThemeChoices(t *testing.T) {
 	}{
 		{path: "/", markers: []string{`id="settings-toggle"`, `id="mobile-settings-toggle"`, `src="/theme-init.js"`}},
 		{path: "/theme-init.js", markers: []string{`localStorage.getItem('skm-theme')`, `dataset.theme`}},
-		{path: "/app.js", markers: []string{"openSettings", "settings-dark-mode", "data-settings-lang", "setTheme", "skm-lang", "skm-theme"}},
+		{path: "/app.js", markers: []string{"openSettings", "settings-dark-mode", "data-settings-lang", "setTheme", "skm-lang", "skm-theme", `'nav.library': '技能'`, `'nav.prompts': '提示词'`, `'nav.projects': '项目'`}},
 		{path: "/app.css", markers: []string{`[data-theme="light"]`, ".settings-segmented", ".settings-switch"}},
 	}
 

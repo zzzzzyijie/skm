@@ -71,7 +71,7 @@ var translations = {
         'proj.removeSkill': 'Remove', 'proj.confirmRemoveSkillTitle': 'Remove project Skill', 'proj.confirmRemoveSkillDesc': 'Remove "{0}" from this project?', 'proj.confirmRemoveSkillNote': 'Every copy in this project’s Agent directories will be permanently deleted. This cannot be undone.', 'proj.projectSkillRemoved': 'Project Skill removed',
     },
     zh: {
-        'nav.library': 'Skill', 'nav.prompts': 'Prompt', 'nav.projects': 'Project', 'nav.settings': '设置', 'nav.openSettings': '打开设置', 'nav.openMenu': '打开导航',
+        'nav.library': '技能', 'nav.prompts': '提示词', 'nav.projects': '项目', 'nav.settings': '设置', 'nav.openSettings': '打开设置', 'nav.openMenu': '打开导航',
         'view.label': '显示方式', 'view.grid': '网格', 'view.list': '列表',
         'settings.title': '设置', 'settings.intro': '自定义这台设备上的 SKM 显示与语言偏好。', 'settings.language': '语言', 'settings.languageDesc': '选择界面中使用的语言。', 'settings.english': 'English', 'settings.chinese': '简体中文', 'settings.appearance': '外观', 'settings.darkMode': '暗黑模式', 'settings.darkModeDesc': '在弱光环境中使用更舒适的深色主题。',
         'settings.general': '通用', 'settings.gitSync': 'Git 同步', 'settings.gitIntro': '管理个人工作区与已有的外部 Skill 来源。', 'settings.gitSources': '已配置来源', 'settings.gitNone': '尚未配置 Git 来源', 'settings.gitNoneDesc': '请从“Skill → 添加 Skill → 仓库来源”添加。', 'settings.gitRemove': '移除来源', 'settings.gitRemoveTitle': '移除 Git 来源', 'settings.gitRemoveConfirm': '确定移除 Git 来源“{0}”吗？', 'settings.gitRemoveNote': '缓存的仓库副本会被删除；已导入的 Library Skill 和快照会保留。', 'settings.gitRemoved': 'Git 来源已移除', 'settings.gitUpdatedAt': '更新于 {0}', 'settings.gitDefaultRef': '默认分支', 'settings.gitSkillCount': '{0} 个 Skill',
