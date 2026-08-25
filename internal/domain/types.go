@@ -89,10 +89,11 @@ func (m LinkMode) Effective() LinkMode {
 }
 
 type Config struct {
-	Version  int               `yaml:"version" json:"version"`
-	Defaults Defaults          `yaml:"defaults" json:"defaults"`
-	Tags     []string          `yaml:"tags,omitempty" json:"tags,omitempty"`
-	Agents   []AgentDefinition `yaml:"agents,omitempty" json:"agents,omitempty"`
+	Version    int               `yaml:"version" json:"version"`
+	Defaults   Defaults          `yaml:"defaults" json:"defaults"`
+	Tags       []string          `yaml:"tags,omitempty" json:"tags,omitempty"`
+	PromptTags []string          `yaml:"promptTags,omitempty" json:"promptTags,omitempty"`
+	Agents     []AgentDefinition `yaml:"agents,omitempty" json:"agents,omitempty"`
 }
 
 type AgentDefinition struct {
@@ -103,9 +104,10 @@ type AgentDefinition struct {
 }
 
 type Defaults struct {
-	Tags     []string `yaml:"tags" json:"tags"`
-	Agents   []Agent  `yaml:"agents" json:"agents"`
-	LinkMode LinkMode `yaml:"linkMode" json:"linkMode"`
+	Tags       []string `yaml:"tags" json:"tags"`
+	PromptTags []string `yaml:"promptTags" json:"promptTags"`
+	Agents     []Agent  `yaml:"agents" json:"agents"`
+	LinkMode   LinkMode `yaml:"linkMode" json:"linkMode"`
 }
 
 type Skill struct {
@@ -341,12 +343,14 @@ type Plan struct {
 
 func DefaultConfig() Config {
 	return Config{
-		Version: SchemaVersion,
-		Tags:    []string{"general"},
+		Version:    SchemaVersion,
+		Tags:       []string{"general"},
+		PromptTags: []string{"general"},
 		Defaults: Defaults{
-			Tags:     []string{"general"},
-			Agents:   []Agent{AgentClaude, AgentCodex},
-			LinkMode: ModeAuto,
+			Tags:       []string{"general"},
+			PromptTags: []string{"general"},
+			Agents:     []Agent{AgentClaude, AgentCodex},
+			LinkMode:   ModeAuto,
 		},
 	}
 }

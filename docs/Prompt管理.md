@@ -73,8 +73,16 @@ skm prompt remove local/code-review
 ```
 
 `prompt render` 有缺失的必填变量时会失败。Web 新建弹窗只需填写名称、描述、标签和正文；
-标签从 Skill 与 Prompt 共用的标签库中选择。
+可以在 Prompt 编辑器中直接创建并选择标签，未输入标签名时创建按钮保持禁用。Prompt 与
+Skill 各自维护独立的标签注册表、用量统计和增删改操作，同名标签也互不影响。新建 Prompt
+没有显式选择标签时使用 Prompt 自己的默认 `general` 标签，不会读取 Skill 的默认标签。
+旧版共享标签配置会按现有 Skill 与 Prompt 的实际引用自动拆分并持久化；仅被 Prompt 使用的
+标签不会继续出现在 Skill 标签管理中。
 服务端负责生成 `PROMPT.md` frontmatter；“复制 Prompt”会把正文直接写入设备剪贴板。
+
+标签支持 Unicode 字母和数字（例如 `简小知`、`review-2`），允许在中间使用连字符。
+系统会规范化大小写和兼容字符并去重；标签长度为 1～32 个 Unicode 字符，不能包含空格、
+下划线、斜杠、emoji、控制字符或首尾连字符。
 
 ## 后续能力
 

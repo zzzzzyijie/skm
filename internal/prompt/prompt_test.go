@@ -49,6 +49,17 @@ func TestParseAndRender(t *testing.T) {
 	}
 }
 
+func TestParseSupportsUnicodeTags(t *testing.T) {
+	content := strings.Replace(validPrompt, "tags: [review]", "tags: [简小知]", 1)
+	document, err := Parse([]byte(content))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(document.Tags, []string{"简小知"}) {
+		t.Fatalf("tags = %#v", document.Tags)
+	}
+}
+
 func TestParseRejectsUnsafeOrInvalidTemplates(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -105,5 +116,24 @@ func TestManagerLifecycleAndHashConflict(t *testing.T) {
 	}
 	if prompts, err := manager.List(nil); err != nil || len(prompts) != 0 {
 		t.Fatalf("Prompts after removal = %#v, err=%v", prompts, err)
+	}
+}
+
+func TestManagerUsesPromptDefaultTag(t *testing.T) {
+	root := t.TempDir()
+	storage, err := store.New(store.Paths{Home: filepath.Join(root, ".skm"), UserHome: root, ProjectRoot: filepath.Join(root, "project")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := storage.Ensure(); err != nil {
+		t.Fatal(err)
+	}
+	content := "---\nname: untagged\ndescription: Uses the Prompt default tag\n---\nBody\n"
+	value, err := New(storage).Create(content, "local", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(value.Tags, []string{"general"}) {
+		t.Fatalf("tags = %#v, want Prompt defaults", value.Tags)
 	}
 }

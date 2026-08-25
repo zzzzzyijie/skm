@@ -6,7 +6,7 @@ var promptEditorVariables = [];
 async function renderPrompts() {
     var container = document.getElementById('main-content');
     try {
-        var results = await Promise.all([api.get('/api/prompts'), api.get('/api/tags')]);
+        var results = await Promise.all([api.get('/api/prompts'), api.get('/api/tags?scope=prompt')]);
         promptState.prompts = results[0] || [];
         promptState.tags = results[1] || [];
         if (!isCurrentPage('prompts')) return;
@@ -150,7 +150,10 @@ function showPromptEditor(existing, documentData) {
         '><small class="form-hint" id="prompt-name-hint">' + escapeHtml(nameHint) + '</small></div><div class="prompt-editor-field"><label class="form-label" for="prompt-description">' +
         t('prompt.descriptionLabel') + '</label><textarea class="input prompt-description-input" id="prompt-description" required placeholder="' + escapeHtml(t('prompt.descriptionPlaceholder')) +
         '" data-prompt-editor-field>' + escapeHtml(documentData.description || '') + '</textarea></div><div class="prompt-editor-field"><label class="form-label" for="prompt-tags">' +
-        t('prompt.tagsLabel') + '</label>' + tagPickerMarkup('prompt-tags', documentData.tags || [], promptState.tags, true) + '</div></section><div class="prompt-editor-help">' + uiIcon('sparkles') + '<p>' +
+        t('prompt.tagsLabel') + '</label><div class="prompt-tag-create"><input class="input" id="prompt-new-tag" autocomplete="off" placeholder="' +
+        escapeHtml(t('lib.tagNamePlaceholder')) + '"><button class="btn btn-primary btn-sm" type="button" id="btn-create-prompt-tag" disabled>' + uiIcon('plus') +
+        t('lib.createAndSelectTag') + '</button></div><div id="prompt-tag-picker">' + tagPickerMarkup('prompt-tags', documentData.tags || [], promptState.tags, true) +
+        '</div></div></section><div class="prompt-editor-help">' + uiIcon('sparkles') + '<p>' +
         escapeHtml(t('prompt.editorHint')) + '</p></div><div class="prompt-validation" id="prompt-validation" role="status" aria-live="polite"><span class="muted">' +
         escapeHtml(t('prompt.notValidated')) + '</span></div></aside></div>';
     var actions = '<button class="btn btn-ghost" type="button" data-close-modal>' + t('lib.cancel') + '</button><button class="btn btn-secondary" type="button" id="btn-validate-prompt">' +
@@ -158,15 +161,8 @@ function showPromptEditor(existing, documentData) {
     showModal(existing ? t('prompt.editorTitle') : t('prompt.newTitle'), editor, actions);
     document.querySelector('.modal').classList.add('prompt-editor-modal');
     var textarea = document.getElementById('prompt-content');
-    document.querySelectorAll('#prompt-tags input').forEach(function (input) { input.setAttribute('data-prompt-editor-field', ''); });
     updatePromptEditorStats(textarea.value, false);
-    document.querySelectorAll('[data-prompt-editor-field]').forEach(function (field) {
-        field.addEventListener('input', function () {
-            field.removeAttribute('aria-invalid');
-            document.getElementById('prompt-validation').innerHTML = '<span class="muted">' + escapeHtml(t('prompt.notValidated')) + '</span>';
-            updatePromptEditorStats(textarea.value, true);
-        });
-    });
+    bindPromptEditorFields(textarea);
     textarea.addEventListener('keydown', function (event) {
         var commandKey = event.metaKey || event.ctrlKey;
         if (commandKey && event.key.toLowerCase() === 's') {
@@ -185,9 +181,69 @@ function showPromptEditor(existing, documentData) {
             textarea.dispatchEvent(new Event('input', { bubbles: true }));
         }
     });
+    var promptTagInput = document.getElementById('prompt-new-tag');
+    document.getElementById('btn-create-prompt-tag').addEventListener('click', function () { createPromptEditorTag(textarea); });
+    promptTagInput.addEventListener('input', syncPromptEditorTagCreateState);
+    promptTagInput.addEventListener('keydown', function (event) {
+        if (event.key !== 'Enter') return;
+        event.preventDefault();
+        createPromptEditorTag(textarea);
+    });
     document.getElementById('btn-validate-prompt').addEventListener('click', validatePromptEditor);
     document.getElementById('btn-save-prompt').addEventListener('click', function () { savePromptEditor(existing); });
     document.getElementById(existing ? 'prompt-content' : 'prompt-name').focus();
+}
+
+function bindPromptEditorFields(textarea) {
+    document.querySelectorAll('#prompt-tags input').forEach(function (input) { input.setAttribute('data-prompt-editor-field', ''); });
+    document.querySelectorAll('[data-prompt-editor-field]').forEach(function (field) {
+        if (field.dataset.promptEditorBound) return;
+        field.dataset.promptEditorBound = 'true';
+        field.addEventListener('input', function () { markPromptEditorDirty(field, textarea); });
+    });
+}
+
+function markPromptEditorDirty(field, textarea) {
+    field.removeAttribute('aria-invalid');
+    document.getElementById('prompt-validation').innerHTML = '<span class="muted">' + escapeHtml(t('prompt.notValidated')) + '</span>';
+    updatePromptEditorStats(textarea.value, true);
+}
+
+async function createPromptEditorTag(textarea) {
+    var input = document.getElementById('prompt-new-tag');
+    var button = document.getElementById('btn-create-prompt-tag');
+    var name = input.value.trim();
+    if (!name || button.disabled) return;
+    button.dataset.busy = 'true';
+    syncPromptEditorTagCreateState();
+    try {
+        var selected = selectedTagValues('prompt-tags');
+        var created = await api.post('/api/tags?scope=prompt', { name: name });
+        var known = promptState.tags.find(function (tag) { return tag.name === created.name; });
+        if (!known) {
+            promptState.tags.push(created);
+            promptState.tags.sort(function (left, right) { return left.name.localeCompare(right.name); });
+        }
+        if (!selected.includes(created.name)) selected.push(created.name);
+        document.getElementById('prompt-tag-picker').innerHTML = tagPickerMarkup('prompt-tags', selected, promptState.tags, true);
+        bindPromptEditorFields(textarea);
+        input.value = '';
+        input.focus();
+        markPromptEditorDirty(input, textarea);
+        showToast(t('lib.tagCreated'));
+    } catch (err) {
+        showToast(err.message, 'error');
+    } finally {
+        delete button.dataset.busy;
+        syncPromptEditorTagCreateState();
+    }
+}
+
+function syncPromptEditorTagCreateState() {
+    var input = document.getElementById('prompt-new-tag');
+    var button = document.getElementById('btn-create-prompt-tag');
+    if (!input || !button) return;
+    button.disabled = button.dataset.busy === 'true' || !input.value.trim();
 }
 
 function promptEditorPayload() {

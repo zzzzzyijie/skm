@@ -184,9 +184,17 @@ func TestEmbeddedLibraryUIUsesScannedManageableAgents(t *testing.T) {
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("GET /components/library.js = %d, body=%s", recorder.Code, body)
 	}
-	for _, marker := range []string{"btn-scan-agents", "agent.detected", "btn-new-custom-agent", "tagPickerMarkup", "btn-create-tag", "/api/skill-tags", "detail-new-tag", "createSkillDetailTag", "syncSkillTagState", `data-import-mode="command"`, "btn-choose-skill-zip", "/api/dialogs/skill-", "/api/skills/validate", "baseHash", "skill-content-editor", "showSkillEditor"} {
+	for _, marker := range []string{"btn-scan-agents", "agent.detected", "btn-new-custom-agent", "tagPickerMarkup", "btn-create-tag", "managedTagRowsMarkup", "beginManagedTagRename", "/api/skill-tags", "detail-new-tag", "createSkillDetailTag", "syncSkillTagState", `data-import-mode="command"`, "btn-choose-skill-zip", "/api/dialogs/skill-", "/api/skills/validate", "baseHash", "skill-content-editor", "showSkillEditor"} {
 		if !strings.Contains(body, marker) {
 			t.Fatalf("Library UI is missing %q", marker)
+		}
+	}
+	for _, marker := range []string{
+		`id="btn-create-tag" disabled`, "syncManagedTagCreateState",
+		"data-create-add-skill-tag", "createAddSkillTag", "syncAddSkillTagCreateState",
+	} {
+		if !strings.Contains(body, marker) {
+			t.Fatalf("Library tag creation UI is missing %q", marker)
 		}
 	}
 	if strings.Contains(body, "agent.required") || strings.Contains(body, "lib.fixedAgent") {
@@ -194,6 +202,12 @@ func TestEmbeddedLibraryUIUsesScannedManageableAgents(t *testing.T) {
 	}
 	if strings.Contains(body, "await openSkillDetails(id)") {
 		t.Fatal("Skill tag save still reopens the details modal and causes a visible refresh")
+	}
+	if strings.Contains(body, "await showManageTagsModal()") {
+		t.Fatal("Tag mutations still recreate the management modal and cause a visible flash")
+	}
+	if strings.Contains(body, "promptState.tags = managedTags") {
+		t.Fatal("Skill tag mutations still overwrite the independent Prompt tag registry")
 	}
 
 	agentIcons := map[string]string{
@@ -252,9 +266,14 @@ func TestEmbeddedPromptUIUsesStructuredEditorAndClipboard(t *testing.T) {
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("GET /components/prompts.js = %d, body=%s", recorder.Code, body)
 	}
-	for _, marker := range []string{"/api/prompts/validate", "data-copy-prompt", "copySavedPrompt", "prompt-name", "prompt-description", "prompt-tags", "tagPickerMarkup", "showManageTagsModal", "baseHash", "setRangeText"} {
+	for _, marker := range []string{"/api/prompts/validate", "/api/tags?scope=prompt", "data-copy-prompt", "copySavedPrompt", "prompt-name", "prompt-description", "prompt-tags", "prompt-new-tag", "btn-create-prompt-tag", "createPromptEditorTag", "tagPickerMarkup", "showManageTagsModal", "baseHash", "setRangeText"} {
 		if !strings.Contains(body, marker) {
 			t.Fatalf("Prompt UI is missing %q", marker)
+		}
+	}
+	for _, marker := range []string{"id=\"btn-create-prompt-tag\" disabled", "syncPromptEditorTagCreateState", "api.post('/api/tags?scope=prompt'"} {
+		if !strings.Contains(body, marker) {
+			t.Fatalf("Prompt tag creation UI is missing %q", marker)
 		}
 	}
 	if strings.Contains(body, "data-duplicate-prompt") || strings.Contains(body, "openPromptUse") {
@@ -454,31 +473,40 @@ func TestPromptAPILifecycleRenderingAndConflict(t *testing.T) {
 	requestJSON(t, handler, http.MethodDelete, "/api/prompts/local/meeting-notes", nil, http.StatusOK, nil)
 }
 
-func TestManagedTagsSpanSkillsAndPrompts(t *testing.T) {
+func TestSkillAndPromptTagsAreManagedIndependently(t *testing.T) {
 	handler := New(testStore(t)).Handler()
-	requestJSON(t, handler, http.MethodPost, "/api/tags", map[string]any{"name": "design"}, http.StatusCreated, nil)
+	tagName := "简小知"
+	requestJSON(t, handler, http.MethodPost, "/api/tags", map[string]any{"name": tagName}, http.StatusCreated, nil)
+	requestJSON(t, handler, http.MethodPost, "/api/tags?scope=prompt", map[string]any{"name": tagName}, http.StatusCreated, nil)
 
 	skillPath := makeSkill(t, "tagged-skill")
 	var createdSkill domain.Skill
 	requestJSON(t, handler, http.MethodPost, "/api/skills", map[string]any{
-		"path": skillPath, "tags": []string{"design"},
+		"path": skillPath, "tags": []string{tagName},
 	}, http.StatusCreated, &createdSkill)
 	var createdPrompt domain.Prompt
 	requestJSON(t, handler, http.MethodPost, "/api/prompts", map[string]any{
 		"name": "tagged-prompt", "description": "Prompt with a managed tag",
-		"tags": []string{"design"}, "body": "Write a concise design review.",
+		"tags": []string{tagName}, "body": "Write a concise design review.",
 	}, http.StatusCreated, &createdPrompt)
 
 	var values []tagCount
 	requestJSON(t, handler, http.MethodGet, "/api/tags", nil, http.StatusOK, &values)
-	design := findTagCount(values, "design")
-	if design == nil || design.Count != 2 || design.SkillCount != 1 || design.PromptCount != 1 || design.Default {
-		t.Fatalf("managed design tag = %#v", design)
+	skillTag := findTagCount(values, tagName)
+	if skillTag == nil || skillTag.Count != 1 || skillTag.SkillCount != 1 || skillTag.PromptCount != 0 || skillTag.Default {
+		t.Fatalf("managed Skill tag = %#v", skillTag)
 	}
-	requestJSON(t, handler, http.MethodDelete, "/api/tags/design", nil, http.StatusBadRequest, nil)
+	requestJSON(t, handler, http.MethodGet, "/api/tags?scope=prompt", nil, http.StatusOK, &values)
+	promptTag := findTagCount(values, tagName)
+	if promptTag == nil || promptTag.Count != 1 || promptTag.SkillCount != 0 || promptTag.PromptCount != 1 || promptTag.Default {
+		t.Fatalf("managed Prompt tag = %#v", promptTag)
+	}
+
+	requestJSON(t, handler, http.MethodDelete, "/api/tags/"+tagName, nil, http.StatusBadRequest, nil)
+	requestJSON(t, handler, http.MethodDelete, "/api/tags/"+tagName+"?scope=prompt", nil, http.StatusBadRequest, nil)
 
 	requestJSON(t, handler, http.MethodPost, "/api/tags/rename", map[string]any{
-		"old": "design", "new": "product-design",
+		"old": tagName, "new": "product-design",
 	}, http.StatusOK, nil)
 	var skillDetails librarySkillDetails
 	requestJSON(t, handler, http.MethodGet, "/api/skills/"+createdSkill.ID, nil, http.StatusOK, &skillDetails)
@@ -487,8 +515,20 @@ func TestManagedTagsSpanSkillsAndPrompts(t *testing.T) {
 	}
 	var details promptDetails
 	requestJSON(t, handler, http.MethodGet, "/api/prompts/"+createdPrompt.ID, nil, http.StatusOK, &details)
-	if !reflect.DeepEqual(details.Tags, []string{"product-design"}) || !strings.Contains(details.Content, "product-design") {
+	if !reflect.DeepEqual(details.Tags, []string{tagName}) || !strings.Contains(details.Content, tagName) {
+		t.Fatalf("Skill rename changed Prompt tags = %#v, content=%q", details.Tags, details.Content)
+	}
+
+	requestJSON(t, handler, http.MethodPost, "/api/tags/rename?scope=prompt", map[string]any{
+		"old": tagName, "new": "prompt-design",
+	}, http.StatusOK, nil)
+	requestJSON(t, handler, http.MethodGet, "/api/prompts/"+createdPrompt.ID, nil, http.StatusOK, &details)
+	if !reflect.DeepEqual(details.Tags, []string{"prompt-design"}) || !strings.Contains(details.Content, "prompt-design") {
 		t.Fatalf("renamed Prompt tags = %#v, content=%q", details.Tags, details.Content)
+	}
+	requestJSON(t, handler, http.MethodGet, "/api/skills/"+createdSkill.ID, nil, http.StatusOK, &skillDetails)
+	if !reflect.DeepEqual(skillDetails.Tags, []string{"product-design"}) {
+		t.Fatalf("Prompt rename changed Skill tags = %#v", skillDetails.Tags)
 	}
 
 	requestJSON(t, handler, http.MethodPut, "/api/skill-tags", map[string]any{
@@ -503,6 +543,49 @@ func TestManagedTagsSpanSkillsAndPrompts(t *testing.T) {
 	requestJSON(t, handler, http.MethodGet, "/api/tags", nil, http.StatusOK, &values)
 	if findTagCount(values, "unused") != nil {
 		t.Fatalf("deleted tag remained: %#v", values)
+	}
+
+	requestJSON(t, handler, http.MethodPost, "/api/tags", map[string]any{"name": "shared-unused"}, http.StatusCreated, nil)
+	requestJSON(t, handler, http.MethodPost, "/api/tags?scope=prompt", map[string]any{"name": "shared-unused"}, http.StatusCreated, nil)
+	requestJSON(t, handler, http.MethodDelete, "/api/tags/shared-unused?scope=prompt", nil, http.StatusOK, nil)
+	requestJSON(t, handler, http.MethodGet, "/api/tags", nil, http.StatusOK, &values)
+	if findTagCount(values, "shared-unused") == nil {
+		t.Fatalf("deleting Prompt tag removed same-named Skill tag: %#v", values)
+	}
+	requestJSON(t, handler, http.MethodGet, "/api/tags?scope=prompt", nil, http.StatusOK, &values)
+	if findTagCount(values, "shared-unused") != nil {
+		t.Fatalf("deleted Prompt tag remained: %#v", values)
+	}
+}
+
+func TestPromptTagScopeHasIndependentRegistryAndDefault(t *testing.T) {
+	handler := New(testStore(t)).Handler()
+	skillPath := makeSkill(t, "ui-skill")
+	requestJSON(t, handler, http.MethodPost, "/api/skills", map[string]any{
+		"path": skillPath, "tags": []string{"ui"},
+	}, http.StatusCreated, nil)
+	requestJSON(t, handler, http.MethodPost, "/api/tags", map[string]any{"name": "skill-ready"}, http.StatusCreated, nil)
+	requestJSON(t, handler, http.MethodPost, "/api/tags?scope=prompt", map[string]any{"name": "prompt-ready"}, http.StatusCreated, nil)
+
+	var promptTags []tagCount
+	requestJSON(t, handler, http.MethodGet, "/api/tags?scope=prompt", nil, http.StatusOK, &promptTags)
+	if findTagCount(promptTags, "ui") != nil || findTagCount(promptTags, "skill-ready") != nil {
+		t.Fatalf("Prompt tag scope leaked Skill tags: %#v", promptTags)
+	}
+	general := findTagCount(promptTags, "general")
+	if general == nil || !general.Default {
+		t.Fatalf("Prompt default tag missing: %#v", promptTags)
+	}
+	if findTagCount(promptTags, "prompt-ready") == nil {
+		t.Fatalf("Prompt tag scope omitted unused managed tag: %#v", promptTags)
+	}
+
+	var created domain.Prompt
+	requestJSON(t, handler, http.MethodPost, "/api/prompts", map[string]any{
+		"name": "untagged-prompt", "description": "Uses Prompt default", "tags": []string{}, "body": "Body",
+	}, http.StatusCreated, &created)
+	if !reflect.DeepEqual(created.Tags, []string{"general"}) {
+		t.Fatalf("created Prompt tags = %#v, want Prompt default", created.Tags)
 	}
 }
 

@@ -16,7 +16,7 @@ func TestEnsureAndYAMLRoundTrips(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(config.Tags, []string{"general"}) || !reflect.DeepEqual(config.Defaults.Tags, []string{"general"}) {
+	if !reflect.DeepEqual(config.Tags, []string{"general"}) || !reflect.DeepEqual(config.Defaults.Tags, []string{"general"}) || !reflect.DeepEqual(config.PromptTags, []string{"general"}) || !reflect.DeepEqual(config.Defaults.PromptTags, []string{"general"}) {
 		t.Fatalf("default config = %#v", config)
 	}
 	if err := storage.SaveCatalog(domain.Catalog{Skills: []domain.Skill{{ID: "local/one", Name: "one", Location: domain.LocationLibrary}}}); err != nil {
@@ -51,6 +51,40 @@ func TestEnsureAndYAMLRoundTrips(t *testing.T) {
 	loadedState, err := storage.LoadState()
 	if err != nil || len(loadedState.Activations) != 1 || loadedState.Activations[0].SkillID != "local/one" {
 		t.Fatalf("state = %#v, err=%v", loadedState, err)
+	}
+}
+
+func TestLoadLegacyConfigBackfillsIndependentPromptTags(t *testing.T) {
+	storage := testStore(t)
+	legacy := "version: 2\ndefaults:\n  tags: [general]\n  agents: [claude, codex]\n  linkMode: auto\ntags: [general, skill-only, prompt-only, shared, unused]\n"
+	if err := os.WriteFile(filepath.Join(storage.Paths.Home, "config.yaml"), []byte(legacy), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := storage.SaveCatalog(domain.Catalog{Skills: []domain.Skill{{ID: "local/tagged", Name: "tagged", Tags: []string{"skill-only", "shared"}}}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := storage.SavePromptCatalog(domain.PromptCatalog{Prompts: []domain.Prompt{{ID: "local/prompt", Name: "prompt", Tags: []string{"prompt-only", "shared"}}}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := storage.Ensure(); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(filepath.Join(storage.Paths.Home, "config.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(raw), "promptTags:") {
+		t.Fatalf("migrated config was not persisted:\n%s", raw)
+	}
+	config, err := storage.LoadConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(config.Tags, []string{"general", "shared", "skill-only", "unused"}) {
+		t.Fatalf("Skill tags = %#v", config.Tags)
+	}
+	if !reflect.DeepEqual(config.PromptTags, []string{"general", "prompt-only", "shared"}) || !reflect.DeepEqual(config.Defaults.PromptTags, []string{"general"}) {
+		t.Fatalf("Prompt tag migration = %#v / %#v", config.PromptTags, config.Defaults.PromptTags)
 	}
 }
 

@@ -226,20 +226,17 @@ func (m *Manager) snapshot(document Document) (string, error) {
 
 func (m *Manager) normalizeTags(explicit, documentTags, fallback []string) ([]string, error) {
 	values := explicit
-	if len(values) == 0 {
+	if values == nil {
 		values = documentTags
 	}
-	if len(values) == 0 {
+	if values == nil {
 		values = fallback
 	}
-	if len(values) == 0 {
-		config, err := m.Store.LoadConfig()
-		if err != nil {
-			return nil, err
-		}
-		values = config.Defaults.Tags
+	config, err := m.Store.LoadConfig()
+	if err != nil {
+		return nil, err
 	}
-	return tags.Normalize(values, nil)
+	return tags.Normalize(values, config.Defaults.PromptTags)
 }
 
 func (m *Manager) removeObjectIfUnreferenced(hash, name string) error {

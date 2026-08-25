@@ -372,16 +372,7 @@ func (s *Server) handleListTags(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err)
 		return
 	}
-	library, err := s.store.LoadCatalog()
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err)
-		return
-	}
-	prompts, err := s.store.LoadPromptCatalog()
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err)
-		return
-	}
+	promptScope := isPromptTagScope(r)
 	counts := make(map[string]*tagCount)
 	ensure := func(name string) *tagCount {
 		if counts[name] == nil {
@@ -389,24 +380,43 @@ func (s *Server) handleListTags(w http.ResponseWriter, r *http.Request) {
 		}
 		return counts[name]
 	}
-	for _, name := range append(append([]string(nil), config.Tags...), config.Defaults.Tags...) {
-		ensure(name)
-	}
-	for _, name := range config.Defaults.Tags {
-		ensure(name).Default = true
-	}
-	for _, value := range library.Skills {
-		for _, tag := range value.Tags {
-			counts[tag] = ensure(tag)
-			counts[tag].SkillCount++
-			counts[tag].Count++
+	if promptScope {
+		for _, name := range append(append([]string(nil), config.PromptTags...), config.Defaults.PromptTags...) {
+			ensure(name)
 		}
-	}
-	for _, value := range prompts.Prompts {
-		for _, tag := range value.Tags {
-			counts[tag] = ensure(tag)
-			counts[tag].PromptCount++
-			counts[tag].Count++
+		for _, name := range config.Defaults.PromptTags {
+			ensure(name).Default = true
+		}
+		prompts, loadErr := s.store.LoadPromptCatalog()
+		if loadErr != nil {
+			writeError(w, http.StatusInternalServerError, loadErr)
+			return
+		}
+		for _, value := range prompts.Prompts {
+			for _, tag := range value.Tags {
+				count := ensure(tag)
+				count.PromptCount++
+				count.Count++
+			}
+		}
+	} else {
+		for _, name := range append(append([]string(nil), config.Tags...), config.Defaults.Tags...) {
+			ensure(name)
+		}
+		for _, name := range config.Defaults.Tags {
+			ensure(name).Default = true
+		}
+		library, loadErr := s.store.LoadCatalog()
+		if loadErr != nil {
+			writeError(w, http.StatusInternalServerError, loadErr)
+			return
+		}
+		for _, value := range library.Skills {
+			for _, tag := range value.Tags {
+				count := ensure(tag)
+				count.SkillCount++
+				count.Count++
+			}
 		}
 	}
 	result := make([]tagCount, 0, len(counts))
@@ -436,7 +446,11 @@ func (s *Server) handleCreateTag(w http.ResponseWriter, r *http.Request) {
 		if loadErr != nil {
 			return loadErr
 		}
-		config.Tags, loadErr = tags.Normalize(append(config.Tags, name), config.Defaults.Tags)
+		if isPromptTagScope(r) {
+			config.PromptTags, loadErr = tags.Normalize(append(config.PromptTags, name), config.Defaults.PromptTags)
+		} else {
+			config.Tags, loadErr = tags.Normalize(append(config.Tags, name), config.Defaults.Tags)
+		}
 		if loadErr != nil {
 			return loadErr
 		}
@@ -450,38 +464,53 @@ func (s *Server) handleCreateTag(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleDeleteTag(w http.ResponseWriter, r *http.Request) {
-	name := strings.ToLower(strings.TrimSpace(r.PathValue("name")))
+	values, err := tags.Normalize([]string{r.PathValue("name")}, nil)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err)
+		return
+	}
+	name := values[0]
+	promptScope := isPromptTagScope(r)
 	var deleted bool
-	err := s.withLock(func() error {
+	err = s.withLock(func() error {
 		config, err := s.store.LoadConfig()
 		if err != nil {
 			return err
 		}
-		for _, value := range config.Defaults.Tags {
+		defaults := config.Defaults.Tags
+		registry := config.Tags
+		if promptScope {
+			defaults = config.Defaults.PromptTags
+			registry = config.PromptTags
+		}
+		for _, value := range defaults {
 			if value == name {
 				return fmt.Errorf("default tag %q cannot be deleted", name)
 			}
 		}
-		library, err := s.store.LoadCatalog()
-		if err != nil {
-			return err
-		}
-		for _, value := range library.Skills {
-			if containsTag(value.Tags, name) {
-				return fmt.Errorf("tag %q is still used by a Skill", name)
+		if promptScope {
+			prompts, loadErr := s.store.LoadPromptCatalog()
+			if loadErr != nil {
+				return loadErr
+			}
+			for _, value := range prompts.Prompts {
+				if containsTag(value.Tags, name) {
+					return fmt.Errorf("tag %q is still used by a Prompt", name)
+				}
+			}
+		} else {
+			library, loadErr := s.store.LoadCatalog()
+			if loadErr != nil {
+				return loadErr
+			}
+			for _, value := range library.Skills {
+				if containsTag(value.Tags, name) {
+					return fmt.Errorf("tag %q is still used by a Skill", name)
+				}
 			}
 		}
-		prompts, err := s.store.LoadPromptCatalog()
-		if err != nil {
-			return err
-		}
-		for _, value := range prompts.Prompts {
-			if containsTag(value.Tags, name) {
-				return fmt.Errorf("tag %q is still used by a Prompt", name)
-			}
-		}
-		result := config.Tags[:0]
-		for _, value := range config.Tags {
+		result := registry[:0]
+		for _, value := range registry {
 			if value == name {
 				deleted = true
 				continue
@@ -491,7 +520,11 @@ func (s *Server) handleDeleteTag(w http.ResponseWriter, r *http.Request) {
 		if !deleted {
 			return fmt.Errorf("tag %q not found", name)
 		}
-		config.Tags = result
+		if promptScope {
+			config.PromptTags = result
+		} else {
+			config.Tags = result
+		}
 		return s.store.SaveConfig(config)
 	})
 	if err != nil {
@@ -593,8 +626,14 @@ func (s *Server) handleRenameTag(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, err)
 		return
 	}
-	oldName := strings.ToLower(body.Old)
+	oldValues, err := tags.Normalize([]string{body.Old}, nil)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err)
+		return
+	}
+	oldName := oldValues[0]
 	newName := validated[0]
+	promptScope := isPromptTagScope(r)
 	skillsChanged := 0
 	promptsChanged := 0
 	registryChanged := false
@@ -603,63 +642,77 @@ func (s *Server) handleRenameTag(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return err
 		}
-		library, err := s.store.LoadCatalog()
-		if err != nil {
-			return err
-		}
-		for _, value := range library.Skills {
-			found := false
-			for i, tag := range value.Tags {
-				if tag == oldName {
-					value.Tags[i] = newName
-					found = true
+		if promptScope {
+			promptCatalog, loadErr := s.store.LoadPromptCatalog()
+			if loadErr != nil {
+				return loadErr
+			}
+			manager := promptpkg.New(s.store)
+			for _, value := range promptCatalog.Prompts {
+				if !containsTag(value.Tags, oldName) {
+					continue
 				}
+				_, document, readErr := manager.Read(value.ID)
+				if readErr != nil {
+					return readErr
+				}
+				nextTags := replaceTag(value.Tags, oldName, newName)
+				content, buildErr := promptpkg.Build(document.Name, document.Description, document.Body, nextTags, document.Variables)
+				if buildErr != nil {
+					return buildErr
+				}
+				if _, updateErr := manager.Update(value.ID, string(content), value.Hash, nextTags); updateErr != nil {
+					return updateErr
+				}
+				promptsChanged++
 			}
-			if !found {
-				continue
+			config.PromptTags, registryChanged = replaceConfiguredTag(config.PromptTags, oldName, newName)
+			var defaultsChanged bool
+			config.Defaults.PromptTags, defaultsChanged = replaceConfiguredTag(config.Defaults.PromptTags, oldName, newName)
+			registryChanged = registryChanged || defaultsChanged
+			if promptsChanged > 0 {
+				config.PromptTags, err = tags.Normalize(append(config.PromptTags, newName), config.Defaults.PromptTags)
+				if err != nil {
+					return err
+				}
+				registryChanged = true
 			}
-			value.Tags, err = tags.Normalize(value.Tags, nil)
-			if err != nil {
-				return err
+		} else {
+			library, loadErr := s.store.LoadCatalog()
+			if loadErr != nil {
+				return loadErr
 			}
-			if err := s.store.UpsertSkill(value); err != nil {
-				return err
+			for _, value := range library.Skills {
+				found := false
+				for i, tag := range value.Tags {
+					if tag == oldName {
+						value.Tags[i] = newName
+						found = true
+					}
+				}
+				if !found {
+					continue
+				}
+				value.Tags, err = tags.Normalize(value.Tags, nil)
+				if err != nil {
+					return err
+				}
+				if err := s.store.UpsertSkill(value); err != nil {
+					return err
+				}
+				skillsChanged++
 			}
-			skillsChanged++
-		}
-		promptCatalog, err := s.store.LoadPromptCatalog()
-		if err != nil {
-			return err
-		}
-		manager := promptpkg.New(s.store)
-		for _, value := range promptCatalog.Prompts {
-			if !containsTag(value.Tags, oldName) {
-				continue
+			config.Tags, registryChanged = replaceConfiguredTag(config.Tags, oldName, newName)
+			var defaultsChanged bool
+			config.Defaults.Tags, defaultsChanged = replaceConfiguredTag(config.Defaults.Tags, oldName, newName)
+			registryChanged = registryChanged || defaultsChanged
+			if skillsChanged > 0 {
+				config.Tags, err = tags.Normalize(append(config.Tags, newName), config.Defaults.Tags)
+				if err != nil {
+					return err
+				}
+				registryChanged = true
 			}
-			_, document, readErr := manager.Read(value.ID)
-			if readErr != nil {
-				return readErr
-			}
-			nextTags := replaceTag(value.Tags, oldName, newName)
-			content, buildErr := promptpkg.Build(document.Name, document.Description, document.Body, nextTags, document.Variables)
-			if buildErr != nil {
-				return buildErr
-			}
-			if _, updateErr := manager.Update(value.ID, string(content), value.Hash, nextTags); updateErr != nil {
-				return updateErr
-			}
-			promptsChanged++
-		}
-		config.Tags, registryChanged = replaceConfiguredTag(config.Tags, oldName, newName)
-		var defaultsChanged bool
-		config.Defaults.Tags, defaultsChanged = replaceConfiguredTag(config.Defaults.Tags, oldName, newName)
-		registryChanged = registryChanged || defaultsChanged
-		if skillsChanged > 0 || promptsChanged > 0 {
-			config.Tags, err = tags.Normalize(append(config.Tags, newName), config.Defaults.Tags)
-			if err != nil {
-				return err
-			}
-			registryChanged = true
 		}
 		if registryChanged {
 			if err := s.store.SaveConfig(config); err != nil {
@@ -679,6 +732,10 @@ func (s *Server) handleRenameTag(w http.ResponseWriter, r *http.Request) {
 		"old": oldName, "new": newName,
 		"skillsChanged": skillsChanged, "promptsChanged": promptsChanged,
 	})
+}
+
+func isPromptTagScope(r *http.Request) bool {
+	return strings.EqualFold(strings.TrimSpace(r.URL.Query().Get("scope")), "prompt")
 }
 
 func containsTag(values []string, name string) bool {

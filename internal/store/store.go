@@ -110,6 +110,17 @@ func (s *Store) Ensure() error {
 	if !exists(configPath) {
 		return s.SaveConfig(domain.DefaultConfig())
 	}
+	legacyTags, err := configUsesLegacyTagRegistry(configPath)
+	if err != nil {
+		return err
+	}
+	if legacyTags {
+		config, loadErr := s.LoadConfig()
+		if loadErr != nil {
+			return loadErr
+		}
+		return s.SaveConfig(config)
+	}
 	return nil
 }
 
@@ -139,10 +150,88 @@ func (s *Store) Lock() (func() error, error) {
 
 func (s *Store) LoadConfig() (domain.Config, error) {
 	config := domain.DefaultConfig()
-	if err := loadYAML(filepath.Join(s.Paths.Home, "config.yaml"), &config); err != nil {
+	path := filepath.Join(s.Paths.Home, "config.yaml")
+	if err := loadYAML(path, &config); err != nil {
 		return domain.Config{}, err
 	}
+	legacyTags, err := configUsesLegacyTagRegistry(path)
+	if err != nil {
+		return domain.Config{}, err
+	}
+	if legacyTags {
+		if err := s.splitLegacyTagRegistry(&config); err != nil {
+			return domain.Config{}, err
+		}
+	}
 	return config, nil
+}
+
+func configUsesLegacyTagRegistry(path string) (bool, error) {
+	var presence struct {
+		PromptTags *[]string `yaml:"promptTags"`
+	}
+	if err := loadYAML(path, &presence); err != nil {
+		return false, err
+	}
+	return presence.PromptTags == nil, nil
+}
+
+func (s *Store) splitLegacyTagRegistry(config *domain.Config) error {
+	library, err := s.LoadCatalog()
+	if err != nil {
+		return err
+	}
+	prompts, err := s.LoadPromptCatalog()
+	if err != nil {
+		return err
+	}
+	skillUsed := make(map[string]bool)
+	promptUsed := make(map[string]bool)
+	for _, value := range library.Skills {
+		for _, tag := range value.Tags {
+			skillUsed[tag] = true
+		}
+	}
+	for _, value := range prompts.Prompts {
+		for _, tag := range value.Tags {
+			promptUsed[tag] = true
+		}
+	}
+	skillDefaults := make(map[string]bool, len(config.Defaults.Tags))
+	for _, tag := range config.Defaults.Tags {
+		skillDefaults[tag] = true
+	}
+	skillTags := append([]string(nil), config.Defaults.Tags...)
+	for _, tag := range config.Tags {
+		if promptUsed[tag] && !skillUsed[tag] && !skillDefaults[tag] {
+			continue
+		}
+		skillTags = append(skillTags, tag)
+	}
+	for tag := range skillUsed {
+		skillTags = append(skillTags, tag)
+	}
+	promptTags := append([]string(nil), config.Defaults.PromptTags...)
+	for tag := range promptUsed {
+		promptTags = append(promptTags, tag)
+	}
+	config.Tags = uniqueSortedStrings(skillTags)
+	config.PromptTags = uniqueSortedStrings(promptTags)
+	return nil
+}
+
+func uniqueSortedStrings(values []string) []string {
+	seen := make(map[string]bool, len(values))
+	result := make([]string, 0, len(values))
+	for _, value := range values {
+		if seen[value] {
+			continue
+		}
+		seen[value] = true
+		result = append(result, value)
+	}
+	sort.Strings(result)
+	return result
 }
 
 func (s *Store) SaveConfig(config domain.Config) error {
