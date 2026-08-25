@@ -1,6 +1,6 @@
-/* global api, showToast, showModal, closeModal, displayTag, formatDate, shortHash, shortRevision, escapeHtml, isCurrentPage, t, uiIcon, confirmationMarkup */
+/* global api, showToast, showModal, closeModal, displayTag, formatDate, shortHash, shortRevision, escapeHtml, isCurrentPage, t, uiIcon, confirmationMarkup, collectionViewMode, collectionViewSwitcherMarkup, bindCollectionViewSwitcher */
 
-var libraryState = { skills: [], tags: [], agents: [], activeTag: '', query: '', enabled: {}, gitSources: {}, summary: {} };
+var libraryState = { skills: [], tags: [], agents: [], activeTag: '', query: '', viewMode: collectionViewMode('library'), enabled: {}, gitSources: {}, summary: {} };
 var skillDetailState = { skill: null, savedTags: [] };
 var managedTagState = { scope: 'library', tags: [] };
 var agentIcons = {
@@ -60,13 +60,13 @@ function paintLibrary() {
         '<span class="search-mark" aria-hidden="true">' + uiIcon('search') + '</span><input class="input" id="skill-search" value="' + escapeHtml(libraryState.query) +
         '" placeholder="' + t('lib.searchPlaceholder') + '"></label>';
     html += '<div class="filter-bar"><span class="filter-label">' + uiIcon('tags') + t('lib.tags') + '</span><div class="tag-filter-list" id="skill-tag-filters">' +
-        libraryTagFiltersMarkup() + '</div></div></div>';
+        libraryTagFiltersMarkup() + '</div></div>' + collectionViewSwitcherMarkup('library', libraryState.viewMode) + '</div>';
 
     if (!visible.length) {
         html += '<div class="empty-state"><div class="empty-state-mark">' + uiIcon('library') + '</div><div class="empty-state-title">' + t('lib.noSkills') +
             '</div><div class="empty-state-desc">' + t('lib.noSkillsDesc') + '</div></div>';
     } else {
-        html += '<div class="card-grid" id="library-skill-grid">';
+        html += '<div class="card-grid' + (libraryState.viewMode === 'list' ? ' is-list-view' : '') + '" id="library-skill-grid">';
         visible.forEach(function (skill) { html += skillCard(skill); });
         html += '</div>';
     }
@@ -83,6 +83,7 @@ function paintLibrary() {
         next.focus();
         next.setSelectionRange(libraryState.query.length, libraryState.query.length);
     });
+    bindCollectionViewSwitcher('library', libraryState, paintLibrary);
     bindLibraryTagFilters();
     container.querySelectorAll('.btn-details-skill').forEach(function (button) {
         button.addEventListener('click', function () { openSkillDetails(button.dataset.id); });

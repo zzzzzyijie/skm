@@ -281,6 +281,27 @@ func TestEmbeddedPromptUIUsesStructuredEditorAndClipboard(t *testing.T) {
 	}
 }
 
+func TestEmbeddedSkillAndPromptUIProvidePersistentViewSwitching(t *testing.T) {
+	handler := New(testStore(t)).Handler()
+	assets := []struct {
+		path    string
+		markers []string
+	}{
+		{path: "/app.js", markers: []string{"collectionViewMode", "collectionViewSwitcherMarkup", "bindCollectionViewSwitcher", "skm-", "data-collection-view", "view.grid", "view.list"}},
+		{path: "/components/library.js", markers: []string{"collectionViewMode('library')", "collectionViewSwitcherMarkup('library'", "bindCollectionViewSwitcher('library'", "is-list-view"}},
+		{path: "/components/prompts.js", markers: []string{"collectionViewMode('prompts')", "collectionViewSwitcherMarkup('prompts'", "bindCollectionViewSwitcher('prompts'", "is-list-view"}},
+		{path: "/app.css", markers: []string{".collection-view-switcher", ".collection-view-option.active", ".card-grid.is-list-view", ".prompt-grid.is-list-view"}},
+	}
+	for _, asset := range assets {
+		body := fetchEmbeddedAsset(t, handler, asset.path)
+		for _, marker := range asset.markers {
+			if !strings.Contains(body, marker) {
+				t.Errorf("%s is missing %q", asset.path, marker)
+			}
+		}
+	}
+}
+
 func TestEmbeddedSkillEditorUsesNamedResponsiveGrid(t *testing.T) {
 	handler := New(testStore(t)).Handler()
 	stylesheet := fetchEmbeddedAsset(t, handler, "/app.css")

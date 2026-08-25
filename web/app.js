@@ -4,6 +4,7 @@
 var translations = {
     en: {
         'nav.library': 'My Skills', 'nav.prompts': 'Prompts', 'nav.projects': 'Projects', 'nav.settings': 'Settings', 'nav.openSettings': 'Open settings', 'nav.openMenu': 'Open navigation',
+        'view.label': 'Display mode', 'view.grid': 'Grid', 'view.list': 'List',
         'settings.title': 'Settings', 'settings.intro': 'Personalize how SKM looks and reads on this device.', 'settings.language': 'Language', 'settings.languageDesc': 'Choose the language used throughout the interface.', 'settings.english': 'English', 'settings.chinese': '简体中文', 'settings.appearance': 'Appearance', 'settings.darkMode': 'Dark mode', 'settings.darkModeDesc': 'Use the darker color theme for comfortable low-light viewing.',
         'settings.general': 'General', 'settings.gitSync': 'Git sync', 'settings.gitIntro': 'Manage your personal workspace and existing external Skill sources.', 'settings.gitSources': 'Configured sources', 'settings.gitNone': 'No Git sources configured', 'settings.gitNoneDesc': 'Add one from My Skills → Add Skill → Repository.', 'settings.gitRemove': 'Remove source', 'settings.gitRemoveTitle': 'Remove Git source', 'settings.gitRemoveConfirm': 'Remove the “{0}” Git source binding?', 'settings.gitRemoveNote': 'The cached checkout will be removed. Imported Library Skills and snapshots are retained.', 'settings.gitRemoved': 'Git source removed', 'settings.gitUpdatedAt': 'Updated {0}', 'settings.gitDefaultRef': 'Default branch', 'settings.gitSkillCount': '{0} Skill(s)',
         'workspace.title': 'Personal workspace', 'workspace.desc': 'Synchronize your local Skills and Prompts through one private Git repository on every computer.', 'workspace.url': 'Workspace repository', 'workspace.ref': 'Branch', 'workspace.root': 'Repository subdirectory (optional)', 'workspace.rootHint': 'Only independent local Skills and local Prompts are published. Agent deployments, device paths, caches, and credentials stay local.', 'workspace.connect': 'Connect and verify', 'workspace.connecting': 'Verifying workspace…', 'workspace.connected': 'Workspace connected', 'workspace.notConfigured': 'No personal workspace configured', 'workspace.lastSync': 'Last sync {0}', 'workspace.neverSynced': 'Not synced yet', 'workspace.externalTitle': 'External Skill sources', 'workspace.externalDesc': 'Read-only repositories that supply additional Skills. Their contents are not duplicated into your personal workspace.',
@@ -71,6 +72,7 @@ var translations = {
     },
     zh: {
         'nav.library': 'Skill', 'nav.prompts': 'Prompt', 'nav.projects': 'Project', 'nav.settings': '设置', 'nav.openSettings': '打开设置', 'nav.openMenu': '打开导航',
+        'view.label': '显示方式', 'view.grid': '网格', 'view.list': '列表',
         'settings.title': '设置', 'settings.intro': '自定义这台设备上的 SKM 显示与语言偏好。', 'settings.language': '语言', 'settings.languageDesc': '选择界面中使用的语言。', 'settings.english': 'English', 'settings.chinese': '简体中文', 'settings.appearance': '外观', 'settings.darkMode': '暗黑模式', 'settings.darkModeDesc': '在弱光环境中使用更舒适的深色主题。',
         'settings.general': '通用', 'settings.gitSync': 'Git 同步', 'settings.gitIntro': '管理个人工作区与已有的外部 Skill 来源。', 'settings.gitSources': '已配置来源', 'settings.gitNone': '尚未配置 Git 来源', 'settings.gitNoneDesc': '请从“Skill → 添加 Skill → 仓库来源”添加。', 'settings.gitRemove': '移除来源', 'settings.gitRemoveTitle': '移除 Git 来源', 'settings.gitRemoveConfirm': '确定移除 Git 来源“{0}”吗？', 'settings.gitRemoveNote': '缓存的仓库副本会被删除；已导入的 Library Skill 和快照会保留。', 'settings.gitRemoved': 'Git 来源已移除', 'settings.gitUpdatedAt': '更新于 {0}', 'settings.gitDefaultRef': '默认分支', 'settings.gitSkillCount': '{0} 个 Skill',
         'workspace.title': '个人工作区', 'workspace.desc': '通过一个私有 Git 仓库，在多台电脑之间同步本地 Skill 和 Prompt。', 'workspace.url': '工作区仓库', 'workspace.ref': '分支', 'workspace.root': '仓库子目录（可选）', 'workspace.rootHint': '只发布独立的本地 Skill 和本地 Prompt；Agent 部署、本机路径、缓存和凭据始终留在当前电脑。', 'workspace.connect': '连接并校验', 'workspace.connecting': '正在校验工作区…', 'workspace.connected': '个人工作区已连接', 'workspace.notConfigured': '尚未配置个人工作区', 'workspace.lastSync': '上次同步 {0}', 'workspace.neverSynced': '尚未同步', 'workspace.externalTitle': '外部 Skill 来源', 'workspace.externalDesc': '以只读方式提供额外 Skill 的仓库，其内容不会重复写入个人工作区。',
@@ -252,6 +254,41 @@ function displaySource(source) {
     return source === 'local' ? t('lib.local') : source;
 }
 
+function collectionViewMode(scope) {
+    return localStorage.getItem('skm-' + scope + '-view') === 'list' ? 'list' : 'grid';
+}
+
+function collectionViewSwitcherMarkup(scope, activeMode) {
+    var modes = [
+        { id: 'grid', icon: 'grid', label: t('view.grid') },
+        { id: 'list', icon: 'list', label: t('view.list') },
+    ];
+    return '<div class="collection-view-switcher" data-collection-view-scope="' + escapeHtml(scope) + '" role="group" aria-label="' +
+        escapeHtml(t('view.label')) + '">' + modes.map(function (mode) {
+            var active = activeMode === mode.id;
+            return '<button class="collection-view-option' + (active ? ' active' : '') + '" type="button" data-collection-view="' + mode.id +
+                '" aria-pressed="' + active + '" title="' + escapeHtml(mode.label) + '">' + uiIcon(mode.icon) + '<span>' + escapeHtml(mode.label) + '</span></button>';
+        }).join('') + '</div>';
+}
+
+function bindCollectionViewSwitcher(scope, state, repaint) {
+    var switcher = document.querySelector('[data-collection-view-scope="' + scope + '"]');
+    if (!switcher) return;
+    switcher.querySelectorAll('[data-collection-view]').forEach(function (button) {
+        button.addEventListener('click', function () {
+            var mode = button.dataset.collectionView === 'list' ? 'list' : 'grid';
+            if (state.viewMode === mode) return;
+            state.viewMode = mode;
+            localStorage.setItem('skm-' + scope + '-view', mode);
+            repaint();
+            requestAnimationFrame(function () {
+                var next = document.querySelector('[data-collection-view-scope="' + scope + '"] [data-collection-view="' + mode + '"]');
+                if (next) next.focus({ preventScroll: true });
+            });
+        });
+    });
+}
+
 function uiIcon(name) {
     var paths = {
         plus: '<path d="M12 5v14M5 12h14"/>',
@@ -271,6 +308,8 @@ function uiIcon(name) {
         link: '<path d="M9.5 14.5 14.5 9.5M7.5 16.5l-1 1a3.5 3.5 0 0 1-5-5l4-4a3.5 3.5 0 0 1 5 0M16.5 7.5l1-1a3.5 3.5 0 0 1 5 5l-4 4a3.5 3.5 0 0 1-5 0"/>',
         lock: '<rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>',
         copy: '<rect x="8" y="8" width="11" height="11" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>',
+        grid: '<rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/>',
+        list: '<path d="M9 6h11M9 12h11M9 18h11"/><rect x="4" y="5" width="2" height="2" rx=".5"/><rect x="4" y="11" width="2" height="2" rx=".5"/><rect x="4" y="17" width="2" height="2" rx=".5"/>',
         sparkles: '<path d="m12 3 1.1 3.2a4.2 4.2 0 0 0 2.7 2.7L19 10l-3.2 1.1a4.2 4.2 0 0 0-2.7 2.7L12 17l-1.1-3.2a4.2 4.2 0 0 0-2.7-2.7L5 10l3.2-1.1a4.2 4.2 0 0 0 2.7-2.7L12 3ZM19 16l.5 1.5L21 18l-1.5.5L19 20l-.5-1.5L17 18l1.5-.5L19 16Z"/>'
     };
     return '<svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">' + (paths[name] || paths.sparkles) + '</svg>';
@@ -811,5 +850,8 @@ window.statusBadgeClass = statusBadgeClass;
 window.isCurrentPage = isCurrentPage;
 window.uiIcon = uiIcon;
 window.confirmationMarkup = confirmationMarkup;
+window.collectionViewMode = collectionViewMode;
+window.collectionViewSwitcherMarkup = collectionViewSwitcherMarkup;
+window.bindCollectionViewSwitcher = bindCollectionViewSwitcher;
 
 document.addEventListener('DOMContentLoaded', function () { App.init(); });

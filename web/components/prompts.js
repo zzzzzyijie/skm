@@ -1,6 +1,6 @@
-/* global api, showToast, showModal, closeModal, displayTag, displaySource, formatDate, shortHash, escapeHtml, isCurrentPage, t, uiIcon, confirmationMarkup, tagPickerMarkup, selectedTagValues, showManageTagsModal */
+/* global api, showToast, showModal, closeModal, displayTag, displaySource, formatDate, shortHash, escapeHtml, isCurrentPage, t, uiIcon, confirmationMarkup, tagPickerMarkup, selectedTagValues, showManageTagsModal, collectionViewMode, collectionViewSwitcherMarkup, bindCollectionViewSwitcher */
 
-var promptState = { prompts: [], tags: [], query: '', activeTag: '' };
+var promptState = { prompts: [], tags: [], query: '', activeTag: '', viewMode: collectionViewMode('prompts') };
 var promptEditorVariables = [];
 
 async function renderPrompts() {
@@ -42,12 +42,12 @@ function paintPrompts() {
         html += '<button class="tag clickable' + (promptState.activeTag === tag.name ? ' active' : '') + '" type="button" data-prompt-tag="' +
             escapeHtml(tag.name) + '">' + escapeHtml(displayTag(tag.name)) + ' <small>' + tag.count + '</small></button>';
     });
-    html += '</div></div></div>';
+    html += '</div></div>' + collectionViewSwitcherMarkup('prompts', promptState.viewMode) + '</div>';
     if (!visible.length) {
         html += '<div class="empty-state"><div class="empty-state-mark">' + uiIcon('sparkles') + '</div><div class="empty-state-title">' + t('prompt.noPrompts') +
             '</div><div class="empty-state-desc">' + t('prompt.noPromptsDesc') + '</div></div>';
     } else {
-        html += '<div class="card-grid prompt-grid">' + visible.map(promptCard).join('') + '</div>';
+        html += '<div class="card-grid prompt-grid' + (promptState.viewMode === 'list' ? ' is-list-view' : '') + '">' + visible.map(promptCard).join('') + '</div>';
     }
     html += '</div>';
     container.innerHTML = html;
@@ -64,6 +64,7 @@ function paintPrompts() {
         next.focus();
         next.setSelectionRange(promptState.query.length, promptState.query.length);
     });
+    bindCollectionViewSwitcher('prompts', promptState, paintPrompts);
     container.querySelectorAll('[data-prompt-tag]').forEach(function (button) {
         button.addEventListener('click', function () { promptState.activeTag = button.dataset.promptTag; paintPrompts(); });
     });
