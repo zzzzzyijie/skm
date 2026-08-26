@@ -27,7 +27,9 @@ Project     项目引用或独立维护哪些 Skill
 完整设计见 [Library、Activation 与 Project 设计](docs/技能库激活与项目设计.md)，
 Prompt 格式与第一版能力见 [Prompt 管理](docs/Prompt管理.md)，
 完整命令说明见 [CLI 使用指南](docs/命令行使用指南.md)。当前完成度和待办见
-[核心流程验收清单](docs/核心流程验收清单.md)。
+[核心流程验收清单](docs/核心流程验收清单.md)。macOS 原生应用的实现与后续方案见
+[Mac 原生版技术设计](docs/Mac原生版技术设计.md)与
+[Mac 原生版原型设计](docs/Mac原生版原型设计.md)。
 
 ## 安装
 
@@ -75,6 +77,26 @@ go build -trimpath -o ./bin/skm ./cmd/skm
 完整的隔离开发、UI 验证、Snapshot 打包和正式发布流程见
 [隔离开发与发布流程](docs/开发与发布流程.md)。发布维护细节见
 [发布指南](docs/发布指南.md)。
+
+### macOS 原生 App（0.6.0）
+
+原生工程位于 `macos/`，需要 macOS 14+、Xcode 26+、Go 1.25+；Tuist 只在修改工程结构后
+重新生成 Xcode 工程时需要。已生成的 `macos/SKM.xcworkspace` 可以直接打开：
+
+```bash
+open macos/SKM.xcworkspace
+```
+
+命令行构建与测试：
+
+```bash
+xcodebuild -workspace macos/SKM.xcworkspace -scheme SKM build
+xcodebuild -workspace macos/SKM.xcworkspace -scheme SKM test
+```
+
+构建阶段会把同版本、Universal 2 的 Go Core 作为 `skm-core` 打入 App Bundle。App 不查找
+`PATH`，因此不依赖 Homebrew/curl 安装的 CLI；它与 CLI 继续共享 `~/.skm`。开发与架构说明见
+[macOS 工程说明](macos/README.md)。
 
 ## 快速开始
 

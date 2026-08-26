@@ -5,20 +5,19 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime/debug"
 	"sort"
-	"strings"
 
 	"github.com/zzzzzyijie/skm/internal/adapter"
+	"github.com/zzzzzyijie/skm/internal/buildinfo"
 	"github.com/zzzzzyijie/skm/internal/domain"
 	"github.com/zzzzzyijie/skm/internal/fsx"
 )
 
 type dashboardData struct {
-	SkillCount    int            `json:"skillCount"`
-	ActivatedCount int           `json:"activatedCount"`
-	SourceCount   int            `json:"sourceCount"`
-	RecentSkills  []domain.Skill `json:"recentSkills"`
+	SkillCount     int            `json:"skillCount"`
+	ActivatedCount int            `json:"activatedCount"`
+	SourceCount    int            `json:"sourceCount"`
+	RecentSkills   []domain.Skill `json:"recentSkills"`
 }
 
 func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
@@ -55,10 +54,10 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := dashboardData{
-		SkillCount:    len(catalog.Skills),
+		SkillCount:     len(catalog.Skills),
 		ActivatedCount: len(activatedIDs),
-		SourceCount:   len(sources.Sources),
-		RecentSkills:  recent,
+		SourceCount:    len(sources.Sources),
+		RecentSkills:   recent,
 	}
 	writeJSON(w, http.StatusOK, data)
 }
@@ -66,11 +65,7 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleVersion(w http.ResponseWriter, r *http.Request) {
 	version := Version
 	if version == "" || version == "dev" {
-		if info, ok := debug.ReadBuildInfo(); ok && info.Main.Version != "" && info.Main.Version != "(devel)" {
-			version = strings.TrimPrefix(info.Main.Version, "v")
-		} else {
-			version = "dev"
-		}
+		version = buildinfo.Current()
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"version": version})
 }

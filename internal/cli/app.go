@@ -5,11 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"runtime/debug"
 	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/zzzzzyijie/skm/internal/apperr"
+	"github.com/zzzzzyijie/skm/internal/buildinfo"
+	"github.com/zzzzzyijie/skm/internal/corebridge"
 	"github.com/zzzzzyijie/skm/internal/store"
 )
 
@@ -83,6 +84,7 @@ func (a *App) RootCommand() *cobra.Command {
 		a.newProjectCommand(),
 		a.newSyncCommand(),
 		a.newUICommand(),
+		a.newCoreCommand(),
 		a.newCompletionCommand(root),
 		&cobra.Command{
 			Use:   "version",
@@ -103,10 +105,24 @@ func currentVersion() string {
 	if Version != "" && Version != "dev" {
 		return strings.TrimPrefix(Version, "v")
 	}
-	if info, ok := debug.ReadBuildInfo(); ok && info.Main.Version != "" && info.Main.Version != "(devel)" {
-		return strings.TrimPrefix(info.Main.Version, "v")
+	return buildinfo.Current()
+}
+
+func (a *App) newCoreCommand() *cobra.Command {
+	command := &cobra.Command{
+		Use:    "core",
+		Short:  "Run the private macOS Core Bridge",
+		Hidden: true,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			storage, err := a.openStore()
+			if err != nil {
+				return err
+			}
+			return corebridge.New(storage).Run(cmd.Context(), cmd.InOrStdin(), cmd.OutOrStdout())
+		},
 	}
-	return "dev"
+	command.Flags().Bool("stdio", true, "use newline-delimited JSON-RPC over standard I/O")
+	return command
 }
 
 func (a *App) openStore() (*store.Store, error) {

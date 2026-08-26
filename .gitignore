@@ -32,3 +32,9 @@ go.work.sum
 # Editor/IDE
 # .idea/
 # .vscode/
+
+# Xcode user-local state and build products
+macos/**/xcuserdata/
+macos/.build/
+macos/DerivedData/
+*.xcuserstate
