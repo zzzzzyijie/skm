@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  go:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Test and build
+        run: |
+          go test ./...
+          go vet ./...
+          go build ./...
+
+      - name: Test distribution scripts
+        run: |
+          sh scripts/install_test.sh
+          sh scripts/generate_homebrew_formula_test.sh
+
+  macos-app:
+    runs-on: macos-26
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build and test macOS App
+        run: |
+          xcodebuild -quiet \
+            -workspace macos/SKM.xcworkspace \
+            -scheme SKM \
+            -configuration Debug \
+            -derivedDataPath "$RUNNER_TEMP/skm-tests" \
+            test
+
+      - name: Build ad-hoc signed release preview
+        run: |
+          sh macos/Scripts/package-release.sh \
+            --version 0.5.1 \
+            --build "$GITHUB_RUN_NUMBER" \
+            --output "$RUNNER_TEMP/skm-release-preview" \
+            --preview

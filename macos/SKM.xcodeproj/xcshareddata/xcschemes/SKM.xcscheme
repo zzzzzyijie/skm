@@ -39,6 +39,17 @@
                ReferencedContainer = "container:SKM.xcodeproj">
             </BuildableReference>
          </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "52BABDCE09AC70AE94DA3A71"
+               BuildableName = "SKMUITests.xctest"
+               BlueprintName = "SKMUITests"
+               ReferencedContainer = "container:SKM.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction

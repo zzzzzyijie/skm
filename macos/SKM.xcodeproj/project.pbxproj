@@ -8,13 +8,16 @@
 
 /* Begin PBXBuildFile section */
 		1106670EBC61298B38943484 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D56DEEB6D28F2D9D5398609B /* Assets.xcassets */; };
+		1C0F2792556C4FB4B69120B1 /* SKMUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 925BF8832F4F69FCAB6ECE74 /* SKMUITests.swift */; };
 		5CB541B83F2903AF41D137DF /* FileChangeMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AF2FD5D032C459EDF8129F9 /* FileChangeMonitor.swift */; };
 		6E990A3952BFAE9AD9669E5C /* SkillsViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A3742F40E78420077C423A6 /* SkillsViews.swift */; };
 		7413D065476DEF2CA7DB5D8F /* CoreClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 429783E93603296CB2D7CB42 /* CoreClient.swift */; };
 		78ACAAFA032D10D67A330BE5 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E40BC7CB40783A97247789F /* Models.swift */; };
 		9F549DC12757A782F7B5AA03 /* TuistBundle+SKM.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FE6F8EA1789EACD76C69584 /* TuistBundle+SKM.swift */; };
+		9FDDA2849C51B2419F28CE50 /* AppModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D911E9F0468B541067E4B286 /* AppModelTests.swift */; };
 		A59F9AC65EC3577FF5D8CA74 /* AgentsViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19FCDAC7FF254EBCA9F8F78C /* AgentsViews.swift */; };
 		C9B9B1E200AB7B41C7565D5D /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E58F665593E8DCC13790995F /* RootView.swift */; };
+		D0E3D2AAAA39AA7801A87F49 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 32A2DA6658A101CFB7A62977 /* Localizable.xcstrings */; };
 		D5BD2C26163524C81996F417 /* ProjectsViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BCD029EDC835D56BCC8D2FF /* ProjectsViews.swift */; };
 		DB4764650C774C5DD15C0660 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20709688D10BA879FDCA531B /* AppModel.swift */; };
 		DDF27EC8381E6AC6FD5162E8 /* TuistAssets+SKM.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37872FA8150C4D8CFF7FB6A6 /* TuistAssets+SKM.swift */; };
@@ -24,6 +27,13 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		412C359F33035AC90432CBA9 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 4C287F98CC5CFAF85F187B01 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 8B44F6F33C6A94208DDFCBBD;
+			remoteInfo = SKM;
+		};
 		D8FF61A176E19AF0D27E7759 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 4C287F98CC5CFAF85F187B01 /* Project object */;
@@ -34,6 +44,16 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
+		3A8D71748CD144C5CCE35182 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		9AA4B16D0C1531886C1DA2F8 /* Embed Frameworks */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
@@ -61,6 +81,7 @@
 		19FCDAC7FF254EBCA9F8F78C /* AgentsViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentsViews.swift; sourceTree = "<group>"; };
 		20709688D10BA879FDCA531B /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
 		2802B0E8AB8EFD1728F8C910 /* SKMApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SKMApp.swift; sourceTree = "<group>"; };
+		32A2DA6658A101CFB7A62977 /* Localizable.xcstrings */ = {isa = PBXFileReference; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		37872FA8150C4D8CFF7FB6A6 /* TuistAssets+SKM.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TuistAssets+SKM.swift"; sourceTree = "<group>"; };
 		429783E93603296CB2D7CB42 /* CoreClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreClient.swift; sourceTree = "<group>"; };
 		492B3D27AF371E24C94DA501 /* SKMTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SKMTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -70,9 +91,13 @@
 		5AF2FD5D032C459EDF8129F9 /* FileChangeMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileChangeMonitor.swift; sourceTree = "<group>"; };
 		6BCD029EDC835D56BCC8D2FF /* ProjectsViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectsViews.swift; sourceTree = "<group>"; };
 		7E40BC7CB40783A97247789F /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		82654FEC2F213C35924EBDFB /* SKMUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SKMUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		8A3742F40E78420077C423A6 /* SkillsViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillsViews.swift; sourceTree = "<group>"; };
+		925BF8832F4F69FCAB6ECE74 /* SKMUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SKMUITests.swift; sourceTree = "<group>"; };
 		A31D5DC3D0B1C74CA854A593 /* PromptsViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptsViews.swift; sourceTree = "<group>"; };
+		BB6FCBC6C244094C7D0648A4 /* SKMUITests-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "SKMUITests-Info.plist"; sourceTree = "<group>"; };
 		D56DEEB6D28F2D9D5398609B /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		D911E9F0468B541067E4B286 /* AppModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModelTests.swift; sourceTree = "<group>"; };
 		E58F665593E8DCC13790995F /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		FE1364B3F26E98BFC6EAB5A9 /* SKMTests-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "SKMTests-Info.plist"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -86,6 +111,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		7AF5858D97A933215DE48EF1 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		973A85749C9C449774EED659 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -110,6 +142,7 @@
 			children = (
 				4C114BD280CAA6A577F2F31E /* SKM.app */,
 				492B3D27AF371E24C94DA501 /* SKMTests.xctest */,
+				82654FEC2F213C35924EBDFB /* SKMUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -119,6 +152,7 @@
 			children = (
 				07F393F9A75E0B1EFAB35C55 /* SKM-Info.plist */,
 				FE1364B3F26E98BFC6EAB5A9 /* SKMTests-Info.plist */,
+				BB6FCBC6C244094C7D0648A4 /* SKMUITests-Info.plist */,
 			);
 			path = InfoPlists;
 			sourceTree = "<group>";
@@ -145,6 +179,7 @@
 			isa = PBXGroup;
 			children = (
 				D56DEEB6D28F2D9D5398609B /* Assets.xcassets */,
+				32A2DA6658A101CFB7A62977 /* Localizable.xcstrings */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -188,12 +223,21 @@
 			path = Sources;
 			sourceTree = "<group>";
 		};
+		A205DA147EDC292B0B061253 /* UITests */ = {
+			isa = PBXGroup;
+			children = (
+				925BF8832F4F69FCAB6ECE74 /* SKMUITests.swift */,
+			);
+			path = UITests;
+			sourceTree = "<group>";
+		};
 		A46EA9BA12700C8686EAB79A /* SKMApp */ = {
 			isa = PBXGroup;
 			children = (
 				56A69C056AC2A71710EB95FB /* Resources */,
 				918246A2E5ACA185D5749799 /* Sources */,
 				FAE9AC840515E08F2C59CCB2 /* Tests */,
+				A205DA147EDC292B0B061253 /* UITests */,
 			);
 			path = SKMApp;
 			sourceTree = "<group>";
@@ -210,6 +254,7 @@
 		FAE9AC840515E08F2C59CCB2 /* Tests */ = {
 			isa = PBXGroup;
 			children = (
+				D911E9F0468B541067E4B286 /* AppModelTests.swift */,
 				563C8963967743430C0ACAB0 /* ModelsTests.swift */,
 			);
 			path = Tests;
@@ -218,6 +263,27 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		52BABDCE09AC70AE94DA3A71 /* SKMUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = E57D83590F6645B98E9AED91 /* Build configuration list for PBXNativeTarget "SKMUITests" */;
+			buildPhases = (
+				B9A135E34155CE492DC3C9D2 /* Sources */,
+				4F6074A83EC609759C0EE8B5 /* Resources */,
+				973A85749C9C449774EED659 /* Frameworks */,
+				3A8D71748CD144C5CCE35182 /* Embed Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				FD8C93C72AB6B3473DA4BA8B /* PBXTargetDependency */,
+			);
+			name = SKMUITests;
+			packageProductDependencies = (
+			);
+			productName = SKMUITests;
+			productReference = 82654FEC2F213C35924EBDFB /* SKMUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 		82963E4EE77A35BBF2B1EED3 /* SKMTests */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = B54C1E0FAAD74708360513BB /* Build configuration list for PBXNativeTarget "SKMTests" */;
@@ -268,6 +334,9 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
 				TargetAttributes = {
+					52BABDCE09AC70AE94DA3A71 = {
+						TestTargetID = 8B44F6F33C6A94208DDFCBBD;
+					};
 					82963E4EE77A35BBF2B1EED3 = {
 						TestTargetID = 8B44F6F33C6A94208DDFCBBD;
 					};
@@ -275,11 +344,11 @@
 			};
 			buildConfigurationList = 30AF14A9880205E8CA1AE54E /* Build configuration list for PBXProject "SKM" */;
 			compatibilityVersion = "Xcode 14.0";
-			developmentRegion = en;
+			developmentRegion = "zh-Hans";
 			hasScannedForEncodings = 0;
 			knownRegions = (
-				Base,
 				en,
+				"zh-Hans",
 			);
 			mainGroup = 0FFD4189347C5CC73F0E8616;
 			productRefGroup = 044309B87E88CC1B2CBB286D /* Products */;
@@ -288,6 +357,7 @@
 			targets = (
 				8B44F6F33C6A94208DDFCBBD /* SKM */,
 				82963E4EE77A35BBF2B1EED3 /* SKMTests */,
+				52BABDCE09AC70AE94DA3A71 /* SKMUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -300,11 +370,19 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		4F6074A83EC609759C0EE8B5 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		8A84DE5911F850D3423C6266 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 				1106670EBC61298B38943484 /* Assets.xcassets in Resources */,
+				D0E3D2AAAA39AA7801A87F49 /* Localizable.xcstrings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -337,6 +415,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				9FDDA2849C51B2419F28CE50 /* AppModelTests.swift in Sources */,
 				F414ECF3C7108F46856EE347 /* ModelsTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -360,6 +439,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		B9A135E34155CE492DC3C9D2 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1C0F2792556C4FB4B69120B1 /* SKMUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -368,6 +455,12 @@
 			name = SKM;
 			target = 8B44F6F33C6A94208DDFCBBD /* SKM */;
 			targetProxy = D8FF61A176E19AF0D27E7759 /* PBXContainerItemProxy */;
+		};
+		FD8C93C72AB6B3473DA4BA8B /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = SKM;
+			target = 8B44F6F33C6A94208DDFCBBD /* SKM */;
+			targetProxy = 412C359F33035AC90432CBA9 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -448,7 +541,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.6.0;
+				MARKETING_VERSION = 0.5.1;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 6.0;
@@ -538,11 +631,36 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.6.0;
+				MARKETING_VERSION = 0.5.1;
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		B5B4545844568FE0F927A000 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "-";
+				ENABLE_HARDENED_RUNTIME = NO;
+				INFOPLIST_FILE = "Derived/InfoPlists/SKMUITests-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.zzzzzyijie.skm.ui-tests";
+				PRODUCT_NAME = SKMUITests;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = (
+					"$(inherited)",
+					DEBUG,
+				);
+				SWIFT_COMPILATION_MODE = singlefile;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				TEST_TARGET_NAME = SKM;
 			};
 			name = Debug;
 		};
@@ -571,6 +689,27 @@
 				TEST_TARGET_NAME = SKM;
 			};
 			name = Debug;
+		};
+		EB09FB9D548C556481A13849 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "-";
+				ENABLE_HARDENED_RUNTIME = NO;
+				INFOPLIST_FILE = "Derived/InfoPlists/SKMUITests-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.zzzzzyijie.skm.ui-tests";
+				PRODUCT_NAME = SKMUITests;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				TEST_TARGET_NAME = SKM;
+			};
+			name = Release;
 		};
 		F0D4FFA9DF924101C2C8BD58 /* Debug */ = {
 			isa = XCBuildConfiguration;
@@ -624,6 +763,15 @@
 			buildConfigurations = (
 				F0D4FFA9DF924101C2C8BD58 /* Debug */,
 				4C10859EF5B02CA8E4BE6650 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		E57D83590F6645B98E9AED91 /* Build configuration list for PBXNativeTarget "SKMUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B5B4545844568FE0F927A000 /* Debug */,
+				EB09FB9D548C556481A13849 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

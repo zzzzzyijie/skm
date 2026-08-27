@@ -18,12 +18,21 @@ struct PromptsListView: View {
     var body: some View {
         Group {
             if model.prompts.isEmpty && !model.isLoading {
-                ContentUnavailableView("还没有 Prompt", systemImage: "text.bubble", description: Text("创建可复用、带变量定义的提示词。"))
+                ContentUnavailableView {
+                    Label("还没有 Prompt", systemImage: "text.bubble")
+                } description: {
+                    Text("创建可复用、带变量定义的提示词。")
+                } actions: {
+                    Button("新建 Prompt") { showsNewPrompt = true }
+                        .buttonStyle(.borderedProminent)
+                }
+            } else if filtered.isEmpty {
+                ContentUnavailableView.search(text: search)
             } else {
                 List(filtered, selection: $model.selectedPromptID) { prompt in
                     VStack(alignment: .leading, spacing: 5) {
                         Text(prompt.name).fontWeight(.medium)
-                        Text(prompt.description.isEmpty ? "无描述" : prompt.description)
+                        Text(prompt.description.isEmpty ? String(localized: "无描述") : prompt.description)
                             .font(.caption).foregroundStyle(.secondary).lineLimit(2)
                         if !prompt.tags.isEmpty {
                             Text(prompt.tags.joined(separator: " · "))
@@ -32,6 +41,8 @@ struct PromptsListView: View {
                     }
                     .padding(.vertical, 4)
                     .tag(prompt.id)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(promptAccessibilityLabel(prompt))
                 }
             }
         }
@@ -41,10 +52,38 @@ struct PromptsListView: View {
             ToolbarItemGroup(placement: .primaryAction) {
                 Button("导入 Prompt", systemImage: "square.and.arrow.down") { importPrompt() }
                 Button("新建 Prompt", systemImage: "plus") { showsNewPrompt = true }
-                    .keyboardShortcut("n", modifiers: [.command, .shift])
             }
         }
         .sheet(isPresented: $showsNewPrompt) { PromptEditorSheet(model: model, details: nil) }
+        .onChange(of: model.pendingCommand?.id) { _, _ in
+            guard let command = model.pendingCommand, command.section == .prompts else { return }
+            switch command.kind {
+            case .create:
+                showsNewPrompt = true
+            case .importItem:
+                importPrompt()
+            case .deleteSelection:
+                return
+            }
+            model.consumeCommand(command.id)
+        }
+    }
+
+    private func promptAccessibilityLabel(_ prompt: PromptSummary) -> String {
+        let tags = prompt.tags.isEmpty
+            ? String(localized: "无标签")
+            : String(
+                format: String(localized: "标签 %@"),
+                locale: .current,
+                prompt.tags.joined(separator: String(localized: "、"))
+            )
+        return String(
+            format: String(localized: "%1$@，来源 %2$@，%3$@"),
+            locale: .current,
+            prompt.name,
+            prompt.source,
+            tags
+        )
     }
 
     private func importPrompt() {
@@ -76,7 +115,7 @@ struct PromptDetailView: View {
                     VStack(alignment: .leading, spacing: 22) {
                         VStack(alignment: .leading, spacing: 8) {
                             Text(prompt.name).font(.largeTitle.bold())
-                            Text(prompt.description.isEmpty ? "无描述" : prompt.description)
+                            Text(prompt.description.isEmpty ? String(localized: "无描述") : prompt.description)
                                 .font(.title3).foregroundStyle(.secondary)
                         }
                         if let variables = prompt.variables, !variables.isEmpty {
@@ -93,7 +132,7 @@ struct PromptDetailView: View {
                             }
                         }
                         GroupBox("内容") {
-                            Text(details?.body ?? "正在读取…")
+                            Text(details?.body ?? String(localized: "正在读取…"))
                                 .font(.system(.body, design: .monospaced))
                                 .textSelection(.enabled)
                                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -109,7 +148,7 @@ struct PromptDetailView: View {
                         Button("复制", systemImage: "doc.on.doc") {
                             NSPasteboard.general.clearContents()
                             NSPasteboard.general.setString(details?.body ?? "", forType: .string)
-                            model.announce("Prompt 已复制")
+                            model.announce(String(localized: "Prompt 已复制"))
                         }
                         Button("导出", systemImage: "square.and.arrow.up") { exportPrompt(prompt.name) }
                         Button("编辑", systemImage: "pencil") { showsEditor = true }
@@ -121,6 +160,13 @@ struct PromptDetailView: View {
                 }
                 .confirmationDialog("移除 \(prompt.name)？", isPresented: $confirmsDelete) {
                     Button("移除 Prompt", role: .destructive) { Task { await model.removePrompt(id: id) } }
+                }
+                .onChange(of: model.pendingCommand?.id) { _, _ in
+                    guard let command = model.pendingCommand,
+                          command.section == .prompts,
+                          command.kind == .deleteSelection else { return }
+                    confirmsDelete = true
+                    model.consumeCommand(command.id)
                 }
             } else {
                 ContentUnavailableView("选择一个 Prompt", systemImage: "text.bubble")
@@ -140,7 +186,7 @@ struct PromptDetailView: View {
         if panel.runModal() == .OK, let url = panel.url {
             do {
                 try content.write(to: url, atomically: true, encoding: .utf8)
-                model.announce("Prompt 已导出")
+                model.announce(String(localized: "Prompt 已导出"))
             } catch {
                 model.errorMessage = error.localizedDescription
             }
@@ -168,7 +214,8 @@ struct PromptEditorSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text(details == nil ? "新建 Prompt" : "编辑 Prompt").font(.title2.bold())
+            Text(details == nil ? String(localized: "新建 Prompt") : String(localized: "编辑 Prompt"))
+                .font(.title2.bold())
             Form {
                 TextField("名称", text: $name)
                 TextField("描述", text: $description)

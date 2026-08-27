@@ -1,6 +1,6 @@
 # SKM macOS 原生版技术设计
 
-> 状态：0.6.0 首版已落地，Phase 2 待实现
+> 状态：0.5.1 Phase 1 工程实现已完成；支持简体中文与英文，本地签名预览已支持，正式签名与公证待配置 Apple 凭据，Phase 2 待实现
 > 基线：SKM v0.5.0、持久化 schema v2
 > 目标：在不重写 Go 领域逻辑、不破坏 CLI 兼容性的前提下，提供真正的 macOS 原生应用。
 
@@ -195,7 +195,7 @@ func (s *Service) SyncWorkspace(ctx context.Context, input SyncInput, progress P
 App 启动后第一条请求必须是：
 
 ```json
-{"jsonrpc":"2.0","id":"1","method":"system.handshake","params":{"protocolVersion":1,"appVersion":"0.6.0"}}
+{"jsonrpc":"2.0","id":"1","method":"system.handshake","params":{"protocolVersion":1,"appVersion":"0.5.1"}}
 ```
 
 Core 返回：
@@ -206,7 +206,7 @@ Core 返回：
   "id": "1",
   "result": {
     "protocolVersion": 1,
-    "coreVersion": "0.6.0",
+    "coreVersion": "0.5.1",
     "schemaVersion": 2,
     "promptSchemaVersion": 1,
     "workspaceSchemaVersion": 1,
@@ -505,12 +505,17 @@ CGO_ENABLED=0
 → 上传 Release
 ```
 
+该流程已实现于 `macos/Scripts/package-release.sh` 与 `.github/workflows/release.yml`。本地可用
+`--preview` 使用 ad-hoc 签名生成不可分发的本地候选包；正式模式强制要求 Developer ID Application 与 App Store
+Connect Team API Key，并在上传前检查 Universal 2、版本一致性、签名、notarization ticket、
+Gatekeeper 与 SHA-256。
+
 ### 10.2 版本
 
 - App、捆绑 Core 和 CLI 使用同一个语义化 Tag。
 - `CFBundleShortVersionString` 等于去掉 `v` 的 Tag。
 - `CFBundleVersion` 使用 CI 递增构建号。
-- 原生首发属于兼容新增功能，建议使用当前 `v0.5.0` 之后的下一个 minor 版本。
+- 原生首发属于兼容新增功能，使用当前 `v0.5.0` 之后的补丁版本 `v0.5.1`。
 
 ### 10.3 发布产物
 

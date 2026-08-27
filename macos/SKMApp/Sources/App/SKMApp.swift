@@ -13,9 +13,28 @@ struct SKMApp: App {
         }
         .defaultSize(width: 1180, height: 760)
         .commands {
+            CommandGroup(replacing: .newItem) {
+                Button(newItemTitle) { model.request(.create) }
+                    .keyboardShortcut("n", modifiers: .command)
+                    .disabled(!model.canCreate)
+                Button(importTitle) { model.request(.importItem) }
+                    .keyboardShortcut("o", modifiers: .command)
+                    .disabled(!model.canImport)
+            }
             CommandGroup(after: .sidebar) {
                 Button("刷新") { Task { await model.refresh() } }
                     .keyboardShortcut("r", modifiers: .command)
+            }
+            CommandGroup(after: .pasteboard) {
+                Button("删除所选项目") { model.request(.deleteSelection) }
+                    .keyboardShortcut(.delete, modifiers: .command)
+                    .disabled(!model.canDeleteSelection)
+            }
+            CommandMenu("导航") {
+                ForEach(Array(AppSection.allCases.enumerated()), id: \.element.id) { index, section in
+                    Button(section.rawValue) { model.section = section }
+                        .keyboardShortcut(KeyEquivalent(Character(String(index + 1))), modifiers: .command)
+                }
             }
         }
 
@@ -23,5 +42,18 @@ struct SKMApp: App {
             SettingsView(model: model)
                 .frame(width: 520, height: 300)
         }
+    }
+
+    private var newItemTitle: String {
+        switch model.section {
+        case .skills: String(localized: "添加 Skill")
+        case .prompts: String(localized: "新建 Prompt")
+        case .projects: String(localized: "添加项目（Phase 2）")
+        case .agents: String(localized: "添加自定义 Agent")
+        }
+    }
+
+    private var importTitle: String {
+        model.section == .prompts ? String(localized: "导入 Prompt…") : String(localized: "导入 Skill…")
     }
 }

@@ -2,11 +2,15 @@ import ProjectDescription
 
 let project = Project(
     name: "SKM",
+    options: .options(
+        defaultKnownRegions: ["zh-Hans", "en"],
+        developmentRegion: "zh-Hans"
+    ),
     settings: .settings(base: [
         "MACOSX_DEPLOYMENT_TARGET": "14.0",
         "SWIFT_VERSION": "6.0",
         "CURRENT_PROJECT_VERSION": "1",
-        "MARKETING_VERSION": "0.6.0",
+        "MARKETING_VERSION": "0.5.1",
         "ENABLE_USER_SCRIPT_SANDBOXING": "NO",
         "ENABLE_APP_SANDBOX": "NO",
         "ENABLE_HARDENED_RUNTIME": "YES",
@@ -46,6 +50,16 @@ let project = Project(
             deploymentTargets: .macOS("14.0"),
             sources: ["SKMApp/Tests/**"],
             dependencies: [.target(name: "SKM")]
+        ),
+        .target(
+            name: "SKMUITests",
+            destinations: .macOS,
+            product: .uiTests,
+            bundleId: "com.zzzzzyijie.skm.ui-tests",
+            deploymentTargets: .macOS("14.0"),
+            sources: ["SKMApp/UITests/**"],
+            dependencies: [.target(name: "SKM")],
+            settings: .settings(base: ["ENABLE_HARDENED_RUNTIME": "NO"])
         ),
     ]
 )

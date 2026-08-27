@@ -3,10 +3,10 @@ import XCTest
 
 final class ModelsTests: XCTestCase {
     func testHandshakeDecoding() throws {
-        let data = Data(#"{"protocolVersion":1,"coreVersion":"0.6.0","schemaVersion":2,"promptSchemaVersion":1,"workspaceSchemaVersion":1,"capabilities":["skills.read"]}"#.utf8)
+        let data = Data(#"{"protocolVersion":1,"coreVersion":"0.5.1","schemaVersion":2,"promptSchemaVersion":1,"workspaceSchemaVersion":1,"capabilities":["skills.read"]}"#.utf8)
         let value = try JSONDecoder().decode(Handshake.self, from: data)
         XCTAssertEqual(value.protocolVersion, 1)
-        XCTAssertEqual(value.coreVersion, "0.6.0")
+        XCTAssertEqual(value.coreVersion, "0.5.1")
         XCTAssertEqual(value.schemaVersion, 2)
     }
 

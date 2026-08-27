@@ -5,6 +5,7 @@ struct SkillsListView: View {
     @Bindable var model: AppModel
     @State private var search = ""
     @State private var showsAdd = false
+    @State private var addMode = 0
 
     private var filtered: [SkillSummary] {
         guard !search.isEmpty else { return model.skills }
@@ -18,7 +19,19 @@ struct SkillsListView: View {
     var body: some View {
         Group {
             if model.skills.isEmpty && !model.isLoading {
-                ContentUnavailableView("还没有 Skill", systemImage: "square.stack.3d.up", description: Text("从本地目录、ZIP 或 Git Source 导入第一个 Skill。"))
+                ContentUnavailableView {
+                    Label("还没有 Skill", systemImage: "square.stack.3d.up")
+                } description: {
+                    Text("从本地目录、ZIP 或 Git Source 导入第一个 Skill。")
+                } actions: {
+                    Button("添加 Skill") {
+                        addMode = 0
+                        showsAdd = true
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+            } else if filtered.isEmpty {
+                ContentUnavailableView.search(text: search)
             } else {
                 List(filtered, selection: $model.selectedSkillID) { skill in
                     VStack(alignment: .leading, spacing: 5) {
@@ -27,7 +40,7 @@ struct SkillsListView: View {
                             Spacer()
                             HealthBadge(health: skill.health)
                         }
-                        Text(skill.description.isEmpty ? "无描述" : skill.description)
+                        Text(skill.description.isEmpty ? String(localized: "无描述") : skill.description)
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .lineLimit(2)
@@ -39,6 +52,8 @@ struct SkillsListView: View {
                     }
                     .padding(.vertical, 4)
                     .tag(skill.id)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(skillAccessibilityLabel(skill))
                 }
             }
         }
@@ -46,11 +61,40 @@ struct SkillsListView: View {
         .navigationTitle("Skills")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                Button("添加 Skill", systemImage: "plus") { showsAdd = true }
-                    .keyboardShortcut("n", modifiers: .command)
+                Button("添加 Skill", systemImage: "plus") {
+                    addMode = 0
+                    showsAdd = true
+                }
             }
         }
-        .sheet(isPresented: $showsAdd) { AddSkillSheet(model: model) }
+        .sheet(isPresented: $showsAdd) { AddSkillSheet(model: model, initialMode: addMode) }
+        .onChange(of: model.pendingCommand?.id) { _, _ in
+            guard let command = model.pendingCommand, command.section == .skills else { return }
+            if command.kind == .create || command.kind == .importItem {
+                addMode = command.kind == .importItem ? 1 : 0
+                showsAdd = true
+                model.consumeCommand(command.id)
+            }
+        }
+    }
+
+    private func skillAccessibilityLabel(_ skill: SkillSummary) -> String {
+        let source = skill.source.isEmpty ? "local" : skill.source
+        let tags = skill.tags.isEmpty
+            ? String(localized: "无标签")
+            : String(
+                format: String(localized: "标签 %@"),
+                locale: .current,
+                skill.tags.joined(separator: String(localized: "、"))
+            )
+        return String(
+            format: String(localized: "%1$@，来源 %2$@，%3$@，健康状态 %4$@"),
+            locale: .current,
+            skill.name,
+            source,
+            tags,
+            healthLabel(skill.health)
+        )
     }
 }
 
@@ -98,6 +142,13 @@ struct SkillDetailView: View {
                 } message: {
                     Text("已经启用的 Skill 必须先停用。不可变快照只会在没有引用时清理。")
                 }
+                .onChange(of: model.pendingCommand?.id) { _, _ in
+                    guard let command = model.pendingCommand,
+                          command.section == .skills,
+                          command.kind == .deleteSelection else { return }
+                    confirmsDelete = true
+                    model.consumeCommand(command.id)
+                }
             } else {
                 ContentUnavailableView("选择一个 Skill", systemImage: "square.stack.3d.up")
             }
@@ -110,7 +161,7 @@ struct SkillDetailView: View {
                 Text(skill.name).font(.largeTitle.bold())
                 HealthBadge(health: skill.health)
             }
-            Text(skill.description.isEmpty ? "无描述" : skill.description)
+            Text(skill.description.isEmpty ? String(localized: "无描述") : skill.description)
                 .font(.title3)
                 .foregroundStyle(.secondary)
             if skill.usingFallback == true {
@@ -143,7 +194,7 @@ struct SkillDetailView: View {
     private var sourceView: some View {
         GroupBox {
             ScrollView(.horizontal) {
-                Text(details?.content ?? "正在读取…")
+                Text(details?.content ?? String(localized: "正在读取…"))
                     .font(.system(.body, design: .monospaced))
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -164,6 +215,12 @@ struct SkillDetailView: View {
                     Label(agent.name, systemImage: agent.detected ? "checkmark.circle" : "circle.dashed")
                 }
                 .disabled(model.isLoading)
+                .accessibilityLabel(String(
+                    format: String(localized: "为 %1$@ 启用 %2$@"),
+                    locale: .current,
+                    agent.name,
+                    skill.name
+                ))
             }
             if model.agents.allSatisfy({ !$0.configured }) {
                 ContentUnavailableView("没有已管理的 Agent", systemImage: "cpu", description: Text("先在 Agents 中添加或启用一个 Agent。"))
@@ -184,6 +241,11 @@ struct AddSkillSheet: View {
     @State private var path = ""
     @State private var remote = ""
     @State private var tags = ""
+
+    init(model: AppModel, initialMode: Int = 0) {
+        self.model = model
+        _mode = State(initialValue: initialMode)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
@@ -287,18 +349,20 @@ struct HealthBadge: View {
             .accessibilityLabel(label)
     }
 
-    private var label: String {
-        switch health {
-        case "available": "可用"
-        case "changed": "已变更"
-        case "missing": "缺失"
-        case "unreachable": "不可访问"
-        default: "无效"
-        }
-    }
+    private var label: String { healthLabel(health) }
 
     private var symbol: String { health == "available" ? "checkmark.circle.fill" : "exclamationmark.triangle.fill" }
     private var color: Color { health == "available" ? .green : .orange }
+}
+
+func healthLabel(_ health: String) -> String {
+    switch health {
+    case "available": String(localized: "可用")
+    case "changed": String(localized: "已变更")
+    case "missing": String(localized: "缺失")
+    case "unreachable": String(localized: "不可访问")
+    default: String(localized: "无效")
+    }
 }
 
 func parseTags(_ value: String) -> [String] {

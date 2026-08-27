@@ -37,4 +37,5 @@ go.work.sum
 macos/**/xcuserdata/
 macos/.build/
 macos/DerivedData/
+macos/Derived/
 *.xcuserstate
