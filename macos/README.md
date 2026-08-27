@@ -1,9 +1,11 @@
 # SKM macOS 原生 App
 
+当前已完成项、待完成项和正式分发所需信息见
+[macOS 原生版开发进度](../docs/Mac原生版开发进度.md)。
+
 当前原生首版为 `0.5.1`，实现技术设计中的 Core 契约与原生 MVP 主流程：
 
 - 支持跟随 macOS 系统语言显示简体中文或英文；
-
 - SwiftUI 三栏导航与 macOS 原生菜单、搜索、文件面板、剪贴板和 Settings scene；
 - Skill 本地目录/ZIP/Git/安装命令导入、详情、原文编辑、标签、删除；
 - Agent 检测、管理、自定义 Agent 与用户级 Skill 启用/停用；
