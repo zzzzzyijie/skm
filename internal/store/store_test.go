@@ -192,6 +192,29 @@ func TestSaveProjectLockIncludesRequirementsAndVendoredSkills(t *testing.T) {
 	}
 }
 
+func TestHistoryRoundTripAndDeduplication(t *testing.T) {
+	storage := testStore(t)
+	first, err := storage.SaveHistory(domain.HistorySkill, "local/example", "abc123", "edit", "first")
+	if err != nil {
+		t.Fatal(err)
+	}
+	duplicate, err := storage.SaveHistory(domain.HistorySkill, "local/example", "abc123", "edit", "first")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if duplicate.ID != first.ID {
+		t.Fatalf("duplicate history created: %q != %q", duplicate.ID, first.ID)
+	}
+	entries, err := storage.ListHistory(domain.HistorySkill, "local/example")
+	if err != nil || len(entries) != 1 || entries[0].Content != "" {
+		t.Fatalf("history entries = %+v, err=%v", entries, err)
+	}
+	loaded, err := storage.ReadHistory(domain.HistorySkill, "local/example", first.ID)
+	if err != nil || loaded.Content != "first" {
+		t.Fatalf("history entry = %+v, err=%v", loaded, err)
+	}
+}
+
 func testStore(t *testing.T) *Store {
 	t.Helper()
 	root := t.TempDir()

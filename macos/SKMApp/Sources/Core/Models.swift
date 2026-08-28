@@ -171,8 +171,29 @@ struct ProjectDetails: Codable, Sendable {
     let project: RegisteredProject
     let exists: Bool
     let activations: [ActivationModel]
+    let manifest: ProjectManifestModel
     let scan: ProjectScan
     let plan: PlanModel
+}
+
+struct ProjectManifestModel: Codable, Sendable {
+    let version: Int
+    let skills: [MutationSkill]
+    let dependencies: [ProjectDependencyModel]?
+}
+
+struct ProjectDependencyModel: Codable, Identifiable, Hashable, Sendable {
+    let id: String
+    let name: String
+    let source: String
+    let url: String
+    let ref: String?
+    let sourcePath: String?
+    let revision: String
+    let hash: String
+    let tags: [String]
+    let agents: [String]
+    let mode: String
 }
 
 struct RegisteredProject: Codable, Identifiable, Hashable, Sendable {
@@ -192,6 +213,45 @@ struct ProjectMigrateResponse: Codable, Sendable {
     let skill: MutationSkill
     let mode: String
     let removedPaths: [String]
+}
+
+struct ProjectAdvancedResponse: Codable, Sendable {
+    let project: RegisteredProject
+    let manifest: ProjectManifestModel
+    let dependency: ProjectDependencyModel?
+    let skill: MutationSkill?
+    let plan: PlanModel
+    let satisfiedByUser: [String]
+    let applied: Bool
+    let removedId: String?
+}
+
+struct PromptRenderResponse: Codable, Sendable {
+    let content: String
+    let missingVariables: [String]
+}
+
+struct HistoryEntryModel: Codable, Identifiable, Hashable, Sendable {
+    let id: String
+    let itemId: String
+    let kind: String
+    let hash: String
+    let createdAt: String
+    let reason: String
+    let current: Bool?
+    let content: String?
+}
+
+struct HistoryDiffResponse: Codable, Sendable {
+    let from: String
+    let to: String
+    let diff: String
+}
+
+struct HistoryRollbackResponse: Codable, Sendable {
+    let entry: HistoryEntryModel
+    let skill: SkillUpdateResponse?
+    let prompt: PromptSummary?
 }
 
 struct WorkspaceView: Codable, Sendable {

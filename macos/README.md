@@ -5,7 +5,7 @@
 Developer ID、Apple 公证、stapling 与 Gatekeeper 的完整实操见
 [macOS 原生 App 签名、公证与发布流程](../docs/Mac原生App签名公证与发布流程.md)。
 
-当前工程版本为 `0.5.2`，Phase 1 原生 MVP 与 Phase 2 项目/同步能力均已完成：
+当前工程版本为 `0.5.3`，Phase 1 至 Phase 3 均已完成：
 
 - 支持跟随 macOS 系统语言显示简体中文或英文；
 - SwiftUI 三栏导航与 macOS 原生菜单、搜索、文件面板、剪贴板和 Settings scene；
@@ -18,9 +18,8 @@ Developer ID、Apple 公证、stapling 与 Gatekeeper 的完整实操见
 - Source 添加、更新、移除与统一同步；
 - 个人 Workspace 配置、双向同步预览与逐项冲突解决；
 - App Bundle 内置 Go Core，通过私有 stdio JSON-RPC 通信，不监听端口。
-
-Phase 3 的 `project require/vendor/apply`、Prompt 变量渲染表单、历史回滚和 Sparkle 2 自动更新
-尚未进入本版本范围。
+- Project Require/Vendor/Apply、Prompt 变量表单与安全渲染、历史差异/回滚、Quick Look；
+- Sparkle 2 签名 appcast 自动更新；未注入发布公钥的开发构建会回退到 GitHub 版本检查。
 
 ## 打开与生成工程
 
@@ -80,8 +79,8 @@ App 正式运行时不设置这些变量，Core 会使用与 CLI 相同的 `~/.s
 
 ```bash
 sh macos/Scripts/package-release.sh \
-  --version 0.5.2 \
-  --build 2 \
+  --version 0.5.3 \
+  --build 3 \
   --output dist/macos \
   --preview
 ```
@@ -93,6 +92,8 @@ SKM_SIGNING_IDENTITY=Developer ID Application: <Name> (<TEAM_ID>)
 SKM_NOTARY_KEY_PATH=/absolute/path/to/AuthKey_<KEY_ID>.p8
 SKM_NOTARY_KEY_ID=<KEY_ID>
 SKM_NOTARY_ISSUER_ID=<ISSUER_UUID>
+SKM_SPARKLE_PUBLIC_KEY=<SPARKLE_ED25519_PUBLIC_KEY>
+SKM_SPARKLE_PRIVATE_KEY_PATH=/absolute/path/to/skm.sparkle-key
 ```
 
 也可以复制本机配置模板，发布脚本会自动加载该文件：
@@ -104,8 +105,20 @@ cp macos/.release.env.example macos/.release.env.local
 `macos/.release.env.local` 已加入 `.gitignore`，可以保存本机证书名称和 `.p8` 路径，不能提交到
 Git。外部已经设置的同名环境变量优先于模板中的本机值。
 
+Sparkle 使用独立的 EdDSA 密钥，不是 Developer ID 或公证 `.p8`。首次生成工程并完成一次构建后，
+在 Xcode DerivedData 的 `SourcePackages/artifacts/sparkle/Sparkle/bin/` 中运行：
+
+```bash
+generate_keys --account com.zzzzzyijie.skm
+generate_keys --account com.zzzzzyijie.skm -p
+generate_keys --account com.zzzzzyijie.skm -x /安全位置/skm.sparkle-key
+```
+
+第一条创建钥匙串密钥，第二条输出可嵌入 App 的公钥，第三条导出用于 CI appcast 签名的私钥。
+私钥等同密码，只能放在本机安全位置或 `MACOS_SPARKLE_PRIVATE_KEY_BASE64` Secret；不能提交到 Git。
+
 然后去掉 `--preview`。脚本会按顺序构建 Universal 2 App、签名 Core、App 与 DMG、用 `notarytool`
-公证、staple、生成 ZIP/DMG，并执行 Gatekeeper 与校验和检查。
+公证、staple、生成 ZIP/DMG 和 EdDSA 签名 `appcast.xml`，并执行 Gatekeeper 与校验和检查。
 
 ## 发布前仍需外部配置
 
@@ -118,6 +131,8 @@ MACOS_DEVELOPER_ID_P12_PASSWORD
 MACOS_NOTARY_PRIVATE_KEY_BASE64
 MACOS_NOTARY_KEY_ID
 MACOS_NOTARY_ISSUER_ID
+MACOS_SPARKLE_PUBLIC_KEY
+MACOS_SPARKLE_PRIVATE_KEY_BASE64
 ```
 
 前两个来自包含私钥的 Developer ID Application `.p12`；后三个来自 App Store Connect Team API

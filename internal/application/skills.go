@@ -129,6 +129,10 @@ func (s *Service) AddSkill(input AddSkillInput) (domain.Skill, error) {
 }
 
 func (s *Service) UpdateSkill(input UpdateSkillInput) (SkillUpdateResult, error) {
+	return s.updateSkill(input, "edit")
+}
+
+func (s *Service) updateSkill(input UpdateSkillInput, historyReason string) (SkillUpdateResult, error) {
 	if strings.TrimSpace(input.ID) == "" {
 		return SkillUpdateResult{}, fmt.Errorf("id is required")
 	}
@@ -146,6 +150,23 @@ func (s *Service) UpdateSkill(input UpdateSkillInput) (SkillUpdateResult, error)
 		before, err := manager.ResolveLibrary(input.ID)
 		if err != nil {
 			return err
+		}
+		if input.BaseHash != "" && input.BaseHash != before.Hash {
+			return fmt.Errorf("%w: %s changed since editing started", catalog.ErrEditConflict, before.ID)
+		}
+		proposed, err := manager.ValidateContent(input.ID, input.Content)
+		if err != nil {
+			return err
+		}
+		if proposed.Hash != before.Hash {
+			view, _ := inspectLibrarySkill(before, s.Store)
+			content, readErr := os.ReadFile(filepath.Join(view.EffectivePath, "SKILL.md"))
+			if readErr != nil {
+				return fmt.Errorf("read current Skill for history: %w", readErr)
+			}
+			if _, err := s.Store.SaveHistory(domain.HistorySkill, before.ID, before.Hash, historyReason, string(content)); err != nil {
+				return fmt.Errorf("save Skill history: %w", err)
+			}
 		}
 		result.Skill, err = manager.UpdateContent(input.ID, input.Content, input.BaseHash)
 		if err != nil {

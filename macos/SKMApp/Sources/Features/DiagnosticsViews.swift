@@ -70,7 +70,7 @@ struct DiagnosticsDetailView: View {
                 GroupBox("软件更新") {
                     HStack {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(model.updateStatus ?? String(localized: "通过 GitHub Releases 检查可用版本。"))
+                            Text(model.updateStatus ?? String(localized: "Sparkle 2 可验证并安装签名更新；未配置发布公钥时回退为 GitHub Releases 版本检查。"))
                             Text("当前版本：\(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev")")
                                 .font(.caption).foregroundStyle(.secondary)
                         }

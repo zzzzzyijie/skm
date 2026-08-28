@@ -126,6 +126,8 @@ struct ProjectDetailView: View {
     @State private var selectedLibrarySkill = ""
     @State private var selectedAgents = Set<String>()
     @State private var mode = "symlink"
+    @State private var projectAction = "deploy"
+    @State private var entryToRemove: String?
 
     var body: some View {
         if let id = model.selectedProjectID,
@@ -136,6 +138,7 @@ struct ProjectDetailView: View {
                     if let details = model.projectDetails, details.project.id == id {
                         deploymentSection(details)
                         planSection
+                        projectManifestSection(details)
                         scannedSkills(details)
                     } else {
                         ProgressView("正在扫描项目…")
@@ -169,11 +172,17 @@ struct ProjectDetailView: View {
     }
 
     private func deploymentSection(_ details: ProjectDetails) -> some View {
-        GroupBox("从 Library 部署") {
+        GroupBox("从 Library 添加") {
             VStack(alignment: .leading, spacing: 14) {
                 if model.skills.isEmpty {
                     ContentUnavailableView("Library 中没有 Skill", systemImage: "square.stack.3d.up")
                 } else {
+                    Picker("添加方式", selection: $projectAction) {
+                        Text("直接部署").tag("deploy")
+                        Text("Require").tag("require")
+                        Text("Vendor").tag("vendor")
+                    }
+                    .pickerStyle(.segmented)
                     Picker("Skill", selection: $selectedLibrarySkill) {
                         ForEach(model.skills) { skill in Text(skill.name).tag(skill.id) }
                     }
@@ -194,12 +203,20 @@ struct ProjectDetailView: View {
                             ))
                         }
                     }
-                    Text("空白项目也可选择 Agent；应用后 SKM 会创建对应的隐藏 Skills 目录。")
+                    Text(projectActionHelp)
                         .font(.caption).foregroundStyle(.secondary)
                     HStack {
                         Spacer()
-                        Button("预览部署") {
-                            Task { await model.deployProject(project: details.project.id, skill: selectedLibrarySkill, agents: selectedAgents.sorted(), mode: mode, dryRun: true) }
+                        Button(projectAction == "deploy" ? String(localized: "预览部署") : String(localized: "写入项目清单")) {
+                            Task {
+                                if projectAction == "require" {
+                                    await model.requireProjectSkill(project: details.project.id, skill: selectedLibrarySkill, agents: selectedAgents.sorted(), mode: mode)
+                                } else if projectAction == "vendor" {
+                                    await model.vendorProjectSkill(project: details.project.id, skill: selectedLibrarySkill, agents: selectedAgents.sorted(), mode: mode)
+                                } else {
+                                    await model.deployProject(project: details.project.id, skill: selectedLibrarySkill, agents: selectedAgents.sorted(), mode: mode, dryRun: true)
+                                }
+                            }
                         }
                         .disabled(selectedLibrarySkill.isEmpty || selectedAgents.isEmpty)
                     }
@@ -207,6 +224,76 @@ struct ProjectDetailView: View {
             }
             .padding(8)
         }
+    }
+
+    private var projectActionHelp: String {
+        switch projectAction {
+        case "require": String(localized: "Require 将 Git 来源与 revision 固定到 .skm/catalog.yaml，适合团队共享。")
+        case "vendor": String(localized: "Vendor 将不可变副本写入项目 .skm/skills，适合本地或不可共享来源。")
+        default: String(localized: "直接部署只更新本机状态；空白项目也可选择 Agent 并创建目标目录。")
+        }
+    }
+
+    private func projectManifestSection(_ details: ProjectDetails) -> some View {
+        let dependencies = details.manifest.dependencies ?? []
+        return GroupBox("项目清单") {
+            VStack(alignment: .leading, spacing: 12) {
+                if details.manifest.skills.isEmpty && dependencies.isEmpty {
+                    ContentUnavailableView("项目清单为空", systemImage: "list.bullet.rectangle")
+                        .frame(minHeight: 110)
+                } else {
+                    ForEach(dependencies) { dependency in
+                        manifestRow(
+                            id: dependency.id,
+                            name: dependency.name,
+                            detail: String(
+                                format: String(localized: "Require · %1$@ @ %2$@"),
+                                locale: .current,
+                                dependency.source,
+                                String(dependency.revision.prefix(10))
+                            )
+                        )
+                    }
+                    ForEach(details.manifest.skills) { skill in
+                        manifestRow(id: skill.id, name: skill.name, detail: "Vendor")
+                    }
+                    HStack {
+                        Text("应用会校验锁文件、冲突和用户级已满足项，再原子更新所有 Agent。")
+                            .font(.caption).foregroundStyle(.secondary)
+                        Spacer()
+                        Button("应用项目清单", systemImage: "checkmark.circle") {
+                            Task { await model.applyProjectManifest(project: details.project.id) }
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
+                }
+            }
+            .padding(8)
+        }
+        .confirmationDialog("移除项目清单条目？", isPresented: Binding(
+            get: { entryToRemove != nil },
+            set: { if !$0 { entryToRemove = nil } }
+        )) {
+            Button("移除并重新应用", role: .destructive) {
+                guard let entryToRemove else { return }
+                Task { await model.removeProjectEntry(project: details.project.id, entry: entryToRemove) }
+            }
+        } message: {
+            Text("Vendor 文件和受管部署会安全清理；未知文件不会被覆盖。")
+        }
+    }
+
+    private func manifestRow(id: String, name: String, detail: String) -> some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(name).fontWeight(.medium)
+                Text(detail).font(.caption).foregroundStyle(.secondary)
+            }
+            Spacer()
+            Button("移除", systemImage: "minus.circle", role: .destructive) { entryToRemove = id }
+                .labelStyle(.iconOnly)
+        }
+        .padding(.vertical, 4)
     }
 
     @ViewBuilder

@@ -46,7 +46,7 @@ brew install zzzzzyijie/tap/skm
 skm version
 ```
 
-`v0.5.2` 正式 Release 发布后可安装原生 App：
+`v0.5.3` 正式 Release 发布后可安装原生 App：
 
 ```bash
 brew install --cask zzzzzyijie/tap/skm-app
@@ -89,7 +89,7 @@ go build -trimpath -o ./bin/skm ./cmd/skm
 [隔离开发与发布流程](docs/开发与发布流程.md)。发布维护细节见
 [发布指南](docs/发布指南.md)。
 
-### macOS 原生 App（0.5.2）
+### macOS 原生 App（0.5.3）
 
 当前开发状态见 [macOS 原生版开发进度](docs/Mac原生版开发进度.md)。
 

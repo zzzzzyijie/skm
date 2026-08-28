@@ -80,17 +80,31 @@ export SKM_SIGNING_IDENTITY='Developer ID Application: <Name> (<TEAM_ID>)'
 export SKM_NOTARY_KEY_PATH='/absolute/path/to/AuthKey_<KEY_ID>.p8'
 export SKM_NOTARY_KEY_ID='<KEY_ID>'
 export SKM_NOTARY_ISSUER_ID='<ISSUER_UUID>'
+export SKM_SPARKLE_PUBLIC_KEY='<SPARKLE_ED25519_PUBLIC_KEY>'
+export SKM_SPARKLE_PRIVATE_KEY_PATH='/absolute/path/to/skm.sparkle-key'
 ```
+
+Sparkle 密钥与 Apple Developer ID、公证 API Key 完全独立。完成一次 Xcode 构建后，使用
+`DerivedData/.../SourcePackages/artifacts/sparkle/Sparkle/bin/generate_keys` 创建：
+
+```bash
+generate_keys --account com.zzzzzyijie.skm
+generate_keys --account com.zzzzzyijie.skm -p
+generate_keys --account com.zzzzzyijie.skm -x /安全位置/skm.sparkle-key
+```
+
+`-p` 输出的是可注入 App 的公钥；`-x` 导出的私钥用于 `generate_appcast`，敏感程度等同密码。
 
 收紧私钥权限：
 
 ```bash
 chmod 600 "$SKM_NOTARY_KEY_PATH"
+chmod 600 "$SKM_SPARKLE_PRIVATE_KEY_PATH"
 ```
 
 安全要求：
 
-- `macos/.release.env.local`、`*.p8` 和 `*.p12` 已被 `.gitignore` 忽略；
+- `macos/.release.env.local`、`*.p8`、`*.p12` 和导出的 Sparkle 私钥不得提交；
 - `.p8` 最好保存在仓库之外，本机配置只记录绝对路径；
 - 不把证书密码、私钥、Key ID、Issuer ID 或 Base64 内容写进文档、Issue、PR 和构建日志；
 - 不使用 `git add -f` 强制添加任何签名凭据；
@@ -130,8 +144,8 @@ xcrun notarytool history \
 
 ```bash
 sh macos/Scripts/package-release.sh \
-  --version 0.5.2 \
-  --build 1 \
+  --version 0.5.3 \
+  --build 3 \
   --output dist/macos-preview \
   --preview
 ```
@@ -142,8 +156,8 @@ sh macos/Scripts/package-release.sh \
 
 ```bash
 sh macos/Scripts/package-release.sh \
-  --version 0.5.2 \
-  --build 1 \
+  --version 0.5.3 \
+  --build 3 \
   --output dist/macos
 ```
 
@@ -156,6 +170,7 @@ sh macos/Scripts/package-release.sh \
 → 合并 Universal 2 Core
 → 构建 Universal 2 SKM.app
 → 检查 App/Core/参数版本一致
+→ 用同一身份签名 Sparkle XPC、Updater 和 Framework
 → Developer ID 签名内置 Core
 → Developer ID 签名 SKM.app
 → 上传 App 压缩包进行公证
@@ -165,7 +180,8 @@ sh macos/Scripts/package-release.sh \
 → 上传 DMG 进行公证
 → 将公证票据 staple 到 DMG
 → Gatekeeper 检查 App 与 DMG
-→ 生成 ZIP/DMG SHA-256 校验文件
+→ 使用 Sparkle EdDSA 私钥生成签名 appcast.xml
+→ 生成 ZIP/DMG/appcast SHA-256 校验文件
 ```
 
 签名顺序不能调整：嵌套 Core 必须先于外层 App；DMG 必须在提交公证之前签名；已经 staple 的
@@ -267,10 +283,12 @@ MACOS_DEVELOPER_ID_P12_PASSWORD
 MACOS_NOTARY_PRIVATE_KEY_BASE64
 MACOS_NOTARY_KEY_ID
 MACOS_NOTARY_ISSUER_ID
+MACOS_SPARKLE_PUBLIC_KEY
+MACOS_SPARKLE_PRIVATE_KEY_BASE64
 ```
 
 Tag 发布工作流会把 `.p12` 导入临时钥匙串，把 `.p8` 写入 runner 临时目录，调用同一个
-`package-release.sh`，然后在 Apple Silicon 与 Intel runner 上验证产物。凭据必须通过 GitHub
+`package-release.sh`，生成签名 `appcast.xml`，然后在 Apple Silicon 与 Intel runner 上验证产物。凭据必须通过 GitHub
 Actions Secrets 提供，不能提交到仓库。
 
 ## 8. 正式发布前剩余人工验收

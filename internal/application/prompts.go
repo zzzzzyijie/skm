@@ -25,6 +25,11 @@ type PromptWriteInput struct {
 	BaseHash    string                  `json:"baseHash"`
 }
 
+type PromptRenderInput struct {
+	ID     string            `json:"id"`
+	Values map[string]string `json:"values"`
+}
+
 func (input PromptWriteInput) promptContent() (string, error) {
 	if input.Content != "" {
 		return input.Content, nil
@@ -60,6 +65,10 @@ func (s *Service) CreatePrompt(input PromptWriteInput) (domain.Prompt, error) {
 }
 
 func (s *Service) UpdatePrompt(input PromptWriteInput) (domain.Prompt, error) {
+	return s.updatePrompt(input, "edit")
+}
+
+func (s *Service) updatePrompt(input PromptWriteInput, historyReason string) (domain.Prompt, error) {
 	if input.ID == "" {
 		return domain.Prompt{}, fmt.Errorf("id is required")
 	}
@@ -69,8 +78,28 @@ func (s *Service) UpdatePrompt(input PromptWriteInput) (domain.Prompt, error) {
 	}
 	var value domain.Prompt
 	err = s.withLock(func() error {
+		manager := promptpkg.New(s.Store)
+		before, current, readErr := manager.Read(input.ID)
+		if readErr != nil {
+			return readErr
+		}
+		if input.BaseHash != "" && input.BaseHash != before.Hash {
+			return fmt.Errorf("%w: %s changed since editing started", promptpkg.ErrEditConflict, before.ID)
+		}
+		proposed, parseErr := promptpkg.Parse([]byte(content))
+		if parseErr != nil {
+			return parseErr
+		}
+		if proposed.Name != before.Name {
+			return fmt.Errorf("Prompt name cannot change from %q to %q; duplicate it instead", before.Name, proposed.Name)
+		}
+		if proposed.Hash != before.Hash {
+			if _, historyErr := s.Store.SaveHistory(domain.HistoryPrompt, before.ID, before.Hash, historyReason, current.Content); historyErr != nil {
+				return fmt.Errorf("save Prompt history: %w", historyErr)
+			}
+		}
 		var updateErr error
-		value, updateErr = promptpkg.New(s.Store).Update(input.ID, content, input.BaseHash, input.Tags)
+		value, updateErr = manager.Update(input.ID, content, input.BaseHash, input.Tags)
 		return updateErr
 	})
 	return value, err
@@ -97,4 +126,18 @@ func (s *Service) ValidatePrompt(input PromptWriteInput) (promptpkg.Document, er
 	}
 	document.Content = ""
 	return document, nil
+}
+
+func (s *Service) RenderPrompt(input PromptRenderInput) (promptpkg.RenderResult, error) {
+	if input.ID == "" {
+		return promptpkg.RenderResult{}, fmt.Errorf("id is required")
+	}
+	_, document, err := promptpkg.New(s.Store).Read(input.ID)
+	if err != nil {
+		return promptpkg.RenderResult{}, err
+	}
+	if input.Values == nil {
+		input.Values = map[string]string{}
+	}
+	return promptpkg.Render(document, input.Values)
 }

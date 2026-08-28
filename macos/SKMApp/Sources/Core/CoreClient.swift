@@ -176,6 +176,7 @@ actor CoreClient: CoreServing {
         case "system.handshake", "system.doctor",
              "skills.list", "skills.get", "agents.list", "activations.status",
              "prompts.list", "prompts.get", "sources.list", "projects.list", "projects.get",
+             "prompts.render", "history.list", "history.get", "history.diff",
              "workspace.get", "workspace.preview":
             true
         default:

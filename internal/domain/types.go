@@ -239,6 +239,28 @@ type PromptVariable struct {
 	Description string   `yaml:"description,omitempty" json:"description,omitempty"`
 }
 
+type HistoryKind string
+
+const (
+	HistorySkill  HistoryKind = "skill"
+	HistoryPrompt HistoryKind = "prompt"
+)
+
+func (kind HistoryKind) Valid() bool {
+	return kind == HistorySkill || kind == HistoryPrompt
+}
+
+type HistoryEntry struct {
+	ID        string      `json:"id"`
+	ItemID    string      `json:"itemId"`
+	Kind      HistoryKind `json:"kind"`
+	Hash      string      `json:"hash"`
+	CreatedAt time.Time   `json:"createdAt"`
+	Reason    string      `json:"reason"`
+	Current   bool        `json:"current,omitempty"`
+	Content   string      `json:"content,omitempty"`
+}
+
 type Prompt struct {
 	ID          string           `yaml:"id" json:"id"`
 	Name        string           `yaml:"name" json:"name"`

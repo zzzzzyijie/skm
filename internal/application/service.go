@@ -95,6 +95,21 @@ func (s *Service) Invoke(ctx context.Context, method string, params json.RawMess
 	case "prompts.validate":
 		var input PromptWriteInput
 		return decoded(params, &input, func() (any, error) { return result(s.ValidatePrompt(input)) })
+	case "prompts.render":
+		var input PromptRenderInput
+		return decoded(params, &input, func() (any, error) { return result(s.RenderPrompt(input)) })
+	case "history.list":
+		var input HistoryInput
+		return decoded(params, &input, func() (any, error) { return result(s.ListHistory(input)) })
+	case "history.get":
+		var input HistoryEntryInput
+		return decoded(params, &input, func() (any, error) { return result(s.GetHistory(input)) })
+	case "history.diff":
+		var input HistoryDiffInput
+		return decoded(params, &input, func() (any, error) { return result(s.DiffHistory(input)) })
+	case "history.rollback":
+		var input HistoryEntryInput
+		return decoded(params, &input, func() (any, error) { return result(s.RollbackHistory(input)) })
 	case "sources.list":
 		return result(s.ListSources())
 	case "sources.add":
@@ -128,6 +143,18 @@ func (s *Service) Invoke(ctx context.Context, method string, params json.RawMess
 	case "projects.migrate":
 		var input ProjectMigrateInput
 		return decoded(params, &input, func() (any, error) { return result(s.MigrateProjectSkill(input)) })
+	case "projects.require":
+		var input ProjectRequireInput
+		return decoded(params, &input, func() (any, error) { return result(s.RequireProjectSkill(input)) })
+	case "projects.vendor":
+		var input ProjectVendorInput
+		return decoded(params, &input, func() (any, error) { return result(s.VendorProjectSkill(input)) })
+	case "projects.apply":
+		var input ProjectApplyInput
+		return decoded(params, &input, func() (any, error) { return result(s.ApplyProject(input)) })
+	case "projects.entry.remove":
+		var input ProjectEntryRemoveInput
+		return decoded(params, &input, func() (any, error) { return result(s.RemoveProjectEntry(input)) })
 	case "workspace.get":
 		return result(s.GetWorkspace())
 	case "workspace.configure":

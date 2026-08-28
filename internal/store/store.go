@@ -100,6 +100,7 @@ func (s *Store) Ensure() error {
 		filepath.Join(s.Paths.Home, "sources"),
 		filepath.Join(s.Paths.Home, "workspace"),
 		filepath.Join(s.Paths.Home, "state"),
+		filepath.Join(s.Paths.Home, "history"),
 		filepath.Join(s.Paths.Home, "locks"),
 	} {
 		if err := os.MkdirAll(dir, 0o755); err != nil {

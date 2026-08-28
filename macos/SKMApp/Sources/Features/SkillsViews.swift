@@ -103,6 +103,7 @@ struct SkillDetailView: View {
     @State private var details: SkillDetails?
     @State private var tab = 0
     @State private var showsEditor = false
+    @State private var showsHistory = false
     @State private var confirmsDelete = false
 
     var body: some View {
@@ -129,6 +130,8 @@ struct SkillDetailView: View {
                 .task(id: "\(id):\(summary.hash)") { await loadDetails(id) }
                 .toolbar {
                     ToolbarItemGroup(placement: .primaryAction) {
+                        Button("快速查看", systemImage: "eye") { Task { await showQuickLook() } }
+                        Button("历史", systemImage: "clock.arrow.circlepath") { showsHistory = true }
                         Button("编辑", systemImage: "pencil") { showsEditor = true }
                             .disabled(details?.editable != true)
                         Button("删除", systemImage: "trash", role: .destructive) { confirmsDelete = true }
@@ -136,6 +139,9 @@ struct SkillDetailView: View {
                 }
                 .sheet(isPresented: $showsEditor, onDismiss: { Task { await loadDetails(id) } }) {
                     if let details { SkillEditorSheet(model: model, details: details) }
+                }
+                .sheet(isPresented: $showsHistory, onDismiss: { Task { await loadDetails(id) } }) {
+                    HistorySheet(model: model, kind: "skill", itemID: id, title: summary.name)
                 }
                 .confirmationDialog("移除 \(summary.name)？", isPresented: $confirmsDelete) {
                     Button("移除 Skill", role: .destructive) { Task { await model.removeSkill(id: id) } }
@@ -231,6 +237,13 @@ struct SkillDetailView: View {
     private func loadDetails(_ id: String) async {
         do { details = try await model.skillDetails(id) }
         catch { model.errorMessage = error.localizedDescription }
+    }
+
+    private func showQuickLook() async {
+        do {
+            guard let url = try await model.quickLookURL() else { return }
+            QuickLookPresenter.shared.show(url)
+        } catch { model.errorMessage = error.localizedDescription }
     }
 }
 

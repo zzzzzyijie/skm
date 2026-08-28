@@ -21,4 +21,24 @@ final class ModelsTests: XCTestCase {
     func testTagParsingNormalizesInput() {
         XCTAssertEqual(parseTags("general, mac, general"), ["general", "mac"])
     }
+
+    func testPhaseThreeResponsesDecode() throws {
+        let render = try JSONDecoder().decode(
+            PromptRenderResponse.self,
+            from: Data(#"{"content":"Hello Codex","missingVariables":[]}"#.utf8)
+        )
+        XCTAssertEqual(render.content, "Hello Codex")
+
+        let history = try JSONDecoder().decode(
+            HistoryEntryModel.self,
+            from: Data(#"{"id":"current","itemId":"sample","kind":"skill","hash":"abc","createdAt":"2026-08-28T00:00:00Z","reason":"current","current":true}"#.utf8)
+        )
+        XCTAssertTrue(history.current == true)
+
+        let project = try JSONDecoder().decode(
+            ProjectAdvancedResponse.self,
+            from: Data(#"{"project":{"id":"demo","path":"/tmp/demo"},"manifest":{"version":1,"skills":[],"dependencies":[]},"plan":{"digest":"","operations":[]},"satisfiedByUser":[],"applied":true}"#.utf8)
+        )
+        XCTAssertTrue(project.applied)
+    }
 }

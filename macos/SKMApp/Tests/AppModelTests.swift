@@ -71,7 +71,11 @@ final class AppModelTests: XCTestCase {
     func testReadOnlyMethodsAreTheOnlyAutomaticallyRetryableCalls() {
         XCTAssertTrue(CoreClient.isSafeToRetry("skills.list"))
         XCTAssertTrue(CoreClient.isSafeToRetry("system.doctor"))
+        XCTAssertTrue(CoreClient.isSafeToRetry("history.diff"))
+        XCTAssertTrue(CoreClient.isSafeToRetry("prompts.render"))
         XCTAssertFalse(CoreClient.isSafeToRetry("skills.update"))
+        XCTAssertFalse(CoreClient.isSafeToRetry("history.rollback"))
+        XCTAssertFalse(CoreClient.isSafeToRetry("projects.apply"))
         XCTAssertFalse(CoreClient.isSafeToRetry("activations.enable"))
     }
 

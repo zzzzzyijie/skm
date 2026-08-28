@@ -95,7 +95,14 @@
       }
     },
     "Copy（独立副本）" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Copy (independent copy)" } } }
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy (independent copy)"
+          }
+        }
+      }
     },
     "Core %@ · Schema %@" : {
       "localizations" : {
@@ -162,7 +169,14 @@
       }
     },
     "Link（跟随 Library）" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Link (follow Library)" } } }
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Link (follow Library)"
+          }
+        }
+      }
     },
     "my-agent" : {
 
@@ -229,6 +243,59 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Prompt removed"
+          }
+        }
+      }
+    },
+    "Require" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Require"
+          }
+        }
+      }
+    },
+    "Require · %1$@ @ %2$@" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Require · %1$@ @ %2$@"
+          }
+        }
+      }
+    },
+    "Require 将 Git 来源与 revision 固定到 .skm/catalog.yaml，适合团队共享。" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Require pins the Git source and revision in .skm/catalog.yaml for team sharing."
+          }
+        }
+      }
+    },
+    "secret 值不会写入磁盘、日志或历史记录。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Secret values are never written to disk, logs, or history."
+          }
+        }
+      }
+    },
+    "Skill 已 Vendor 到项目" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skill vendored to project"
           }
         }
       }
@@ -346,10 +413,55 @@
       }
     },
     "SKM 不保存密码或 Token；SSH Agent 与 Git Credential Helper 的行为和终端一致。" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "SKM does not save passwords or tokens. SSH Agent and Git Credential Helper work as they do in Terminal." } } }
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SKM does not save passwords or tokens. SSH Agent and Git Credential Helper work as they do in Terminal."
+          }
+        }
+      }
     },
     "SKM 只登记目录，不会修改项目；部署操作仍会单独预览和确认。" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "SKM only registers the directory and does not modify it. Deployment is previewed and confirmed separately." } } }
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SKM only registers the directory and does not modify it. Deployment is previewed and confirmed separately."
+          }
+        }
+      }
+    },
+    "Vendor" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vendor"
+          }
+        }
+      }
+    },
+    "Vendor 将不可变副本写入项目 .skm/skills，适合本地或不可共享来源。" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vendor stores an immutable copy in .skm/skills for local or non-shareable sources."
+          }
+        }
+      }
+    },
+    "Vendor 文件和受管部署会安全清理；未知文件不会被覆盖。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vendored files and managed deployments will be removed safely. Unknown files will not be overwritten."
+          }
+        }
+      }
     },
     "不可访问" : {
       "extractionState" : "stale",
@@ -363,7 +475,14 @@
       }
     },
     "个人工作区" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Personal Workspace" } } }
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Personal Workspace"
+          }
+        }
+      }
     },
     "个人工作区已配置" : {
       "extractionState" : "stale",
@@ -431,7 +550,14 @@
       }
     },
     "使用远端" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Use Remote" } } }
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use Remote"
+          }
+        }
+      }
     },
     "保存" : {
       "extractionState" : "stale",
@@ -455,7 +581,14 @@
       }
     },
     "保留本地" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Keep Local" } } }
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keep Local"
+          }
+        }
+      }
     },
     "信息" : {
       "extractionState" : "stale",
@@ -518,6 +651,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Built-in Agent"
+          }
+        }
+      }
+    },
+    "写入项目清单" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add to Manifest"
           }
         }
       }
@@ -597,6 +741,38 @@
         }
       }
     },
+    "单行文本" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Single-line Text"
+          }
+        }
+      }
+    },
+    "历史" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "History"
+          }
+        }
+      }
+    },
+    "历史版本已恢复" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Historical version restored"
+          }
+        }
+      }
+    },
     "取消" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -619,7 +795,19 @@
         }
       }
     },
+    "变量（%lld）" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Variables (%lld)"
+          }
+        }
+      }
+    },
     "变量可在正文中使用 {{name}}；高级变量定义可直接通过 CLI 编辑。" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -629,11 +817,68 @@
         }
       }
     },
+    "变量可在正文中使用 {{name}}。secret 类型只在内存中参与渲染。" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use variables as {{name}} in the body. Secret values are rendered in memory only."
+          }
+        }
+      }
+    },
+    "变量名" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Variable Name"
+          }
+        }
+      }
+    },
+    "变量名不能重复。" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Variable names must be unique."
+          }
+        }
+      }
+    },
     "只有所有 Agent 副本内容一致且不受 SKM 管理时才允许移除。" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Removal is allowed only when every Agent copy matches and none is managed by SKM." } } }
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Removal is allowed only when every Agent copy matches and none is managed by SKM."
+          }
+        }
+      }
     },
     "只移除登记信息，不删除项目文件；仍有受管部署时会安全阻止。" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "This removes only the registration, not project files. Managed deployments safely block removal." } } }
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This removes only the registration, not project files. Managed deployments safely block removal."
+          }
+        }
+      }
+    },
+    "可以直接复制 Prompt 内容。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You can copy the Prompt content directly."
+          }
+        }
+      }
     },
     "可用" : {
       "extractionState" : "stale",
@@ -657,6 +902,28 @@
         }
       }
     },
+    "回滚前" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Before Rollback"
+          }
+        }
+      }
+    },
+    "填写变量" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fill Variables"
+          }
+        }
+      }
+    },
     "复制" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -669,7 +936,14 @@
       }
     },
     "复制到 Library" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Copy to Library" } } }
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy to Library"
+          }
+        }
+      }
     },
     "复制诊断信息" : {
       "extractionState" : "stale",
@@ -678,6 +952,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Copy Diagnostics"
+          }
+        }
+      }
+    },
+    "多行文本" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Multiline Text"
           }
         }
       }
@@ -710,6 +994,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Storage"
+          }
+        }
+      }
+    },
+    "密码" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Secret"
           }
         }
       }
@@ -770,7 +1064,14 @@
       }
     },
     "导出内容包含 App/Core 版本、系统架构和脱敏后的 Doctor 结果，不包含公证密钥或 Git 凭据。" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "The export includes App/Core versions, system architecture, and redacted Doctor results. It excludes notarization keys and Git credentials." } } }
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The export includes App/Core versions, system architecture, and redacted Doctor results. It excludes notarization keys and Git credentials."
+          }
+        }
+      }
     },
     "导航" : {
       "extractionState" : "stale",
@@ -812,6 +1113,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Changed"
+          }
+        }
+      }
+    },
+    "已打开安全更新检查窗口" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Secure update window opened"
           }
         }
       }
@@ -870,6 +1182,30 @@
         }
       }
     },
+    "应用会校验锁文件、冲突和用户级已满足项，再原子更新所有 Agent。" : {
+
+    },
+    "应用项目清单" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apply Project Manifest"
+          }
+        }
+      }
+    },
+    "开关" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Toggle"
+          }
+        }
+      }
+    },
     "开始使用" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -882,10 +1218,45 @@
       }
     },
     "当前 Revision：%@" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Current revision: %@" } } }
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Current revision: %@"
+          }
+        }
+      }
+    },
+    "当前内容会先保存为新的历史版本，然后恢复所选内容。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The current content will be saved to history before the selected version is restored."
+          }
+        }
+      }
+    },
+    "当前版本" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Current Version"
+          }
+        }
+      }
     },
     "当前版本：%@" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Current version: %@" } } }
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Current version: %@"
+          }
+        }
+      }
     },
     "必填" : {
       "localizations" : {
@@ -893,6 +1264,50 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Required"
+          }
+        }
+      }
+    },
+    "快速查看" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quick Look"
+          }
+        }
+      }
+    },
+    "恢复" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restore"
+          }
+        }
+      }
+    },
+    "恢复此版本" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restore This Version"
+          }
+        }
+      }
+    },
+    "恢复这个历史版本？" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restore this historical version?"
           }
         }
       }
@@ -926,6 +1341,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Search names, descriptions, or tags"
+          }
+        }
+      }
+    },
+    "数字" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Number"
           }
         }
       }
@@ -1003,6 +1428,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Unable to Complete Operation"
+          }
+        }
+      }
+    },
+    "显示名称（可选）" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Display Name (Optional)"
           }
         }
       }
@@ -1277,6 +1713,17 @@
         }
       }
     },
+    "没有变量" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No Variables"
+          }
+        }
+      }
+    },
     "没有已注册项目" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1300,7 +1747,14 @@
       }
     },
     "添加 Git Source" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Add Git Source" } } }
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add Git Source"
+          }
+        }
+      }
     },
     "添加 Skill" : {
       "localizations" : {
@@ -1313,10 +1767,46 @@
       }
     },
     "添加一个本机项目，扫描各 Agent 的 Skills，或把 Library Skill 部署到项目。" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Add a local project to scan Agent Skills or deploy a Library Skill into it." } } }
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add a local project to scan Agent Skills or deploy a Library Skill into it."
+          }
+        }
+      }
+    },
+    "添加变量" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add Variable"
+          }
+        }
+      }
     },
     "添加团队或社区 Skill 仓库；凭据继续由系统 Git 管理。" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Add a team or community Skill repository. Credentials remain managed by system Git." } } }
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add a team or community Skill repository. Credentials remain managed by system Git."
+          }
+        }
+      }
+    },
+    "添加方式" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add Method"
+          }
+        }
+      }
     },
     "添加自定义 Agent" : {
       "extractionState" : "stale",
@@ -1330,7 +1820,14 @@
       }
     },
     "添加项目" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Add Project" } } }
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add Project"
+          }
+        }
+      }
     },
     "添加项目（Phase 2）" : {
       "extractionState" : "stale",
@@ -1339,6 +1836,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Add Project (Phase 2)"
+          }
+        }
+      }
+    },
+    "渲染" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Render"
+          }
+        }
+      }
+    },
+    "渲染结果" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rendered Result"
+          }
+        }
+      }
+    },
+    "渲染结果已复制" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rendered result copied"
           }
         }
       }
@@ -1366,13 +1895,55 @@
       }
     },
     "目标 Agents" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Target Agents" } } }
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Target Agents"
+          }
+        }
+      }
+    },
+    "直接部署" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Direct Deploy"
+          }
+        }
+      }
+    },
+    "直接部署只更新本机状态；空白项目也可选择 Agent 并创建目标目录。" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Direct deployment updates local state only. Empty projects can select Agents and create target directories."
+          }
+        }
+      }
     },
     "磁盘版本在编辑期间发生了变化。你的草稿仍保留，请比较后选择恢复方式。" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "The on-disk version changed while you were editing. Your draft is preserved; compare both versions and choose how to recover." } } }
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The on-disk version changed while you were editing. Your draft is preserved; compare both versions and choose how to recover."
+          }
+        }
+      }
     },
     "磁盘版本在编辑期间发生了变化。你的草稿没有丢失。" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "The on-disk version changed while you were editing. Your draft has been preserved." } } }
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The on-disk version changed while you were editing. Your draft has been preserved."
+          }
+        }
+      }
     },
     "移除 %@？" : {
       "extractionState" : "stale",
@@ -1407,11 +1978,59 @@
         }
       }
     },
+    "移除变量" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove Variable"
+          }
+        }
+      }
+    },
+    "移除并重新应用" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove and Reapply"
+          }
+        }
+      }
+    },
     "移除来源绑定和本机 checkout；已经导入 Library 的不可变快照会保留。" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Remove the source binding and local checkout. Immutable snapshots already imported into the Library are preserved." } } }
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove the source binding and local checkout. Immutable snapshots already imported into the Library are preserved."
+          }
+        }
+      }
+    },
+    "移除项目清单条目？" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove project manifest entry?"
+          }
+        }
+      }
     },
     "空白项目也可选择 Agent；应用后 SKM 会创建对应的隐藏 Skills 目录。" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Agents can be selected for an empty project. SKM creates the hidden Skills directories when applying." } } }
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agents can be selected for an empty project. SKM creates the hidden Skills directories when applying."
+          }
+        }
+      }
     },
     "第一版仅展示项目扫描与部署摘要。项目注册、迁移、Link/Copy/Vendor 和冲突处理将在 Phase 2 接入同一 Core Bridge。" : {
       "extractionState" : "stale",
@@ -1453,6 +2072,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Manage local Skills, Prompts, and Agent deployments. SKM never enables an Agent automatically."
+          }
+        }
+      }
+    },
+    "类型" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Type"
           }
         }
       }
@@ -1500,6 +2130,17 @@
         }
       }
     },
+    "编辑前" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Before Edit"
+          }
+        }
+      }
+    },
     "编辑自定义 Agent" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1518,6 +2159,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Missing"
+          }
+        }
+      }
+    },
+    "缺少必填变量：%@" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Missing required variables: %@"
           }
         }
       }
@@ -1556,7 +2208,14 @@
       }
     },
     "诊断与更新" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Diagnostics & Updates" } } }
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diagnostics & Updates"
+          }
+        }
+      }
     },
     "诊断信息已复制" : {
       "extractionState" : "stale",
@@ -1569,11 +2228,57 @@
         }
       }
     },
+    "说明（可选）" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Description (Optional)"
+          }
+        }
+      }
+    },
+    "请选择" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Select"
+          }
+        }
+      }
+    },
     "请选择…" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Choose…" } } }
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose…"
+          }
+        }
+      }
+    },
+    "请选择一个历史版本。" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Select a historical version."
+          }
+        }
+      }
     },
     "跟随项目" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Follow Project" } } }
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Follow Project"
+          }
+        }
+      }
     },
     "路径" : {
       "extractionState" : "stale",
@@ -1587,7 +2292,14 @@
       }
     },
     "迁移 %@" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Migrate %@" } } }
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Migrate %@"
+          }
+        }
+      }
     },
     "还没有 Prompt" : {
       "extractionState" : "stale",
@@ -1666,6 +2378,16 @@
         }
       }
     },
+    "选择历史版本后与当前内容比较。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Select a historical version to compare it with the current content."
+          }
+        }
+      }
+    },
     "选择要加载此 Skill 的 Agent。变更由 Go Planner 校验后原子应用。" : {
       "localizations" : {
         "en" : {
@@ -1676,8 +2398,36 @@
         }
       }
     },
+    "选项" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Options"
+          }
+        }
+      }
+    },
+    "选项，以逗号分隔" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Options, comma-separated"
+          }
+        }
+      }
+    },
     "通过一个私人 Git 仓库双向同步 Skills、Prompts 和 Source 绑定。认证信息不会写入 SKM。" : {
-      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Synchronize Skills, Prompts, and Source bindings through a private Git repository. Credentials are never written to SKM." } } }
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Synchronize Skills, Prompts, and Source bindings through a private Git repository. Credentials are never written to SKM."
+          }
+        }
+      }
     },
     "部署" : {
       "localizations" : {
@@ -1700,6 +2450,61 @@
         }
       }
     },
+    "项目依赖已固定" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Project dependency pinned"
+          }
+        }
+      }
+    },
+    "项目清单" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Project Manifest"
+          }
+        }
+      }
+    },
+    "项目清单为空" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Project Manifest Is Empty"
+          }
+        }
+      }
+    },
+    "项目清单已应用" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Project manifest applied"
+          }
+        }
+      }
+    },
+    "项目清单条目已移除" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Project manifest entry removed"
+          }
+        }
+      }
+    },
     "首版提供项目状态查看；注册与部署写操作将在下一阶段开放。" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1707,6 +2512,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "This version provides project status viewing. Registration and deployment changes will be available in the next phase."
+          }
+        }
+      }
+    },
+    "默认值（可选）" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Default Value (Optional)"
           }
         }
       }

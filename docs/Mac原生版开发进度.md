@@ -2,11 +2,11 @@
 
 > 更新日期：2026-08-28
 >
-> 当前工程版本：`0.5.2 (Build 2)`
+> 当前工程版本：`0.5.3 (Build 3)`
 >
 > Bundle ID：`com.zzzzzyijie.skm`（已确认）
 >
-> 当前结论：Phase 0、Phase 1 与 Phase 2 的工程实现已完成；本地正式签名、公证闭环已验收。剩余事项是需要 GitHub/Apple 凭据或外部机器的正式发布动作，不属于功能开发缺口。
+> 当前结论：Phase 0 至 Phase 3 的工程实现已完成；Phase 1/2 已统一补强，本地正式签名、公证闭环已验收。剩余事项是 Sparkle 发布密钥、GitHub/Apple 凭据和外部机器上的正式发布动作，不属于本地功能开发缺口。
 
 相关文档：
 
@@ -22,7 +22,7 @@
 | Phase 0：Core 契约 | 已完成 | stdio JSON-RPC、握手、稳定错误模型、读写方法、半包/损坏/超限/并发/崩溃与恢复测试已完成 |
 | Phase 1：原生 MVP | 已完成 | Skills、Prompts、Agents、首次启动、双语、键盘、冲突恢复、诊断及本地 Developer ID 发布闭环已完成 |
 | Phase 2：项目与同步 | 已完成 | Projects、Sources、Workspace、Diagnostics 和 Homebrew Cask 已实现并接入原生界面与发布工作流 |
-| Phase 3：完整 CLI 能力 | 待开始 | 项目高级能力、Prompt 渲染、历史回滚和自动更新尚未实现 |
+| Phase 3：完整 CLI 能力 | 已完成 | 项目 Require/Vendor/Apply、Prompt 渲染、历史回滚、Quick Look 与 Sparkle 2 均已实现 |
 
 ## 2. 已完成
 
@@ -31,7 +31,7 @@
 - [x] SwiftUI 原生 macOS 工程、Xcode workspace、Tuist 工程描述和共享 Scheme。
 - [x] App 使用内置 `skm-core`，通过私有 stdio JSON-RPC 通信，不监听网络端口。
 - [x] 构建阶段分别生成 `arm64`、`x86_64` Core，并合并为 Universal 2。
-- [x] App、Core 和发布参数执行版本一致性检查，当前版本统一为 `0.5.2`，构建号为 `2`。
+- [x] App、Core 和发布参数执行版本一致性检查，当前版本统一为 `0.5.3`，构建号为 `3`。
 - [x] App、测试 Target、发布脚本均使用最终 Bundle ID 命名空间；主 App 固定为 `com.zzzzzyijie.skm`。
 - [x] Xcode 构建脚本可从 Apple Silicon Homebrew、Intel Homebrew 或 `SKM_GO_EXECUTABLE` 找到 Go。
 - [x] 最终用户运行 App 不依赖 Go、Homebrew 或已安装的 SKM CLI。
@@ -50,6 +50,8 @@
 - [x] 结构化错误包含错误类型和是否可重试信息。
 - [x] Core 异常退出后只自动重试安全的只读请求，不自动重放写请求。
 - [x] 超限消息返回结构化错误，Bridge 可以继续处理下一条请求。
+- [x] Projects 的 Require、Vendor、Apply 与清单条目安全移除方法。
+- [x] Prompt 安全渲染与 Skill/Prompt 历史列表、差异和回滚方法。
 
 ### 2.3 Phase 1 原生界面
 
@@ -77,10 +79,20 @@
 - [x] Diagnostics 提供完整 Doctor、脱敏复制/导出和 GitHub Release 更新检查。
 - [x] Homebrew Cask 使用独立 token `skm-app`，只安装 `/Applications/SKM.app`，不覆盖 Formula 的 CLI。
 
+### 2.5 Phase 3 原生界面
+
+- [x] 项目清单支持 Require、Vendor、Apply 与条目移除，沿用 Planner 的冲突保护和原子部署。
+- [x] Prompt 编辑器支持 text、multiline、number、boolean、select、secret 变量定义、必填/重复校验和默认值。
+- [x] Prompt 填写表单由 Core 渲染，secret 值只在内存中传递，可校验缺失变量并复制最终结果。
+- [x] Skill 与 Prompt 编辑前自动保存历史快照，原生界面支持版本列表、行差异和安全回滚。
+- [x] Skill/PROMPT.md 支持系统 Quick Look、工具栏入口和空格快捷键。
+- [x] Sparkle `2.9.6` 已通过 Swift Package Manager 固定，配置公钥时启用签名 appcast 自动更新；本地未配置时回退到只读版本检查。
+- [x] 正式发布脚本生成 EdDSA 签名 `appcast.xml`，GitHub Release 工作流校验并注入独立 Sparkle 公私钥。
+
 ### 2.5 构建、测试与本地预览
 
-- [x] 13 个 Swift 单元测试覆盖 Model、首次启动、版本比较及 Core 并发/损坏响应/stderr/超时/崩溃恢复。
-- [x] 4 个中英文 XCUITest 覆盖空 Library、快捷键、Skill 导入、Agent 管理、Prompt 创建、项目登记和 Workspace 预览。
+- [x] 14 个 Swift 单元测试覆盖 Model、Phase 3 响应、首次启动、版本比较及 Core 并发/损坏响应/stderr/超时/崩溃恢复。
+- [x] 4 个中英文 XCUITest 覆盖空 Library、快捷键、Skill 导入、Agent 管理、Prompt 创建/渲染入口、项目登记和 Workspace 预览。
 - [x] 测试使用隔离的 `SKM_HOME`、`SKM_USER_HOME`、`SKM_PROJECT`，不操作真实个人数据。
 - [x] CI 执行 Go 测试、Vet、Build、安装器测试和 macOS App 测试。
 - [x] `--preview` 构建 Universal 2 ZIP、DMG 和 SHA-256 校验文件。
@@ -112,7 +124,7 @@
 - [x] 完成 App/Core 与共享 Store 并发修改的冲突、草稿保留和恢复测试。
 - [ ] 完成正式发布前的 VoiceOver、键盘、浅色、深色和窄窗口人工验收。
 - [ ] 把 Developer ID `.p12` 与 App Store Connect Team API Key 配置为 GitHub Actions Secrets，并验证 Tag 工作流。
-- [ ] 创建 `v0.5.2` Tag 和正式 Release；当前尚未发布。
+- [ ] 创建 `v0.5.3` Tag 和正式 Release；当前尚未发布。
 
 ### 4.2 Phase 2：项目与同步
 
@@ -125,11 +137,11 @@
 
 ### 4.3 Phase 3：完整 CLI 能力
 
-- [ ] `project require`、`project vendor`、`project apply`。
-- [ ] Prompt 变量表单、变量校验和渲染后复制。
-- [ ] 历史快照、差异查看和回滚。
-- [ ] Skill/Prompt Quick Look。
-- [ ] Sparkle 2 自动更新。
+- [x] `project require`、`project vendor`、`project apply`。
+- [x] Prompt 变量表单、变量校验和渲染后复制。
+- [x] 历史快照、差异查看和回滚。
+- [x] Skill/Prompt Quick Look。
+- [x] Sparkle 2 自动更新工程与 appcast 发布链路。
 
 ## 5. 后续需要提供的信息
 
@@ -141,6 +153,7 @@
 | Apple Developer Team | Developer ID 签名 | 本机已配置并验证 |
 | Developer ID Application `.p12` 与密码 | CI 正式签名 | 本机钥匙串已验证；待配置为 GitHub Secrets，不提交到仓库 |
 | App Store Connect API `.p8`、Key ID、Issuer ID | 自动公证 | 本机已验证；待配置为 GitHub Secrets，不提交到仓库 |
+| Sparkle EdDSA 公钥与私钥 | App 内更新验签与 appcast 签名 | 待生成；公钥配置为 Secret，私钥文件/Secret 永不提交 |
 | 正式发布账号与仓库权限 | 创建 Tag、Release 和上传产物 | 发布时确认 |
 
 不要把证书、私钥或密码直接写入文档或提交到 Git。优先在本机钥匙串和 GitHub Actions Secrets 中配置。
@@ -149,12 +162,13 @@
 
 截至 2026-08-28，已通过：
 
-- `xcodebuild ... test`：13 个 Swift 单元测试、4 个中英文 UI 测试通过；
+- `xcodebuild ... test`：14 个 Swift 单元测试、4 个中英文 UI 测试通过；
 - `go test ./...`、`go test -race ./...`、`go vet ./...`、`go build ./...`；
 - curl 安装器、Homebrew Formula 和 Homebrew Cask 生成器测试；
-- `0.5.2 (Build 2)` Universal 2 ad-hoc 预览打包；
+- `0.5.3 (Build 3)` Universal 2 ad-hoc 预览打包，包含 Sparkle 2.9.6；
 - `com.zzzzzyijie.skm`、版本/构建号、双架构、签名、校验和与无 Go 环境 Core 独立复核；
 - App/Core `arm64 + x86_64`、版本、签名、Core 无 Go 环境启动和 SHA-256 校验；
+- Sparkle Downloader/Installer/Updater/Framework 嵌套签名严格校验，预览 App 在最小 PATH、无 Go/Homebrew 环境启动通过；
 - 使用发布参数 `0.6.0 (Build 3)` 完成真实发布链路验收，但未创建对应 Tag 或 GitHub Release；
 - App 公证与 DMG 公证均返回 `Accepted`；
 - App 与 DMG 的 stapling、ticket validate 和 Gatekeeper 均通过；

@@ -1,3 +1,4 @@
+import AppKit
 import XCTest
 
 final class SKMUITests: XCTestCase {
@@ -78,7 +79,7 @@ final class SKMUITests: XCTestCase {
         let pathField = app.textFields["Skill 目录或 ZIP"]
         XCTAssertTrue(pathField.waitForExistence(timeout: 3))
         pathField.click()
-        pathField.typeText(skillDirectory.path)
+        paste(skillDirectory.path, into: pathField)
         app.buttons["导入"].click()
         XCTAssertTrue(app.staticTexts["ui-smoke-skill"].waitForExistence(timeout: 8))
 
@@ -102,6 +103,12 @@ final class SKMUITests: XCTestCase {
         editor.typeText("Review this isolated fixture.")
         app.buttons["保存"].click()
         XCTAssertTrue(app.staticTexts["ui-smoke-prompt"].waitForExistence(timeout: 8))
+        let renderButton = app.buttons["填写变量"]
+        XCTAssertTrue(renderButton.waitForExistence(timeout: 5))
+        renderButton.click()
+        XCTAssertTrue(app.staticTexts["没有变量"].waitForExistence(timeout: 5))
+        app.buttons["关闭"].click()
+        XCTAssertTrue(app.buttons["历史"].waitForExistence(timeout: 5))
     }
 
     @MainActor
@@ -126,7 +133,7 @@ final class SKMUITests: XCTestCase {
         let projectField = app.textFields["project-path-field"]
         XCTAssertTrue(projectField.waitForExistence(timeout: 5))
         projectField.click()
-        projectField.typeText(registeredProject.path)
+        paste(registeredProject.path, into: projectField)
         app.buttons["添加"].click()
         XCTAssertTrue(app.staticTexts["registered-project"].waitForExistence(timeout: 8))
 
@@ -136,7 +143,7 @@ final class SKMUITests: XCTestCase {
         let urlField = app.textFields["workspace-url-field"]
         XCTAssertTrue(urlField.waitForExistence(timeout: 5))
         urlField.click()
-        urlField.typeText(workspaceRemote.path)
+        paste(workspaceRemote.path, into: urlField)
         app.buttons["workspace-configure-button"].click()
         XCTAssertTrue(app.buttons["workspace-preview-button"].waitForExistence(timeout: 8))
         app.buttons["workspace-preview-button"].click()
@@ -155,6 +162,13 @@ final class SKMUITests: XCTestCase {
             "SKM_SKIP_WELCOME": "1",
         ]
         return app
+    }
+
+    @MainActor
+    private func paste(_ value: String, into element: XCUIElement) {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(value, forType: .string)
+        element.typeKey("v", modifierFlags: .command)
     }
 
     private func run(_ executable: String, arguments: [String]) throws {

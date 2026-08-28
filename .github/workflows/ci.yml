@@ -58,7 +58,7 @@ jobs:
       - name: Build ad-hoc signed release preview
         run: |
           sh macos/Scripts/package-release.sh \
-            --version 0.5.2 \
+            --version 0.5.3 \
             --build "$GITHUB_RUN_NUMBER" \
             --output "$RUNNER_TEMP/skm-release-preview" \
             --preview

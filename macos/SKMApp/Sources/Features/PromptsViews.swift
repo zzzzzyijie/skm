@@ -106,6 +106,8 @@ struct PromptDetailView: View {
     @Bindable var model: AppModel
     @State private var details: PromptDetails?
     @State private var showsEditor = false
+    @State private var showsRenderer = false
+    @State private var showsHistory = false
     @State private var confirmsDelete = false
 
     var body: some View {
@@ -145,6 +147,10 @@ struct PromptDetailView: View {
                 .task(id: "\(id):\(prompt.hash)") { await loadDetails(id) }
                 .toolbar {
                     ToolbarItemGroup(placement: .primaryAction) {
+                        Button("快速查看", systemImage: "eye") { Task { await showQuickLook() } }
+                        Button("填写变量", systemImage: "text.badge.checkmark") { showsRenderer = true }
+                            .disabled(details == nil)
+                        Button("历史", systemImage: "clock.arrow.circlepath") { showsHistory = true }
                         Button("复制", systemImage: "doc.on.doc") {
                             NSPasteboard.general.clearContents()
                             NSPasteboard.general.setString(details?.body ?? "", forType: .string)
@@ -157,6 +163,12 @@ struct PromptDetailView: View {
                 }
                 .sheet(isPresented: $showsEditor, onDismiss: { Task { await loadDetails(id) } }) {
                     if let details { PromptEditorSheet(model: model, details: details) }
+                }
+                .sheet(isPresented: $showsRenderer) {
+                    if let details { PromptRenderSheet(model: model, details: details) }
+                }
+                .sheet(isPresented: $showsHistory, onDismiss: { Task { await loadDetails(id) } }) {
+                    HistorySheet(model: model, kind: "prompt", itemID: id, title: prompt.name)
                 }
                 .confirmationDialog("移除 \(prompt.name)？", isPresented: $confirmsDelete) {
                     Button("移除 Prompt", role: .destructive) { Task { await model.removePrompt(id: id) } }
@@ -177,6 +189,13 @@ struct PromptDetailView: View {
     private func loadDetails(_ id: String) async {
         do { details = try await model.promptDetails(id) }
         catch { model.errorMessage = error.localizedDescription }
+    }
+
+    private func showQuickLook() async {
+        do {
+            guard let url = try await model.quickLookURL() else { return }
+            QuickLookPresenter.shared.show(url)
+        } catch { model.errorMessage = error.localizedDescription }
     }
 
     private func exportPrompt(_ name: String) {
@@ -204,6 +223,7 @@ struct PromptEditorSheet: View {
     @State private var tags: String
     @State private var baseHash: String?
     @State private var latest: PromptDetails?
+    @State private var variables: [PromptVariableDraft]
 
     init(model: AppModel, details: PromptDetails?) {
         self.model = model
@@ -213,6 +233,7 @@ struct PromptEditorSheet: View {
         _promptBody = State(initialValue: details?.body ?? "")
         _tags = State(initialValue: details?.tags.joined(separator: ", ") ?? "general")
         _baseHash = State(initialValue: details?.hash)
+        _variables = State(initialValue: (details?.variables ?? []).map(PromptVariableDraft.init))
     }
 
     var body: some View {
@@ -232,6 +253,20 @@ struct PromptEditorSheet: View {
                 .font(.system(.body, design: .monospaced))
                 .border(.separator)
                 .accessibilityIdentifier("prompt-body-editor")
+            DisclosureGroup("变量（\(variables.count)）") {
+                VStack(alignment: .leading, spacing: 12) {
+                    ForEach($variables) { $variable in
+                        PromptVariableEditor(variable: $variable) {
+                            variables.removeAll { $0.id == variable.id }
+                        }
+                        if variable.id != variables.last?.id { Divider() }
+                    }
+                    Button("添加变量", systemImage: "plus") {
+                        variables.append(PromptVariableDraft())
+                    }
+                }
+                .padding(.vertical, 8)
+            }
             if let latest {
                 GroupBox("检测到并发修改") {
                     VStack(alignment: .leading, spacing: 10) {
@@ -247,6 +282,7 @@ struct PromptEditorSheet: View {
                                 description = latest.description
                                 promptBody = latest.body
                                 tags = latest.tags.joined(separator: ", ")
+                                variables = (latest.variables ?? []).map(PromptVariableDraft.init)
                                 baseHash = latest.hash
                                 self.latest = nil
                             }
@@ -267,7 +303,7 @@ struct PromptEditorSheet: View {
                 }
             }
             HStack {
-                Text("变量可在正文中使用 {{name}}；高级变量定义可直接通过 CLI 编辑。")
+                Text(variableHint)
                     .font(.caption).foregroundStyle(.secondary)
                 Spacer()
                 Button("取消", role: .cancel) { dismiss() }
@@ -275,7 +311,7 @@ struct PromptEditorSheet: View {
                     Task { await save() }
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || promptBody.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .disabled(!canSave)
             }
         }
         .padding(24)
@@ -289,6 +325,7 @@ struct PromptEditorSheet: View {
             description: description,
             body: promptBody,
             tags: parseTags(tags),
+            variables: variables.map(\.model),
             baseHash: asCopy ? nil : baseHash
         )
         if saved {
@@ -297,5 +334,18 @@ struct PromptEditorSheet: View {
             do { latest = try await model.promptDetails(id) }
             catch { model.errorMessage = error.localizedDescription }
         }
+    }
+
+    private var canSave: Bool {
+        let names = variables.map { $0.name.trimmingCharacters(in: .whitespacesAndNewlines) }
+        return !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+            !promptBody.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+            names.allSatisfy { !$0.isEmpty } && Set(names).count == names.count
+    }
+
+    private var variableHint: String {
+        let names = variables.map { $0.name.trimmingCharacters(in: .whitespacesAndNewlines) }
+        if Set(names).count != names.count { return String(localized: "变量名不能重复。") }
+        return String(localized: "变量可在正文中使用 {{name}}。secret 类型只在内存中参与渲染。")
     }
 }

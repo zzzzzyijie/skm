@@ -20,6 +20,8 @@ Production environment:
   SKM_NOTARY_KEY_PATH      App Store Connect API private key (.p8)
   SKM_NOTARY_KEY_ID        App Store Connect API key ID
   SKM_NOTARY_ISSUER_ID     App Store Connect API issuer ID (Team API key)
+  SKM_SPARKLE_PUBLIC_KEY   Sparkle EdDSA public key embedded in the App
+  SKM_SPARKLE_PRIVATE_KEY_PATH  Sparkle EdDSA private key file used for appcast signing
 EOF
 }
 
@@ -81,7 +83,7 @@ done
 
 case "$VERSION" in
   [0-9]*.[0-9]*.[0-9]*) ;;
-  *) echo "error: --version must be a semantic version such as 0.5.2" >&2; exit 2 ;;
+  *) echo "error: --version must be a semantic version such as 0.5.3" >&2; exit 2 ;;
 esac
 
 case "$BUILD_NUMBER" in
@@ -98,6 +100,12 @@ done
 
 if [ "$PREVIEW" -eq 0 ]; then
   : "${SKM_SIGNING_IDENTITY:?error: SKM_SIGNING_IDENTITY is required for a production package}"
+  : "${SKM_SPARKLE_PUBLIC_KEY:?error: SKM_SPARKLE_PUBLIC_KEY is required for a production package}"
+  : "${SKM_SPARKLE_PRIVATE_KEY_PATH:?error: SKM_SPARKLE_PRIVATE_KEY_PATH is required for a production package}"
+  [ -f "$SKM_SPARKLE_PRIVATE_KEY_PATH" ] || {
+    echo "error: Sparkle private key does not exist: $SKM_SPARKLE_PRIVATE_KEY_PATH" >&2
+    exit 1
+  }
   case "$SKM_SIGNING_IDENTITY" in
     Developer\ ID\ Application:*) ;;
     *) echo "error: SKM_SIGNING_IDENTITY must be a Developer ID Application identity" >&2; exit 1 ;;
@@ -127,13 +135,15 @@ DERIVED_DATA="$TEMPORARY_DIRECTORY/DerivedData"
 APP_PATH="$DERIVED_DATA/Build/Products/Release/SKM.app"
 APP_EXECUTABLE="$APP_PATH/Contents/MacOS/SKM"
 CORE_EXECUTABLE="$APP_PATH/Contents/Resources/skm-core"
+SPARKLE_FRAMEWORK="$APP_PATH/Contents/Frameworks/Sparkle.framework"
 ENGLISH_LOCALIZATION="$APP_PATH/Contents/Resources/en.lproj/Localizable.strings"
 EXPECTED_BUNDLE_ID="com.zzzzzyijie.skm"
 ZIP_PATH="$OUTPUT_DIRECTORY/SKM-$VERSION-universal.zip"
 DMG_PATH="$OUTPUT_DIRECTORY/SKM-$VERSION-universal.dmg"
 CHECKSUM_PATH="$OUTPUT_DIRECTORY/SKM-$VERSION-checksums.txt"
+APPCAST_PATH="$OUTPUT_DIRECTORY/appcast.xml"
 
-rm -f "$ZIP_PATH" "$DMG_PATH" "$CHECKSUM_PATH"
+rm -f "$ZIP_PATH" "$DMG_PATH" "$CHECKSUM_PATH" "$APPCAST_PATH"
 
 echo "Building SKM $VERSION ($BUILD_NUMBER) for arm64 and x86_64..."
 xcodebuild \
@@ -147,6 +157,7 @@ xcodebuild \
   ONLY_ACTIVE_ARCH=NO \
   MARKETING_VERSION="$VERSION" \
   CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
+  SKM_SPARKLE_PUBLIC_KEY="${SKM_SPARKLE_PUBLIC_KEY:-}" \
   CODE_SIGNING_ALLOWED=NO \
   CODE_SIGNING_REQUIRED=NO \
   CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO \
@@ -154,6 +165,7 @@ xcodebuild \
 
 [ -d "$APP_PATH" ] || { echo "error: Xcode did not produce SKM.app" >&2; exit 1; }
 [ -x "$CORE_EXECUTABLE" ] || { echo "error: SKM.app does not contain executable skm-core" >&2; exit 1; }
+[ -d "$SPARKLE_FRAMEWORK" ] || { echo "error: SKM.app does not contain Sparkle.framework" >&2; exit 1; }
 [ -f "$ENGLISH_LOCALIZATION" ] || { echo "error: SKM.app does not contain the English localization" >&2; exit 1; }
 
 assert_universal() {
@@ -177,15 +189,36 @@ CORE_VERSION="$("$CORE_EXECUTABLE" version)"
 [ "$DEVELOPMENT_REGION" = "zh-Hans" ] || { echo "error: App development region is $DEVELOPMENT_REGION, expected zh-Hans" >&2; exit 1; }
 [ "$CORE_VERSION" = "$VERSION" ] || { echo "error: Core version is $CORE_VERSION, expected $VERSION" >&2; exit 1; }
 
+sign_sparkle_nested_code() {
+  signing_identity="$1"
+  timestamp_option="$2"
+  sparkle_version="$SPARKLE_FRAMEWORK/Versions/B"
+  for nested_bundle in \
+    "$sparkle_version/XPCServices/Downloader.xpc" \
+    "$sparkle_version/XPCServices/Installer.xpc" \
+    "$sparkle_version/Updater.app"; do
+    codesign --force --options runtime "$timestamp_option" --preserve-metadata=entitlements --sign "$signing_identity" "$nested_bundle"
+  done
+  codesign --force --options runtime "$timestamp_option" --sign "$signing_identity" "$SPARKLE_FRAMEWORK"
+}
+
 if [ "$PREVIEW" -eq 0 ]; then
-  echo "Signing bundled Core and SKM.app..."
+  echo "Signing Sparkle, bundled Core, and SKM.app..."
+  sign_sparkle_nested_code "$SKM_SIGNING_IDENTITY" --timestamp
   codesign --force --options runtime --timestamp --sign "$SKM_SIGNING_IDENTITY" "$CORE_EXECUTABLE"
   codesign --force --options runtime --timestamp --sign "$SKM_SIGNING_IDENTITY" "$APP_PATH"
   codesign --verify --deep --strict --verbose=2 "$APP_PATH"
 else
-  echo "Ad-hoc signing bundled Core and SKM.app for local preview..."
+  echo "Ad-hoc signing Sparkle, bundled Core, and SKM.app for local preview..."
+  sign_sparkle_nested_code - --timestamp=none
   codesign --force --options runtime --timestamp=none --sign - "$CORE_EXECUTABLE"
-  codesign --force --options runtime --timestamp=none --sign - "$APP_PATH"
+  codesign \
+    --force \
+    --options runtime \
+    --timestamp=none \
+    --entitlements "$REPOSITORY_ROOT/macos/SKMApp/SKMPreview.entitlements" \
+    --sign - \
+    "$APP_PATH"
   codesign --verify --deep --strict --verbose=2 "$APP_PATH"
   echo "warning: preview artifacts use ad-hoc signing and are not suitable for distribution" >&2
 fi
@@ -241,12 +274,36 @@ if [ "$SKIP_NOTARIZATION" -eq 0 ]; then
   spctl --assess --type open --context context:primary-signature --verbose=2 "$DMG_PATH"
 fi
 
+if [ "$PREVIEW" -eq 0 ]; then
+  SPARKLE_APPCAST_TOOL="$DERIVED_DATA/SourcePackages/artifacts/sparkle/Sparkle/bin/generate_appcast"
+  [ -x "$SPARKLE_APPCAST_TOOL" ] || {
+    echo "error: Sparkle generate_appcast tool was not found in Xcode package artifacts" >&2
+    exit 1
+  }
+  APPCAST_SOURCE="$TEMPORARY_DIRECTORY/appcast-source"
+  mkdir -p "$APPCAST_SOURCE"
+  ditto "$ZIP_PATH" "$APPCAST_SOURCE/$(basename "$ZIP_PATH")"
+  "$SPARKLE_APPCAST_TOOL" \
+    --ed-key-file "$SKM_SPARKLE_PRIVATE_KEY_PATH" \
+    --download-url-prefix "https://github.com/zzzzzyijie/skm/releases/download/v$VERSION/" \
+    --link "https://github.com/zzzzzyijie/skm/releases/tag/v$VERSION" \
+    --maximum-versions 3 \
+    -o "$APPCAST_PATH" \
+    "$APPCAST_SOURCE"
+  [ -s "$APPCAST_PATH" ] || { echo "error: Sparkle appcast was not generated" >&2; exit 1; }
+fi
+
 (
   cd "$OUTPUT_DIRECTORY"
-  shasum -a 256 "$(basename "$ZIP_PATH")" "$(basename "$DMG_PATH")" > "$(basename "$CHECKSUM_PATH")"
+  if [ -f "$APPCAST_PATH" ]; then
+    shasum -a 256 "$(basename "$ZIP_PATH")" "$(basename "$DMG_PATH")" "$(basename "$APPCAST_PATH")" > "$(basename "$CHECKSUM_PATH")"
+  else
+    shasum -a 256 "$(basename "$ZIP_PATH")" "$(basename "$DMG_PATH")" > "$(basename "$CHECKSUM_PATH")"
+  fi
 )
 
 echo "Release artifacts:"
 echo "  $ZIP_PATH"
 echo "  $DMG_PATH"
 echo "  $CHECKSUM_PATH"
+[ ! -f "$APPCAST_PATH" ] || echo "  $APPCAST_PATH"

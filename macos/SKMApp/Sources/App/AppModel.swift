@@ -290,17 +290,47 @@ final class AppModel {
     }
 
     @discardableResult
-    func savePrompt(id: String?, name: String, description: String, body: String, tags: [String], baseHash: String?) async -> Bool {
+    func savePrompt(
+        id: String?,
+        name: String,
+        description: String,
+        body: String,
+        tags: [String],
+        variables: [PromptVariable],
+        baseHash: String?
+    ) async -> Bool {
         await mutateResult(success: id == nil ? String(localized: "Prompt 已创建") : String(localized: "Prompt 已保存"), handlesConflict: true) {
-            let params = PromptWriteParams(id: id, content: nil, name: name, description: description, tags: tags, body: body, source: "local", baseHash: baseHash)
+            let params = PromptWriteParams(id: id, content: nil, name: name, description: description, tags: tags, body: body, variables: variables, source: "local", baseHash: baseHash)
             let _: PromptSummary = try await self.core.call(id == nil ? "prompts.create" : "prompts.update", params: params)
         }
     }
 
     func importPrompt(content: String) async {
         await mutate(success: String(localized: "Prompt 已导入")) {
-            let params = PromptWriteParams(id: nil, content: content, name: "", description: "", tags: [], body: "", source: "local", baseHash: nil)
+            let params = PromptWriteParams(id: nil, content: content, name: "", description: "", tags: [], body: "", variables: [], source: "local", baseHash: nil)
             let _: PromptSummary = try await self.core.call("prompts.create", params: params)
+        }
+    }
+
+    func renderPrompt(id: String, values: [String: String]) async throws -> PromptRenderResponse {
+        try await core.call("prompts.render", params: PromptRenderParams(id: id, values: values))
+    }
+
+    func history(kind: String, itemID: String) async throws -> [HistoryEntryModel] {
+        try await core.call("history.list", params: HistoryParams(kind: kind, itemId: itemID))
+    }
+
+    func historyDiff(kind: String, itemID: String, from: String, to: String = "current") async throws -> HistoryDiffResponse {
+        try await core.call("history.diff", params: HistoryDiffParams(kind: kind, itemId: itemID, from: from, to: to))
+    }
+
+    @discardableResult
+    func rollbackHistory(kind: String, itemID: String, entryID: String) async -> Bool {
+        await mutateResult(success: String(localized: "历史版本已恢复"), handlesConflict: true) {
+            let _: HistoryRollbackResponse = try await self.core.call(
+                "history.rollback",
+                params: HistoryEntryParams(kind: kind, itemId: itemID, entryId: entryID)
+            )
         }
     }
 
@@ -368,6 +398,62 @@ final class AppModel {
         if succeeded { await loadProjectDetails(project) }
     }
 
+    func requireProjectSkill(project: String, skill: String, agents: [String], mode: String) async {
+        let succeeded = await mutateResult(success: String(localized: "项目依赖已固定")) {
+            let _: ProjectAdvancedResponse = try await self.core.call(
+                "projects.require",
+                params: ProjectRequireParams(project: project, skill: skill, agents: agents, mode: mode, apply: false)
+            )
+        }
+        if succeeded { await loadProjectDetails(project) }
+    }
+
+    func vendorProjectSkill(project: String, skill: String, agents: [String], mode: String) async {
+        let succeeded = await mutateResult(success: String(localized: "Skill 已 Vendor 到项目")) {
+            let _: ProjectAdvancedResponse = try await self.core.call(
+                "projects.vendor",
+                params: ProjectVendorParams(project: project, skill: skill, agents: agents, mode: mode, tags: [], apply: false)
+            )
+        }
+        if succeeded { await loadProjectDetails(project) }
+    }
+
+    func applyProjectManifest(project: String, force: Bool = false) async {
+        let succeeded = await mutateResult(success: String(localized: "项目清单已应用")) {
+            let _: ProjectAdvancedResponse = try await self.core.call(
+                "projects.apply",
+                params: ProjectApplyParams(project: project, force: force)
+            )
+        }
+        if succeeded { await loadProjectDetails(project) }
+    }
+
+    func removeProjectEntry(project: String, entry: String, force: Bool = false) async {
+        let succeeded = await mutateResult(success: String(localized: "项目清单条目已移除")) {
+            let _: ProjectAdvancedResponse = try await self.core.call(
+                "projects.entry.remove",
+                params: ProjectEntryRemoveParams(project: project, entry: entry, force: force)
+            )
+        }
+        if succeeded { await loadProjectDetails(project) }
+    }
+
+    func quickLookURL() async throws -> URL? {
+        switch section {
+        case .skills:
+            guard let selectedSkillID else { return nil }
+            let details = try await skillDetails(selectedSkillID)
+            return URL(fileURLWithPath: details.effectivePath).appendingPathComponent("SKILL.md")
+        case .prompts:
+            guard let selectedPromptID else { return nil }
+            let details = try await promptDetails(selectedPromptID)
+            let path = URL(fileURLWithPath: details.path)
+            return path.pathExtension.lowercased() == "md" ? path : path.appendingPathComponent("PROMPT.md")
+        default:
+            return nil
+        }
+    }
+
     func addSource(input: String) async {
         await mutate(success: String(localized: "Git Source 已添加")) {
             let _: AddSourceResponse = try await self.core.call("sources.add", params: AddSourceParams(input: input, tags: []))
@@ -429,6 +515,11 @@ final class AppModel {
     }
 
     func checkForUpdates() async {
+        if SparkleUpdater.shared.isConfigured {
+            updateStatus = String(localized: "已打开安全更新检查窗口")
+            SparkleUpdater.shared.checkForUpdates()
+            return
+        }
         updateStatus = String(localized: "正在检查更新…")
         do {
             let url = URL(string: "https://api.github.com/repos/zzzzzyijie/skm/releases/latest")!
@@ -591,6 +682,7 @@ struct PromptWriteParams: Codable, Sendable {
     let description: String
     let tags: [String]
     let body: String
+    let variables: [PromptVariable]
     let source: String
     let baseHash: String?
 }
@@ -599,6 +691,14 @@ struct AddProjectParams: Codable, Sendable { let path: String; let name: String 
 struct ProjectDeployParams: Codable, Sendable { let project: String; let skill: String; let agents: [String]; let mode: String; let dryRun: Bool }
 struct ProjectUnlinkParams: Codable, Sendable { let project: String; let skill: String; let agents: [String]; let force: Bool }
 struct ProjectMigrateParams: Codable, Sendable { let project: String; let skill: String; let agent: String; let mode: String; let removeSource: Bool; let tags: [String] }
+struct ProjectRequireParams: Codable, Sendable { let project: String; let skill: String; let agents: [String]; let mode: String; let apply: Bool }
+struct ProjectVendorParams: Codable, Sendable { let project: String; let skill: String; let agents: [String]; let mode: String; let tags: [String]; let apply: Bool }
+struct ProjectApplyParams: Codable, Sendable { let project: String; let force: Bool }
+struct ProjectEntryRemoveParams: Codable, Sendable { let project: String; let entry: String; let force: Bool }
+struct PromptRenderParams: Codable, Sendable { let id: String; let values: [String: String] }
+struct HistoryParams: Codable, Sendable { let kind: String; let itemId: String }
+struct HistoryEntryParams: Codable, Sendable { let kind: String; let itemId: String; let entryId: String }
+struct HistoryDiffParams: Codable, Sendable { let kind: String; let itemId: String; let from: String; let to: String }
 struct SourceNamesParams: Codable, Sendable { let names: [String] }
 struct WorkspaceConfigureParams: Codable, Sendable { let url: String; let ref: String; let root: String? }
 struct WorkspaceSyncParams: Codable, Sendable { let resolutions: [String: String] }

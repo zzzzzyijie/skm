@@ -54,6 +54,7 @@ type ProjectDetails struct {
 	Activations []domain.Activation `json:"activations"`
 	Scan        ProjectScan         `json:"scan"`
 	Plan        domain.Plan         `json:"plan"`
+	Manifest    domain.Catalog      `json:"manifest"`
 }
 
 type ProjectDeployInput struct {
@@ -158,6 +159,20 @@ func (s *Service) GetProject(query string) (ProjectDetails, error) {
 	if err != nil {
 		return ProjectDetails{}, err
 	}
+	projectStore, err := s.storeForProject(project)
+	if err != nil {
+		return ProjectDetails{}, err
+	}
+	manifest, err := projectStore.LoadProjectCatalog()
+	if err != nil {
+		return ProjectDetails{}, err
+	}
+	if manifest.Skills == nil {
+		manifest.Skills = []domain.Skill{}
+	}
+	if manifest.Dependencies == nil {
+		manifest.Dependencies = []domain.ProjectDependency{}
+	}
 	info, statErr := os.Stat(project.Path)
 	activations := projectActivations(state, project.Path)
 	if activations == nil {
@@ -166,7 +181,7 @@ func (s *Service) GetProject(query string) (ProjectDetails, error) {
 	if plan.Operations == nil {
 		plan.Operations = []domain.Operation{}
 	}
-	return ProjectDetails{Project: project, Exists: statErr == nil && info.IsDir(), Activations: activations, Scan: scan, Plan: plan}, nil
+	return ProjectDetails{Project: project, Exists: statErr == nil && info.IsDir(), Activations: activations, Scan: scan, Plan: plan, Manifest: manifest}, nil
 }
 
 func (s *Service) DeployProject(input ProjectDeployInput) (ProjectDeployResult, error) {

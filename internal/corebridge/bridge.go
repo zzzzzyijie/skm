@@ -127,6 +127,7 @@ func (b *Bridge) handle(ctx context.Context, value request) response {
 			"capabilities": []string{
 				"skills.read", "skills.write", "activations.write", "agents.write",
 				"prompts.write", "sources.write", "projects.read", "projects.write",
+				"projects.dependencies", "prompts.render", "history.read", "history.write",
 				"workspace.read", "workspace.write", "diagnostics.read",
 			},
 		})

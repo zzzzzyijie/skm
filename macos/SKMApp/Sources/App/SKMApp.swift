@@ -24,8 +24,12 @@ struct SKMApp: App {
             CommandGroup(after: .sidebar) {
                 Button("刷新") { Task { await model.refresh() } }
                     .keyboardShortcut("r", modifiers: .command)
+                Button("检查更新…") { Task { await model.checkForUpdates() } }
             }
             CommandGroup(after: .pasteboard) {
+                Button("快速查看") { Task { await showQuickLook() } }
+                    .keyboardShortcut(.space, modifiers: [])
+                    .disabled(model.section != .skills && model.section != .prompts)
                 Button("删除所选项目") { model.request(.deleteSelection) }
                     .keyboardShortcut(.delete, modifiers: .command)
                     .disabled(!model.canDeleteSelection)
@@ -48,7 +52,7 @@ struct SKMApp: App {
         switch model.section {
         case .skills: String(localized: "添加 Skill")
         case .prompts: String(localized: "新建 Prompt")
-        case .projects: String(localized: "添加项目（Phase 2）")
+        case .projects: String(localized: "添加项目")
         case .sources: String(localized: "添加 Git Source")
         case .workspace: String(localized: "配置个人工作区")
         case .agents: String(localized: "添加自定义 Agent")
@@ -62,5 +66,12 @@ struct SKMApp: App {
         case .projects: String(localized: "添加项目…")
         default: String(localized: "导入 Skill…")
         }
+    }
+
+    private func showQuickLook() async {
+        do {
+            guard let url = try await model.quickLookURL() else { return }
+            QuickLookPresenter.shared.show(url)
+        } catch { model.errorMessage = error.localizedDescription }
     }
 }
