@@ -12,6 +12,7 @@ import (
 	"sync"
 
 	"github.com/zzzzzyijie/skm/internal/catalog"
+	"github.com/zzzzzyijie/skm/internal/domain"
 	"github.com/zzzzzyijie/skm/internal/prompt"
 	"github.com/zzzzzyijie/skm/internal/store"
 )
@@ -99,10 +100,44 @@ func (s *Service) Invoke(ctx context.Context, method string, params json.RawMess
 	case "sources.add":
 		var input AddSourceInput
 		return decoded(params, &input, func() (any, error) { return result(s.AddSource(input)) })
+	case "sources.update":
+		var input UpdateSourcesInput
+		return decoded(params, &input, func() (any, error) { return result(s.UpdateSources(input.Names)) })
+	case "sources.remove":
+		var input IDInput
+		return decoded(params, &input, func() (any, error) { return result(s.RemoveSource(input.ID)) })
+	case "sources.sync":
+		return result(s.SyncSources())
 	case "projects.list":
 		return result(s.ListProjects())
+	case "projects.add":
+		var input AddProjectInput
+		return decoded(params, &input, func() (any, error) { return result(s.AddProject(input)) })
+	case "projects.get":
+		var input IDInput
+		return decoded(params, &input, func() (any, error) { return result(s.GetProject(input.ID)) })
+	case "projects.deploy":
+		var input ProjectDeployInput
+		return decoded(params, &input, func() (any, error) { return result(s.DeployProject(input)) })
+	case "projects.unlink":
+		var input ProjectUnlinkInput
+		return decoded(params, &input, func() (any, error) { return result(s.UnlinkProject(input)) })
+	case "projects.unregister":
+		var input IDInput
+		return decoded(params, &input, func() (any, error) { return result(s.UnregisterProject(input.ID)) })
+	case "projects.migrate":
+		var input ProjectMigrateInput
+		return decoded(params, &input, func() (any, error) { return result(s.MigrateProjectSkill(input)) })
 	case "workspace.get":
 		return result(s.GetWorkspace())
+	case "workspace.configure":
+		var input domain.WorkspaceConfig
+		return decoded(params, &input, func() (any, error) { return result(s.ConfigureWorkspace(input)) })
+	case "workspace.preview":
+		return result(s.PreviewWorkspace())
+	case "workspace.sync":
+		var input WorkspaceSyncInput
+		return decoded(params, &input, func() (any, error) { return result(s.SyncWorkspace(input.Resolutions)) })
 	case "system.doctor":
 		return result(s.Doctor())
 	default:

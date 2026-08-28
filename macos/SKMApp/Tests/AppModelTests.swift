@@ -75,11 +75,100 @@ final class AppModelTests: XCTestCase {
         XCTAssertFalse(CoreClient.isSafeToRetry("activations.enable"))
     }
 
+    func testSemanticVersionComparison() {
+        XCTAssertTrue(AppModel.isVersion("v0.6.0", newerThan: "0.5.1"))
+        XCTAssertFalse(AppModel.isVersion("0.5.1", newerThan: "0.5.1"))
+        XCTAssertFalse(AppModel.isVersion("0.5.0", newerThan: "0.5.1"))
+    }
+
     private func isolatedPreferences() -> UserDefaults {
         let suiteName = "SKMTests.\(UUID().uuidString)"
         let preferences = UserDefaults(suiteName: suiteName)!
         addTeardownBlock { preferences.removePersistentDomain(forName: suiteName) }
         return preferences
+    }
+}
+
+final class CoreClientResilienceTests: XCTestCase {
+    func testConcurrentReadRequestsAreSerializedAndMatchedByID() async throws {
+        let script = try executableScript("""
+        #!/bin/sh
+        request_id=1
+        while IFS= read -r request; do
+          printf '{"jsonrpc":"2.0","id":"%s","result":[]}\n' "$request_id"
+          request_id=$((request_id + 1))
+        done
+        """)
+        let client = CoreClient(executableURL: script, requestTimeout: .seconds(2))
+        async let first: [MutationSkill] = client.call("skills.list", params: EmptyParams())
+        async let second: [MutationSkill] = client.call("prompts.list", params: EmptyParams())
+        let values = try await (first, second)
+        XCTAssertTrue(values.0.isEmpty)
+        XCTAssertTrue(values.1.isEmpty)
+        await client.stop()
+    }
+
+    func testMalformedResponseRestartsSafeReadAndIgnoresStderrNoise() async throws {
+        let marker = FileManager.default.temporaryDirectory.appendingPathComponent("SKMCoreClientMarker-\(UUID().uuidString)")
+        addTeardownBlock { try? FileManager.default.removeItem(at: marker) }
+        let script = try executableScript("""
+        #!/bin/sh
+        IFS= read -r request || exit 0
+        if [ ! -f '\(marker.path)' ]; then
+          /usr/bin/touch '\(marker.path)'
+          printf 'not-json\n'
+          exit 0
+        fi
+        printf 'diagnostic noise on stderr\n' >&2
+        printf '{"jsonrpc":"2.0","id":"2","result":[]}\n'
+        """)
+        let client = CoreClient(executableURL: script, requestTimeout: .seconds(2))
+        let result: [MutationSkill] = try await client.call("skills.list", params: EmptyParams())
+        XCTAssertTrue(result.isEmpty)
+        await client.stop()
+    }
+
+    func testCoreCrashRestartsOnlySafeRead() async throws {
+        let marker = FileManager.default.temporaryDirectory.appendingPathComponent("SKMCoreCrashMarker-\(UUID().uuidString)")
+        addTeardownBlock { try? FileManager.default.removeItem(at: marker) }
+        let script = try executableScript("""
+        #!/bin/sh
+        IFS= read -r request || exit 0
+        if [ ! -f '\(marker.path)' ]; then
+          /usr/bin/touch '\(marker.path)'
+          printf 'simulated crash\n' >&2
+          exit 1
+        fi
+        printf '{"jsonrpc":"2.0","id":"2","result":[]}\n'
+        """)
+        let client = CoreClient(executableURL: script, requestTimeout: .seconds(2))
+        let result: [MutationSkill] = try await client.call("skills.list", params: EmptyParams())
+        XCTAssertTrue(result.isEmpty)
+        await client.stop()
+    }
+
+    func testWriteTimeoutStopsCoreWithoutAutomaticReplay() async throws {
+        let script = try executableScript("""
+        #!/bin/sh
+        IFS= read -r request || exit 0
+        while :; do :; done
+        """)
+        let client = CoreClient(executableURL: script, requestTimeout: .milliseconds(150))
+        do {
+            let _: MutationSkill = try await client.call("skills.update", params: EmptyParams())
+            XCTFail("expected timeout")
+        } catch let error as CoreClientError {
+            XCTAssertEqual(error.kind, "timeout")
+        }
+        await client.stop()
+    }
+
+    private func executableScript(_ contents: String) throws -> URL {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("skm-core-stub-\(UUID().uuidString).sh")
+        try contents.write(to: url, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: url.path)
+        addTeardownBlock { try? FileManager.default.removeItem(at: url) }
+        return url
     }
 }
 
@@ -97,6 +186,7 @@ private actor StubCore: CoreServing {
             "sources.list": "[]",
             "projects.list": "[]",
             "workspace.get": #"{"configured":false}"#,
+            "system.doctor": "[]",
         ]
         defaults.merge(responses) { _, replacement in replacement }
         self.responses = defaults.mapValues { Data($0.utf8) }

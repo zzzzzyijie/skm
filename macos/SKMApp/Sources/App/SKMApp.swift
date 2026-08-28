@@ -49,11 +49,18 @@ struct SKMApp: App {
         case .skills: String(localized: "添加 Skill")
         case .prompts: String(localized: "新建 Prompt")
         case .projects: String(localized: "添加项目（Phase 2）")
+        case .sources: String(localized: "添加 Git Source")
+        case .workspace: String(localized: "配置个人工作区")
         case .agents: String(localized: "添加自定义 Agent")
+        case .diagnostics: String(localized: "运行诊断")
         }
     }
 
     private var importTitle: String {
-        model.section == .prompts ? String(localized: "导入 Prompt…") : String(localized: "导入 Skill…")
+        switch model.section {
+        case .prompts: String(localized: "导入 Prompt…")
+        case .projects: String(localized: "添加项目…")
+        default: String(localized: "导入 Skill…")
+        }
     }
 }

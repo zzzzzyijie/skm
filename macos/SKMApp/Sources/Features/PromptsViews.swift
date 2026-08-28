@@ -202,6 +202,8 @@ struct PromptEditorSheet: View {
     @State private var description: String
     @State private var promptBody: String
     @State private var tags: String
+    @State private var baseHash: String?
+    @State private var latest: PromptDetails?
 
     init(model: AppModel, details: PromptDetails?) {
         self.model = model
@@ -210,6 +212,7 @@ struct PromptEditorSheet: View {
         _description = State(initialValue: details?.description ?? "")
         _promptBody = State(initialValue: details?.body ?? "")
         _tags = State(initialValue: details?.tags.joined(separator: ", ") ?? "general")
+        _baseHash = State(initialValue: details?.hash)
     }
 
     var body: some View {
@@ -218,30 +221,58 @@ struct PromptEditorSheet: View {
                 .font(.title2.bold())
             Form {
                 TextField("名称", text: $name)
+                    .accessibilityIdentifier("prompt-name-field")
                 TextField("描述", text: $description)
+                    .accessibilityIdentifier("prompt-description-field")
                 TextField("标签，以逗号分隔", text: $tags)
+                    .accessibilityIdentifier("prompt-tags-field")
             }
             .formStyle(.columns)
             TextEditor(text: $promptBody)
                 .font(.system(.body, design: .monospaced))
                 .border(.separator)
+                .accessibilityIdentifier("prompt-body-editor")
+            if let latest {
+                GroupBox("检测到并发修改") {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("磁盘版本在编辑期间发生了变化。你的草稿没有丢失。")
+                            .foregroundStyle(.orange)
+                        HStack(alignment: .top, spacing: 12) {
+                            ConflictPreview(title: "你的草稿", content: promptBody)
+                            ConflictPreview(title: "磁盘版本", content: latest.body)
+                        }
+                        HStack {
+                            Button("使用磁盘版本") {
+                                name = latest.name
+                                description = latest.description
+                                promptBody = latest.body
+                                tags = latest.tags.joined(separator: ", ")
+                                baseHash = latest.hash
+                                self.latest = nil
+                            }
+                            Button("另存为新 Prompt") {
+                                self.latest = nil
+                                Task { await save(asCopy: true) }
+                            }
+                            Spacer()
+                            Button("保留草稿并覆盖") {
+                                baseHash = latest.hash
+                                self.latest = nil
+                                Task { await save() }
+                            }
+                            .buttonStyle(.borderedProminent)
+                        }
+                    }
+                    .padding(6)
+                }
+            }
             HStack {
                 Text("变量可在正文中使用 {{name}}；高级变量定义可直接通过 CLI 编辑。")
                     .font(.caption).foregroundStyle(.secondary)
                 Spacer()
                 Button("取消", role: .cancel) { dismiss() }
                 Button("保存") {
-                    Task {
-                        await model.savePrompt(
-                            id: details?.id,
-                            name: name,
-                            description: description,
-                            body: promptBody,
-                            tags: parseTags(tags),
-                            baseHash: details?.hash
-                        )
-                        if model.errorMessage == nil { dismiss() }
-                    }
+                    Task { await save() }
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || promptBody.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
@@ -249,5 +280,22 @@ struct PromptEditorSheet: View {
         }
         .padding(24)
         .frame(minWidth: 680, minHeight: 520)
+    }
+
+    private func save(asCopy: Bool = false) async {
+        let saved = await model.savePrompt(
+            id: asCopy ? nil : details?.id,
+            name: asCopy ? "\(name)-copy" : name,
+            description: description,
+            body: promptBody,
+            tags: parseTags(tags),
+            baseHash: asCopy ? nil : baseHash
+        )
+        if saved {
+            dismiss()
+        } else if model.lastErrorKind == "conflict", let id = details?.id {
+            do { latest = try await model.promptDetails(id) }
+            catch { model.errorMessage = error.localizedDescription }
+        }
     }
 }

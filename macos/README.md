@@ -2,21 +2,25 @@
 
 当前已完成项、待完成项和正式分发所需信息见
 [macOS 原生版开发进度](../docs/Mac原生版开发进度.md)。
+Developer ID、Apple 公证、stapling 与 Gatekeeper 的完整实操见
+[macOS 原生 App 签名、公证与发布流程](../docs/Mac原生App签名公证与发布流程.md)。
 
-当前原生首版为 `0.5.1`，实现技术设计中的 Core 契约与原生 MVP 主流程：
+当前工程版本为 `0.5.2`，Phase 1 原生 MVP 与 Phase 2 项目/同步能力均已完成：
 
 - 支持跟随 macOS 系统语言显示简体中文或英文；
 - SwiftUI 三栏导航与 macOS 原生菜单、搜索、文件面板、剪贴板和 Settings scene；
 - Skill 本地目录/ZIP/Git/安装命令导入、详情、原文编辑、标签、删除；
 - Agent 检测、管理、自定义 Agent 与用户级 Skill 启用/停用；
 - Prompt 创建、导入、编辑、复制、导出和删除；
-- 首次启动识别现有资料库、Core 阻断错误页、脱敏诊断复制；
-- 主操作菜单快捷键、VoiceOver 行摘要与隔离 XCUITest；
-- Project 与个人 Workspace 状态只读展示；
+- 首次启动识别现有资料库、Core 阻断错误页、Doctor、脱敏诊断导出与更新检查；
+- 主操作菜单快捷键、VoiceOver 行摘要与中英文隔离 XCUITest；
+- Project 登记、扫描、Link/Copy 部署、预览、冲突阻断、迁移、解绑与注销；
+- Source 添加、更新、移除与统一同步；
+- 个人 Workspace 配置、双向同步预览与逐项冲突解决；
 - App Bundle 内置 Go Core，通过私有 stdio JSON-RPC 通信，不监听端口。
 
-Project 的注册、迁移、Link/Copy/Vendor 与个人 Workspace 双向同步属于 Phase 2，首版没有暴露
-这些写操作。
+Phase 3 的 `project require/vendor/apply`、Prompt 变量渲染表单、历史回滚和 Sparkle 2 自动更新
+尚未进入本版本范围。
 
 ## 打开与生成工程
 
@@ -76,8 +80,8 @@ App 正式运行时不设置这些变量，Core 会使用与 CLI 相同的 `~/.s
 
 ```bash
 sh macos/Scripts/package-release.sh \
-  --version 0.5.1 \
-  --build 1 \
+  --version 0.5.2 \
+  --build 2 \
   --output dist/macos \
   --preview
 ```
@@ -91,7 +95,16 @@ SKM_NOTARY_KEY_ID=<KEY_ID>
 SKM_NOTARY_ISSUER_ID=<ISSUER_UUID>
 ```
 
-然后去掉 `--preview`。脚本会按顺序构建 Universal 2 App、签名 Core 与 App、用 `notarytool`
+也可以复制本机配置模板，发布脚本会自动加载该文件：
+
+```bash
+cp macos/.release.env.example macos/.release.env.local
+```
+
+`macos/.release.env.local` 已加入 `.gitignore`，可以保存本机证书名称和 `.p8` 路径，不能提交到
+Git。外部已经设置的同名环境变量优先于模板中的本机值。
+
+然后去掉 `--preview`。脚本会按顺序构建 Universal 2 App、签名 Core、App 与 DMG、用 `notarytool`
 公证、staple、生成 ZIP/DMG，并执行 Gatekeeper 与校验和检查。
 
 ## 发布前仍需外部配置

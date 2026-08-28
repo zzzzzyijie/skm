@@ -26,8 +26,11 @@ profile.cov
 go.work
 go.work.sum
 
-# env file
+# Local environment and Apple signing credentials
 .env
+/macos/.release.env.local
+*.p8
+*.p12
 
 # Editor/IDE
 # .idea/

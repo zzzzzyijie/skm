@@ -82,6 +82,96 @@ func TestEmptyCollectionsUseArraysInRPCContract(t *testing.T) {
 	}
 }
 
+func TestEmptyProjectCanDeployFirstSkill(t *testing.T) {
+	service, root := newTestService(t)
+	skillPath := filepath.Join(root, "fixture", "sample")
+	if err := os.MkdirAll(skillPath, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(skillPath, "SKILL.md"), []byte("---\nname: sample\ndescription: Sample Skill\n---\n\nInstructions.\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	added, err := service.AddSkill(AddSkillInput{Path: skillPath, Source: "local"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	projectRoot := filepath.Join(root, "empty-project")
+	if err := os.MkdirAll(projectRoot, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	project, err := service.AddProject(AddProjectInput{Path: projectRoot, Name: "empty"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	preview, err := service.DeployProject(ProjectDeployInput{Project: project.ID, Skill: added.ID, Agents: []string{"codex"}, Mode: "symlink", DryRun: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if preview.Applied || len(preview.Plan.Operations) != 1 || preview.Plan.Operations[0].Status != "create" {
+		t.Fatalf("unexpected preview: %+v", preview)
+	}
+	applied, err := service.DeployProject(ProjectDeployInput{Project: project.ID, Skill: added.ID, Agents: []string{"codex"}, Mode: "symlink"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !applied.Applied {
+		t.Fatal("expected project deployment to be applied")
+	}
+	target := filepath.Join(projectRoot, ".codex", "skills", "sample")
+	if info, err := os.Lstat(target); err != nil || info.Mode()&os.ModeSymlink == 0 {
+		t.Fatalf("expected first project deployment at %s: info=%v err=%v", target, info, err)
+	}
+	details, err := service.GetProject(project.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if details.Scan.SkillCount != 1 || details.Scan.AgentCounts["codex"] != 1 {
+		t.Fatalf("unexpected project scan: %+v", details.Scan)
+	}
+}
+
+func TestSharedStoreRejectsStaleEditAndRecovers(t *testing.T) {
+	first, root := newTestService(t)
+	skillPath := filepath.Join(root, "fixture", "shared")
+	if err := os.MkdirAll(skillPath, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(skillPath, "SKILL.md"), []byte("---\nname: shared\ndescription: Initial\n---\n\nInitial.\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	added, err := first.AddSkill(AddSkillInput{Path: skillPath, Source: "local"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	stale, err := first.GetSkill(added.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second := New(first.Store)
+	newContent := "---\nname: shared\ndescription: Changed by CLI\n---\n\nCLI version.\n"
+	if _, err := second.UpdateSkill(UpdateSkillInput{ID: added.ID, Content: newContent, BaseHash: stale.Hash}); err != nil {
+		t.Fatal(err)
+	}
+	_, err = first.UpdateSkill(UpdateSkillInput{ID: added.ID, Content: stale.Content + "\nApp draft.\n", BaseHash: stale.Hash})
+	if err == nil {
+		t.Fatal("expected stale edit conflict")
+	}
+	var appError *Error
+	if !errors.As(wrap(err), &appError) || appError.Kind != "conflict" {
+		t.Fatalf("expected stale edit conflict, got %v", err)
+	}
+	latest, err := first.GetSkill(added.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(latest.Content, "CLI version") {
+		t.Fatalf("external update was lost: %q", latest.Content)
+	}
+	if _, err := first.UpdateSkill(UpdateSkillInput{ID: added.ID, Content: stale.Content + "\nRecovered draft.\n", BaseHash: latest.Hash}); err != nil {
+		t.Fatalf("explicit recovery failed: %v", err)
+	}
+}
+
 func newTestService(t *testing.T) (*Service, string) {
 	t.Helper()
 	root := t.TempDir()

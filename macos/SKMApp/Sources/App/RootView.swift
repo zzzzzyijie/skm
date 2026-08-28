@@ -81,6 +81,7 @@ struct RootView: View {
     private var sidebar: some View {
         List(AppSection.allCases, selection: $model.section) { section in
             Label(section.rawValue, systemImage: section.symbol)
+                .accessibilityIdentifier("navigation-\(section.rawValue.lowercased())")
                 .tag(section)
         }
         .safeAreaInset(edge: .bottom) {
@@ -110,7 +111,10 @@ struct RootView: View {
         case .skills: SkillsListView(model: model)
         case .prompts: PromptsListView(model: model)
         case .projects: ProjectsListView(model: model)
+        case .sources: SourcesListView(model: model)
+        case .workspace: WorkspaceSidebarView(model: model)
         case .agents: AgentsListView(model: model)
+        case .diagnostics: DiagnosticsSidebarView(model: model)
         }
     }
 
@@ -120,7 +124,10 @@ struct RootView: View {
         case .skills: SkillDetailView(model: model)
         case .prompts: PromptDetailView(model: model)
         case .projects: ProjectDetailView(model: model)
+        case .sources: SourceDetailView(model: model)
+        case .workspace: WorkspaceDetailView(model: model)
         case .agents: AgentDetailView(model: model)
+        case .diagnostics: DiagnosticsDetailView(model: model)
         }
     }
 }

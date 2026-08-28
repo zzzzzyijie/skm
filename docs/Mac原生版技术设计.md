@@ -1,6 +1,6 @@
 # SKM macOS 原生版技术设计
 
-> 状态：0.5.1 Phase 1 工程实现已完成；支持简体中文与英文，本地签名预览已支持，正式签名与公证待配置 Apple 凭据，Phase 2 待实现
+> 状态：0.5.2 Phase 1 与 Phase 2 工程实现已完成；Bundle ID 固定为 `com.zzzzzyijie.skm`，真实 Developer ID 签名、公证和 Gatekeeper 本地闭环已验收，干净机 Tag 工作流与正式 Release 待触发
 > 基线：SKM v0.5.0、持久化 schema v2
 > 目标：在不重写 Go 领域逻辑、不破坏 CLI 兼容性的前提下，提供真正的 macOS 原生应用。
 
@@ -197,7 +197,7 @@ func (s *Service) SyncWorkspace(ctx context.Context, input SyncInput, progress P
 App 启动后第一条请求必须是：
 
 ```json
-{"jsonrpc":"2.0","id":"1","method":"system.handshake","params":{"protocolVersion":1,"appVersion":"0.5.1"}}
+{"jsonrpc":"2.0","id":"1","method":"system.handshake","params":{"protocolVersion":1,"appVersion":"0.5.2"}}
 ```
 
 Core 返回：
@@ -208,7 +208,7 @@ Core 返回：
   "id": "1",
   "result": {
     "protocolVersion": 1,
-    "coreVersion": "0.5.1",
+    "coreVersion": "0.5.2",
     "schemaVersion": 2,
     "promptSchemaVersion": 1,
     "workspaceSchemaVersion": 1,
@@ -453,12 +453,16 @@ macOS 隐私提示。
 
 ### Phase 0：Core 契约
 
+状态：已完成。
+
 - 提取 `internal/application` 的首批用例；
 - 增加稳定错误码；
 - 实现 `core --stdio`、握手、Skills/Agents/Activation 查询与写入；
 - 为 Bridge 添加协议 fixture 和并发测试。
 
 ### Phase 1：原生 MVP
+
+状态：工程实现与本地正式签名、公证、stapling、Gatekeeper 闭环已完成。
 
 - 首次启动与现有 `~/.skm` 检测；
 - Skills 列表、详情、文件夹/ZIP/Git/安装命令导入、编辑、标签、移除；
@@ -468,6 +472,8 @@ macOS 隐私提示。
 - DMG 签名与公证。
 
 ### Phase 2：项目与同步
+
+状态：当前设计范围已完成。
 
 - 项目登记、扫描、link/copy、迁移、解绑和注销；
 - Source 管理、统一同步和个人工作区冲突解决；
@@ -501,9 +507,11 @@ CGO_ENABLED=0
 → 合并 Universal 2
 → 签名嵌套 Core
 → 签名 SKM.app
-→ 生成 DMG
-→ notarize
-→ staple
+→ 公证并 staple SKM.app
+→ 生成最终 ZIP 与 DMG
+→ 签名 DMG
+→ 公证并 staple DMG
+→ Gatekeeper 检查 App 与 DMG
 → 上传 Release
 ```
 
@@ -512,12 +520,15 @@ CGO_ENABLED=0
 Connect Team API Key，并在上传前检查 Universal 2、版本一致性、签名、notarization ticket、
 Gatekeeper 与 SHA-256。
 
+真实凭据配置、命令、验收输出和故障记录见
+[macOS 原生 App 签名、公证与发布流程](Mac原生App签名公证与发布流程.md)。
+
 ### 10.2 版本
 
 - App、捆绑 Core 和 CLI 使用同一个语义化 Tag。
 - `CFBundleShortVersionString` 等于去掉 `v` 的 Tag。
 - `CFBundleVersion` 使用 CI 递增构建号。
-- 原生首发属于兼容新增功能，使用当前 `v0.5.0` 之后的补丁版本 `v0.5.1`。
+- Phase 1/2 工程完成版本为 `v0.5.2`；正式 Tag 与 Release 创建前仍只属于工程候选版本。
 
 ### 10.3 发布产物
 

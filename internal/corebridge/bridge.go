@@ -126,7 +126,8 @@ func (b *Bridge) handle(ctx context.Context, value request) response {
 			"workspaceSchemaVersion": domain.WorkspaceSchemaVersion,
 			"capabilities": []string{
 				"skills.read", "skills.write", "activations.write", "agents.write",
-				"prompts.write", "sources.write", "projects.read", "workspace.read",
+				"prompts.write", "sources.write", "projects.read", "projects.write",
+				"workspace.read", "workspace.write", "diagnostics.read",
 			},
 		})
 		return response{JSONRPC: "2.0", ID: value.ID, Result: data}

@@ -15,6 +15,7 @@ Options:
   --help                   Show this help
 
 Production environment:
+  SKM_RELEASE_ENV_FILE     Optional local env file (default: macos/.release.env.local)
   SKM_SIGNING_IDENTITY     Exact Developer ID Application identity
   SKM_NOTARY_KEY_PATH      App Store Connect API private key (.p8)
   SKM_NOTARY_KEY_ID        App Store Connect API key ID
@@ -24,6 +25,16 @@ EOF
 
 SCRIPT_DIRECTORY="$(CDPATH= cd -- "$(dirname "$0")" && pwd)"
 REPOSITORY_ROOT="$(cd "$SCRIPT_DIRECTORY/../.." && pwd)"
+RELEASE_ENV_FILE="${SKM_RELEASE_ENV_FILE:-$REPOSITORY_ROOT/macos/.release.env.local}"
+
+if [ -f "$RELEASE_ENV_FILE" ]; then
+  # This file is intentionally local and gitignored because it can reference
+  # signing credentials. Environment variables can take precedence when the
+  # file uses the provided ${VARIABLE:-value} pattern.
+  # shellcheck disable=SC1090
+  . "$RELEASE_ENV_FILE"
+fi
+
 VERSION=""
 BUILD_NUMBER=""
 OUTPUT_DIRECTORY="$REPOSITORY_ROOT/dist/macos"
@@ -70,7 +81,7 @@ done
 
 case "$VERSION" in
   [0-9]*.[0-9]*.[0-9]*) ;;
-  *) echo "error: --version must be a semantic version such as 0.5.1" >&2; exit 2 ;;
+  *) echo "error: --version must be a semantic version such as 0.5.2" >&2; exit 2 ;;
 esac
 
 case "$BUILD_NUMBER" in
@@ -117,6 +128,7 @@ APP_PATH="$DERIVED_DATA/Build/Products/Release/SKM.app"
 APP_EXECUTABLE="$APP_PATH/Contents/MacOS/SKM"
 CORE_EXECUTABLE="$APP_PATH/Contents/Resources/skm-core"
 ENGLISH_LOCALIZATION="$APP_PATH/Contents/Resources/en.lproj/Localizable.strings"
+EXPECTED_BUNDLE_ID="com.zzzzzyijie.skm"
 ZIP_PATH="$OUTPUT_DIRECTORY/SKM-$VERSION-universal.zip"
 DMG_PATH="$OUTPUT_DIRECTORY/SKM-$VERSION-universal.dmg"
 CHECKSUM_PATH="$OUTPUT_DIRECTORY/SKM-$VERSION-checksums.txt"
@@ -156,10 +168,12 @@ assert_universal "$CORE_EXECUTABLE"
 
 APP_VERSION="$(plutil -extract CFBundleShortVersionString raw "$APP_PATH/Contents/Info.plist")"
 APP_BUILD="$(plutil -extract CFBundleVersion raw "$APP_PATH/Contents/Info.plist")"
+APP_BUNDLE_ID="$(plutil -extract CFBundleIdentifier raw "$APP_PATH/Contents/Info.plist")"
 DEVELOPMENT_REGION="$(plutil -extract CFBundleDevelopmentRegion raw "$APP_PATH/Contents/Info.plist")"
 CORE_VERSION="$("$CORE_EXECUTABLE" version)"
 [ "$APP_VERSION" = "$VERSION" ] || { echo "error: App version is $APP_VERSION, expected $VERSION" >&2; exit 1; }
 [ "$APP_BUILD" = "$BUILD_NUMBER" ] || { echo "error: App build is $APP_BUILD, expected $BUILD_NUMBER" >&2; exit 1; }
+[ "$APP_BUNDLE_ID" = "$EXPECTED_BUNDLE_ID" ] || { echo "error: App Bundle ID is $APP_BUNDLE_ID, expected $EXPECTED_BUNDLE_ID" >&2; exit 1; }
 [ "$DEVELOPMENT_REGION" = "zh-Hans" ] || { echo "error: App development region is $DEVELOPMENT_REGION, expected zh-Hans" >&2; exit 1; }
 [ "$CORE_VERSION" = "$VERSION" ] || { echo "error: Core version is $CORE_VERSION, expected $VERSION" >&2; exit 1; }
 
@@ -208,6 +222,15 @@ hdiutil create \
   -ov \
   -format UDZO \
   "$DMG_PATH"
+
+if [ "$PREVIEW" -eq 0 ]; then
+  echo "Signing DMG..."
+  codesign --force --timestamp --sign "$SKM_SIGNING_IDENTITY" "$DMG_PATH"
+else
+  echo "Ad-hoc signing DMG for local preview..."
+  codesign --force --timestamp=none --sign - "$DMG_PATH"
+fi
+codesign --verify --verbose=2 "$DMG_PATH"
 
 if [ "$SKIP_NOTARIZATION" -eq 0 ]; then
   echo "Submitting DMG for notarization..."

@@ -133,6 +133,7 @@ if [ "$run_full" = true ]; then
     GOCACHE="$go_cache" go vet ./...
     sh scripts/install_test.sh
     sh scripts/generate_homebrew_formula_test.sh
+    sh scripts/generate_homebrew_cask_test.sh
     git diff --check
   )
 fi

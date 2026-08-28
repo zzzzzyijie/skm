@@ -15,6 +15,16 @@
     "{{%@}}" : {
 
     },
+    "%@ · %@" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ · %2$@"
+          }
+        }
+      }
+    },
     "%1$@，%2$@，%3$@" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -84,6 +94,9 @@
         }
       }
     },
+    "Copy（独立副本）" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Copy (independent copy)" } } }
+    },
     "Core %@ · Schema %@" : {
       "localizations" : {
         "zh-Hans" : {
@@ -147,6 +160,9 @@
           }
         }
       }
+    },
+    "Link（跟随 Library）" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Link (follow Library)" } } }
     },
     "my-agent" : {
 
@@ -329,6 +345,12 @@
         }
       }
     },
+    "SKM 不保存密码或 Token；SSH Agent 与 Git Credential Helper 的行为和终端一致。" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "SKM does not save passwords or tokens. SSH Agent and Git Credential Helper work as they do in Terminal." } } }
+    },
+    "SKM 只登记目录，不会修改项目；部署操作仍会单独预览和确认。" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "SKM only registers the directory and does not modify it. Deployment is previewed and confirmed separately." } } }
+    },
     "不可访问" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -339,6 +361,9 @@
           }
         }
       }
+    },
+    "个人工作区" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Personal Workspace" } } }
     },
     "个人工作区已配置" : {
       "extractionState" : "stale",
@@ -405,6 +430,9 @@
         }
       }
     },
+    "使用远端" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Use Remote" } } }
+    },
     "保存" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -425,6 +453,9 @@
           }
         }
       }
+    },
+    "保留本地" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Keep Local" } } }
     },
     "信息" : {
       "extractionState" : "stale",
@@ -598,6 +629,12 @@
         }
       }
     },
+    "只有所有 Agent 副本内容一致且不受 SKM 管理时才允许移除。" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Removal is allowed only when every Agent copy matches and none is managed by SKM." } } }
+    },
+    "只移除登记信息，不删除项目文件；仍有受管部署时会安全阻止。" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "This removes only the registration, not project files. Managed deployments safely block removal." } } }
+    },
     "可用" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -630,6 +667,9 @@
           }
         }
       }
+    },
+    "复制到 Library" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Copy to Library" } } }
     },
     "复制诊断信息" : {
       "extractionState" : "stale",
@@ -728,6 +768,9 @@
           }
         }
       }
+    },
+    "导出内容包含 App/Core 版本、系统架构和脱敏后的 Doctor 结果，不包含公证密钥或 Git 凭据。" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "The export includes App/Core versions, system architecture, and redacted Doctor results. It excludes notarization keys and Git credentials." } } }
     },
     "导航" : {
       "extractionState" : "stale",
@@ -837,6 +880,12 @@
           }
         }
       }
+    },
+    "当前 Revision：%@" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Current revision: %@" } } }
+    },
+    "当前版本：%@" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Current version: %@" } } }
     },
     "必填" : {
       "localizations" : {
@@ -1250,6 +1299,9 @@
         }
       }
     },
+    "添加 Git Source" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Add Git Source" } } }
+    },
     "添加 Skill" : {
       "localizations" : {
         "en" : {
@@ -1259,6 +1311,12 @@
           }
         }
       }
+    },
+    "添加一个本机项目，扫描各 Agent 的 Skills，或把 Library Skill 部署到项目。" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Add a local project to scan Agent Skills or deploy a Library Skill into it." } } }
+    },
+    "添加团队或社区 Skill 仓库；凭据继续由系统 Git 管理。" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Add a team or community Skill repository. Credentials remain managed by system Git." } } }
     },
     "添加自定义 Agent" : {
       "extractionState" : "stale",
@@ -1270,6 +1328,9 @@
           }
         }
       }
+    },
+    "添加项目" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Add Project" } } }
     },
     "添加项目（Phase 2）" : {
       "extractionState" : "stale",
@@ -1304,6 +1365,15 @@
         }
       }
     },
+    "目标 Agents" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Target Agents" } } }
+    },
+    "磁盘版本在编辑期间发生了变化。你的草稿仍保留，请比较后选择恢复方式。" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "The on-disk version changed while you were editing. Your draft is preserved; compare both versions and choose how to recover." } } }
+    },
+    "磁盘版本在编辑期间发生了变化。你的草稿没有丢失。" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "The on-disk version changed while you were editing. Your draft has been preserved." } } }
+    },
     "移除 %@？" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1336,6 +1406,12 @@
           }
         }
       }
+    },
+    "移除来源绑定和本机 checkout；已经导入 Library 的不可变快照会保留。" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Remove the source binding and local checkout. Immutable snapshots already imported into the Library are preserved." } } }
+    },
+    "空白项目也可选择 Agent；应用后 SKM 会创建对应的隐藏 Skills 目录。" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Agents can be selected for an empty project. SKM creates the hidden Skills directories when applying." } } }
     },
     "第一版仅展示项目扫描与部署摘要。项目注册、迁移、Link/Copy/Vendor 和冲突处理将在 Phase 2 接入同一 Core Bridge。" : {
       "extractionState" : "stale",
@@ -1479,6 +1555,9 @@
         }
       }
     },
+    "诊断与更新" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Diagnostics & Updates" } } }
+    },
     "诊断信息已复制" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1490,6 +1569,12 @@
         }
       }
     },
+    "请选择…" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Choose…" } } }
+    },
+    "跟随项目" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Follow Project" } } }
+    },
     "路径" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1500,6 +1585,9 @@
           }
         }
       }
+    },
+    "迁移 %@" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Migrate %@" } } }
     },
     "还没有 Prompt" : {
       "extractionState" : "stale",
@@ -1588,6 +1676,9 @@
         }
       }
     },
+    "通过一个私人 Git 仓库双向同步 Skills、Prompts 和 Source 绑定。认证信息不会写入 SKM。" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Synchronize Skills, Prompts, and Source bindings through a private Git repository. Credentials are never written to SKM." } } }
+    },
     "部署" : {
       "localizations" : {
         "en" : {
@@ -1610,6 +1701,7 @@
       }
     },
     "首版提供项目状态查看；注册与部署写操作将在下一阶段开放。" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {

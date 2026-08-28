@@ -32,6 +32,7 @@ jobs:
         run: |
           sh scripts/install_test.sh
           sh scripts/generate_homebrew_formula_test.sh
+          sh scripts/generate_homebrew_cask_test.sh
 
   macos-app:
     runs-on: macos-26
@@ -57,7 +58,7 @@ jobs:
       - name: Build ad-hoc signed release preview
         run: |
           sh macos/Scripts/package-release.sh \
-            --version 0.5.1 \
+            --version 0.5.2 \
             --build "$GITHUB_RUN_NUMBER" \
             --output "$RUNNER_TEMP/skm-release-preview" \
             --preview

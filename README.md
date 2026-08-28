@@ -29,7 +29,8 @@ Prompt 格式与第一版能力见 [Prompt 管理](docs/Prompt管理.md)，
 完整命令说明见 [CLI 使用指南](docs/命令行使用指南.md)。当前完成度和待办见
 [核心流程验收清单](docs/核心流程验收清单.md)。macOS 原生应用的实现与后续方案见
 [Mac 原生版技术设计](docs/Mac原生版技术设计.md)与
-[Mac 原生版原型设计](docs/Mac原生版原型设计.md)。
+[Mac 原生版原型设计](docs/Mac原生版原型设计.md)，正式分发实操见
+[macOS 原生 App 签名、公证与发布流程](docs/Mac原生App签名公证与发布流程.md)。
 
 ## 安装
 
@@ -38,10 +39,20 @@ Git 仅在使用 Git Source 或恢复 `project require` 依赖时需要。Homebr
 
 ### Homebrew
 
+安装命令行版：
+
 ```bash
 brew install zzzzzyijie/tap/skm
 skm version
 ```
+
+`v0.5.2` 正式 Release 发布后可安装原生 App：
+
+```bash
+brew install --cask zzzzzyijie/tap/skm-app
+```
+
+Formula 与 Cask 独立：前者安装 `skm` CLI，后者安装 `/Applications/SKM.app`，不会互相覆盖。
 
 ### curl
 
@@ -78,7 +89,7 @@ go build -trimpath -o ./bin/skm ./cmd/skm
 [隔离开发与发布流程](docs/开发与发布流程.md)。发布维护细节见
 [发布指南](docs/发布指南.md)。
 
-### macOS 原生 App（0.5.1）
+### macOS 原生 App（0.5.2）
 
 当前开发状态见 [macOS 原生版开发进度](docs/Mac原生版开发进度.md)。
 
@@ -362,7 +373,7 @@ sh scripts/install_test.sh
 sh scripts/dev_smoke_test.sh
 ```
 
-使用 `--full` 加入仓库测试、安装器和 Formula 检查；完整开发到发布流程见
+使用 `--full` 加入仓库测试、安装器、Formula 和 Cask 检查；完整开发到发布流程见
 [隔离开发与发布流程](docs/开发与发布流程.md)。
 
 发布配置的本地验证方式见 [发布指南](docs/发布指南.md#4-本地检查发布配置)。

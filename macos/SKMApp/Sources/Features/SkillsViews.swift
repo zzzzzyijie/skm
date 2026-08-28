@@ -303,12 +303,15 @@ struct SkillEditorSheet: View {
     let details: SkillDetails
     @State private var content: String
     @State private var tags: String
+    @State private var baseHash: String
+    @State private var latest: SkillDetails?
 
     init(model: AppModel, details: SkillDetails) {
         self.model = model
         self.details = details
         _content = State(initialValue: details.content)
         _tags = State(initialValue: details.tags.joined(separator: ", "))
+        _baseHash = State(initialValue: details.hash)
     }
 
     var body: some View {
@@ -318,22 +321,78 @@ struct SkillEditorSheet: View {
                 .font(.system(.body, design: .monospaced))
                 .border(.separator)
             TextField("标签，以逗号分隔", text: $tags)
+            if let latest {
+                GroupBox("检测到并发修改") {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("磁盘版本在编辑期间发生了变化。你的草稿仍保留，请比较后选择恢复方式。")
+                            .foregroundStyle(.orange)
+                        HStack(alignment: .top, spacing: 12) {
+                            ConflictPreview(title: "你的草稿", content: content)
+                            ConflictPreview(title: "磁盘版本", content: latest.content)
+                        }
+                        HStack {
+                            Button("使用磁盘版本") {
+                                content = latest.content
+                                tags = latest.tags.joined(separator: ", ")
+                                baseHash = latest.hash
+                                self.latest = nil
+                            }
+                            Spacer()
+                            Button("保留草稿并覆盖") {
+                                baseHash = latest.hash
+                                self.latest = nil
+                                Task { await save() }
+                            }
+                            .buttonStyle(.borderedProminent)
+                        }
+                    }
+                    .padding(6)
+                }
+            }
             HStack {
                 Text("保存时会校验 baseHash，防止覆盖来自 CLI 的并发修改。")
                     .font(.caption).foregroundStyle(.secondary)
                 Spacer()
                 Button("取消", role: .cancel) { dismiss() }
                 Button("保存") {
-                    Task {
-                        await model.updateSkill(id: details.id, content: content, baseHash: details.hash, tags: parseTags(tags))
-                        if model.errorMessage == nil { dismiss() }
-                    }
+                    Task { await save() }
                 }
                 .buttonStyle(.borderedProminent)
             }
         }
         .padding(24)
         .frame(minWidth: 720, minHeight: 560)
+    }
+
+    private func save() async {
+        let saved = await model.updateSkill(id: details.id, content: content, baseHash: baseHash, tags: parseTags(tags))
+        if saved {
+            dismiss()
+        } else if model.lastErrorKind == "conflict" {
+            do { latest = try await model.skillDetails(details.id) }
+            catch { model.errorMessage = error.localizedDescription }
+        }
+    }
+}
+
+struct ConflictPreview: View {
+    let title: LocalizedStringKey
+    let content: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title).font(.headline)
+            ScrollView {
+                Text(content)
+                    .font(.caption.monospaced())
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .frame(minHeight: 90, maxHeight: 150)
+            .padding(8)
+            .background(.quaternary.opacity(0.45), in: RoundedRectangle(cornerRadius: 8))
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 

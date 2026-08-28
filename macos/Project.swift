@@ -9,8 +9,8 @@ let project = Project(
     settings: .settings(base: [
         "MACOSX_DEPLOYMENT_TARGET": "14.0",
         "SWIFT_VERSION": "6.0",
-        "CURRENT_PROJECT_VERSION": "1",
-        "MARKETING_VERSION": "0.5.1",
+        "CURRENT_PROJECT_VERSION": "2",
+        "MARKETING_VERSION": "0.5.2",
         "ENABLE_USER_SCRIPT_SANDBOXING": "NO",
         "ENABLE_APP_SANDBOX": "NO",
         "ENABLE_HARDENED_RUNTIME": "YES",

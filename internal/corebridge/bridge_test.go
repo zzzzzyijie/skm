@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -88,6 +89,83 @@ func TestOversizedMessageDoesNotStopBridge(t *testing.T) {
 	if handshake.ProtocolVersion != 1 {
 		t.Fatalf("bridge did not recover after oversized message: %+v", handshake)
 	}
+}
+
+func TestMalformedJSONDoesNotStopBridge(t *testing.T) {
+	bridge := newTestBridge(t)
+	requests := "{not-json}\n" + `{"jsonrpc":"2.0","id":"2","method":"system.handshake","params":{}}`
+	responses := runRequests(t, bridge, requests)
+	if len(responses) != 2 {
+		t.Fatalf("expected two responses, got %d", len(responses))
+	}
+	var first struct {
+		Error *rpcError `json:"error"`
+	}
+	if err := json.Unmarshal(responses[0], &first); err != nil {
+		t.Fatal(err)
+	}
+	if first.Error == nil || first.Error.Data.Kind != "parse_error" {
+		t.Fatalf("unexpected parse error: %+v", first.Error)
+	}
+	var handshake struct {
+		ProtocolVersion int `json:"protocolVersion"`
+	}
+	decodeResult(t, responses[1], &handshake)
+	if handshake.ProtocolVersion != 1 {
+		t.Fatalf("bridge did not recover after malformed JSON: %+v", handshake)
+	}
+}
+
+func TestChunkedInputAndUnterminatedFinalRequest(t *testing.T) {
+	bridge := newTestBridge(t)
+	request := `{"jsonrpc":"2.0","id":"1","method":"system.handshake","params":{}}`
+	var output bytes.Buffer
+	if err := bridge.Run(context.Background(), &chunkReader{data: []byte(request), size: 3}, &output); err != nil {
+		t.Fatal(err)
+	}
+	lines := strings.Split(strings.TrimSpace(output.String()), "\n")
+	if len(lines) != 1 {
+		t.Fatalf("expected one response, got %d", len(lines))
+	}
+	var handshake struct {
+		ProtocolVersion int `json:"protocolVersion"`
+	}
+	decodeResult(t, json.RawMessage(lines[0]), &handshake)
+}
+
+func TestInvalidRequestReturnsStructuredError(t *testing.T) {
+	bridge := newTestBridge(t)
+	responses := runRequests(t, bridge, `{"jsonrpc":"1.0","id":"1","method":"system.handshake"}`)
+	var value struct {
+		Error *rpcError `json:"error"`
+	}
+	if err := json.Unmarshal(responses[0], &value); err != nil {
+		t.Fatal(err)
+	}
+	if value.Error == nil || value.Error.Data.Kind != "invalid_request" {
+		t.Fatalf("unexpected invalid request error: %+v", value.Error)
+	}
+}
+
+type chunkReader struct {
+	data []byte
+	size int
+}
+
+func (r *chunkReader) Read(target []byte) (int, error) {
+	if len(r.data) == 0 {
+		return 0, io.EOF
+	}
+	size := r.size
+	if size > len(r.data) {
+		size = len(r.data)
+	}
+	if size > len(target) {
+		size = len(target)
+	}
+	copy(target, r.data[:size])
+	r.data = r.data[size:]
+	return size, nil
 }
 
 func newTestBridge(t *testing.T) *Bridge {

@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/zzzzzyijie/skm/internal/adapter"
 	"github.com/zzzzzyijie/skm/internal/catalog"
 	"github.com/zzzzzyijie/skm/internal/domain"
 	gitSource "github.com/zzzzzyijie/skm/internal/source"
@@ -127,31 +128,24 @@ func (s *Service) ListProjects() ([]ProjectView, error) {
 		return nil, err
 	}
 	counts := make(map[string]int)
-	agentCounts := make(map[string]map[string]int)
 	for _, activation := range state.Activations {
 		if activation.Placement != domain.PlacementProject {
 			continue
 		}
 		root := filepath.Clean(activation.ProjectRoot)
 		counts[root]++
-		if agentCounts[root] == nil {
-			agentCounts[root] = make(map[string]int)
-		}
-		for _, agent := range activation.Agents {
-			agentCounts[root][string(agent)]++
-		}
 	}
 	result := make([]ProjectView, 0, len(projects.Projects))
 	for _, project := range projects.Projects {
 		info, statErr := os.Stat(project.Path)
 		root := filepath.Clean(project.Path)
-		agents := agentCounts[root]
-		if agents == nil {
-			agents = map[string]int{}
+		scan, scanErr := scanProjectSkills(project.Path)
+		if scanErr != nil {
+			scan = ProjectScan{AgentCounts: map[string]int{}, Agents: []ProjectScanAgent{}, Skills: []ProjectScanSkill{}}
 		}
 		result = append(result, ProjectView{
 			Project: project, Exists: statErr == nil && info.IsDir(), ActivationCount: counts[root],
-			SkillCount: counts[root], AgentCounts: agents,
+			SkillCount: scan.SkillCount, AgentCounts: scan.AgentCounts,
 		})
 	}
 	sort.Slice(result, func(i, j int) bool { return result[i].ID < result[j].ID })
@@ -174,11 +168,67 @@ func (s *Service) GetWorkspace() (WorkspaceView, error) {
 }
 
 func (s *Service) Doctor() ([]DoctorCheck, error) {
-	checks := []DoctorCheck{{Name: "skm-home", Status: "ok", Message: s.Store.Paths.Home}}
+	checks := []DoctorCheck{}
+	if info, err := os.Stat(s.Store.Paths.Home); err != nil || !info.IsDir() {
+		checks = append(checks, DoctorCheck{Name: "skm-home", Status: "error", Message: fmt.Sprintf("not accessible: %v", err)})
+	} else {
+		checks = append(checks, DoctorCheck{Name: "skm-home", Status: "ok", Message: s.Store.Paths.Home})
+	}
 	if path, err := exec.LookPath("git"); err != nil {
 		checks = append(checks, DoctorCheck{Name: "git", Status: "optional", Message: "required for Git sources"})
 	} else {
 		checks = append(checks, DoctorCheck{Name: "git", Status: "ok", Message: path})
 	}
+	config, err := s.Store.LoadConfig()
+	if err != nil {
+		return nil, err
+	}
+	customRoots := make(map[domain.Agent]string, len(config.Agents))
+	for _, definition := range config.Agents {
+		customRoots[definition.ID] = definition.SkillsPath
+	}
+	for _, agent := range configuredAgents(config.Defaults.Agents, config.Agents) {
+		target, targetErr := adapter.Target(agent, domain.PlacementUser, s.Store.Paths.UserHome, "", "<skill>", customRoots)
+		if targetErr != nil {
+			checks = append(checks, DoctorCheck{Name: "agent-" + string(agent), Status: "error", Message: targetErr.Error()})
+			continue
+		}
+		checks = append(checks, DoctorCheck{Name: "agent-" + string(agent), Status: "ok", Message: filepath.Dir(target)})
+	}
+	skills, err := s.ListSkills(nil)
+	if err != nil {
+		return nil, err
+	}
+	unhealthy := 0
+	for _, value := range skills {
+		if value.Health != "available" {
+			unhealthy++
+		}
+	}
+	status := "ok"
+	if unhealthy > 0 {
+		status = "warning"
+	}
+	checks = append(checks, DoctorCheck{Name: "library", Status: status, Message: fmt.Sprintf("%d Skills, %d require attention", len(skills), unhealthy)})
+	projects, err := s.ListProjects()
+	if err != nil {
+		return nil, err
+	}
+	missing := 0
+	for _, project := range projects {
+		if !project.Exists {
+			missing++
+		}
+	}
+	projectStatus := "ok"
+	if missing > 0 {
+		projectStatus = "warning"
+	}
+	checks = append(checks, DoctorCheck{Name: "projects", Status: projectStatus, Message: fmt.Sprintf("%d registered, %d missing", len(projects), missing)})
+	sources, err := s.ListSources()
+	if err != nil {
+		return nil, err
+	}
+	checks = append(checks, DoctorCheck{Name: "sources", Status: "ok", Message: fmt.Sprintf("%d configured", len(sources))})
 	return checks, nil
 }
