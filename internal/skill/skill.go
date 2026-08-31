@@ -27,12 +27,47 @@ type Document struct {
 	TotalSize   int64          `json:"totalSize"`
 }
 
+// Manifest is the lightweight metadata needed to describe a Skill before its
+// complete tree has been validated. Repository previews use it to identify an
+// invalid candidate without treating that candidate as importable.
+type Manifest struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+}
+
+func ReadManifest(root string) (Manifest, error) {
+	document, err := readDocument(root)
+	if err != nil {
+		return Manifest{}, err
+	}
+	return Manifest{Name: document.Name, Description: document.Description}, nil
+}
+
 func Validate(root string) (Document, error) {
 	root, err := filepath.Abs(root)
 	if err != nil {
 		return Document{}, err
 	}
 	tree, err := fsx.ValidateTree(root)
+	if err != nil {
+		return Document{}, err
+	}
+	document, err := readDocument(root)
+	if err != nil {
+		return Document{}, err
+	}
+	hash, err := fsx.HashDir(root)
+	if err != nil {
+		return Document{}, err
+	}
+	document.Hash = hash
+	document.Files = tree.Files
+	document.TotalSize = tree.TotalSize
+	return document, nil
+}
+
+func readDocument(root string) (Document, error) {
+	root, err := filepath.Abs(root)
 	if err != nil {
 		return Document{}, err
 	}
@@ -75,19 +110,12 @@ func Validate(root string) (Document, error) {
 	if len(description) > 1024 {
 		return Document{}, fmt.Errorf("skill description exceeds 1024 bytes")
 	}
-	hash, err := fsx.HashDir(root)
-	if err != nil {
-		return Document{}, err
-	}
 	return Document{
 		Name:        name,
 		Description: description,
 		Metadata:    metadata,
 		Body:        string(body),
-		Hash:        hash,
 		Path:        root,
-		Files:       tree.Files,
-		TotalSize:   tree.TotalSize,
 	}, nil
 }
 

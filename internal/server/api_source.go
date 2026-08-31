@@ -21,35 +21,70 @@ func (s *Server) handleListSources(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, sources.Sources)
 }
 
-func (s *Server) handleAddSource(w http.ResponseWriter, r *http.Request) {
-	var body struct {
-		Input string   `json:"input"`
-		Name  string   `json:"name"`
-		URL   string   `json:"url"`
-		Ref   string   `json:"ref"`
-		Paths []string `json:"paths"`
-		Tags  []string `json:"tags"`
-	}
-	if err := readJSON(r, &body); err != nil {
-		writeError(w, http.StatusBadRequest, err)
-		return
-	}
+type sourceRequest struct {
+	Input string   `json:"input"`
+	Name  string   `json:"name"`
+	URL   string   `json:"url"`
+	Ref   string   `json:"ref"`
+	Paths []string `json:"paths"`
+	Tags  []string `json:"tags"`
+}
+
+func parseSourceRequest(body sourceRequest) (domain.Source, []string, error) {
 	rawInput := strings.TrimSpace(body.Input)
 	if rawInput == "" {
 		rawInput = strings.TrimSpace(body.URL)
 	}
 	parsed, err := gitSource.ParseInstallInput(rawInput)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, err)
-		return
+		return domain.Source{}, nil, err
 	}
 	if len(parsed.RequestedSkills) > 0 && len(body.Paths) > 0 {
-		writeError(w, http.StatusBadRequest, fmt.Errorf("paths cannot be combined with --skill selections"))
-		return
+		return domain.Source{}, nil, fmt.Errorf("paths cannot be combined with --skill selections")
 	}
 	name := strings.TrimSpace(body.Name)
 	if name == "" {
 		name = parsed.SuggestedName
+	}
+	return domain.Source{
+		Name: strings.ToLower(name), URL: parsed.URL, Ref: body.Ref, Paths: body.Paths, Tags: body.Tags,
+	}, parsed.RequestedSkills, nil
+}
+
+func (s *Server) handlePreviewSource(w http.ResponseWriter, r *http.Request) {
+	var body sourceRequest
+	if err := readJSON(r, &body); err != nil {
+		writeError(w, http.StatusBadRequest, err)
+		return
+	}
+	value, requestedSkills, err := parseSourceRequest(body)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err)
+		return
+	}
+	inspection, err := gitSource.NewGitManager(s.store, catalog.New(s.store)).Inspect(value)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err)
+		return
+	}
+	value.Revision = inspection.Revision
+	writeJSON(w, http.StatusOK, struct {
+		Source          domain.Source              `json:"source"`
+		RequestedSkills []string                   `json:"requestedSkills"`
+		Skills          []gitSource.SkillCandidate `json:"skills"`
+	}{Source: value, RequestedSkills: requestedSkills, Skills: inspection.Skills})
+}
+
+func (s *Server) handleAddSource(w http.ResponseWriter, r *http.Request) {
+	var body sourceRequest
+	if err := readJSON(r, &body); err != nil {
+		writeError(w, http.StatusBadRequest, err)
+		return
+	}
+	value, requestedSkills, err := parseSourceRequest(body)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err)
+		return
 	}
 	var result struct {
 		Source domain.Source  `json:"source"`
@@ -58,8 +93,8 @@ func (s *Server) handleAddSource(w http.ResponseWriter, r *http.Request) {
 	err = s.withLock(func() error {
 		var err error
 		result.Source, result.Skills, err = gitSource.NewGitManager(s.store, catalog.New(s.store)).AddSelected(
-			domain.Source{Name: name, URL: parsed.URL, Ref: body.Ref, Paths: body.Paths, Tags: body.Tags},
-			parsed.RequestedSkills,
+			value,
+			requestedSkills,
 		)
 		return err
 	})

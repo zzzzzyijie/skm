@@ -146,6 +146,13 @@ func TestValidateRejectsEscapingSymlink(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "escapes") {
 		t.Fatalf("expected escaping symlink error, got %v", err)
 	}
+	manifest, err := ReadManifest(dir)
+	if err != nil {
+		t.Fatalf("ReadManifest should describe an invalid tree: %v", err)
+	}
+	if manifest.Name != "safe" || manifest.Description != "test skill" {
+		t.Fatalf("unexpected manifest: %#v", manifest)
+	}
 }
 
 func writeSkill(t *testing.T, dir, name string) {

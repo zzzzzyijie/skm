@@ -99,6 +99,85 @@ func TestGitSourceSelectsSkillsByNameAndPersistsPaths(t *testing.T) {
 	}
 }
 
+func TestGitSourceInspectReportsInvalidCandidatesWithoutPersisting(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git is not installed")
+	}
+	repository := t.TempDir()
+	run(t, repository, "git", "init", "-b", "main")
+	writeRepoSkill(t, repository, "swiftui-pro", "swiftui-pro", "canonical")
+	if err := os.MkdirAll(filepath.Join(repository, "swiftui-pro", "references"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(repository, "swiftui-pro", "references", "guide.md"), []byte("guide"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	writeRepoSkill(t, repository, "swiftui-pro/skills/swiftui-pro", "swiftui-pro", "plugin package")
+	if err := os.Symlink("../../references", filepath.Join(repository, "swiftui-pro", "skills", "swiftui-pro", "references")); err != nil {
+		t.Fatal(err)
+	}
+	commitAll(t, repository, "initial")
+
+	storage := sourceStore(t)
+	manager := NewGitManager(storage, catalog.New(storage))
+	inspection, err := manager.Inspect(domain.Source{Name: "swiftui", URL: repository})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if inspection.Revision == "" || len(inspection.Skills) != 2 {
+		t.Fatalf("unexpected inspection: %#v", inspection)
+	}
+	if !inspection.Skills[0].Valid || inspection.Skills[0].Path != "swiftui-pro" {
+		t.Fatalf("canonical candidate = %#v", inspection.Skills[0])
+	}
+	invalid := inspection.Skills[1]
+	if invalid.Valid || invalid.Name != "swiftui-pro" || invalid.Path != "swiftui-pro/skills/swiftui-pro" || !strings.Contains(invalid.Error, "symlink escapes skill root: references") {
+		t.Fatalf("invalid candidate = %#v", invalid)
+	}
+	if strings.Contains(invalid.Error, storage.Paths.Home) {
+		t.Fatalf("inspection leaked temporary path: %q", invalid.Error)
+	}
+	sources, err := storage.LoadSources()
+	if err != nil || len(sources.Sources) != 0 {
+		t.Fatalf("inspection persisted sources: %#v, err=%v", sources, err)
+	}
+	entries, err := os.ReadDir(filepath.Join(storage.Paths.Home, "sources"))
+	if err != nil || len(entries) != 0 {
+		t.Fatalf("inspection left temporary checkout: %v, err=%v", entries, err)
+	}
+
+	bound, imported, err := manager.Add(domain.Source{Name: "swiftui", URL: repository, Paths: []string{"swiftui-pro"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(imported) != 1 || imported[0].Name != "swiftui-pro" || !reflect.DeepEqual(bound.Paths, []string{"swiftui-pro"}) {
+		t.Fatalf("selected import: source=%#v skills=%#v", bound, imported)
+	}
+}
+
+func TestGitSourceRejectsDuplicateSelectedSkillNames(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git is not installed")
+	}
+	repository := t.TempDir()
+	run(t, repository, "git", "init", "-b", "main")
+	writeRepoSkill(t, repository, "skills/one", "duplicate", "one")
+	writeRepoSkill(t, repository, "skills/two", "duplicate", "two")
+	commitAll(t, repository, "initial")
+
+	storage := sourceStore(t)
+	_, _, err := NewGitManager(storage, catalog.New(storage)).Add(domain.Source{
+		Name: "duplicates", URL: repository, Paths: []string{"skills/one", "skills/two"},
+	})
+	if err == nil || !strings.Contains(err.Error(), "select only one path") {
+		t.Fatalf("expected duplicate selection error, got %v", err)
+	}
+	sources, loadErr := storage.LoadSources()
+	if loadErr != nil || len(sources.Sources) != 0 {
+		t.Fatalf("duplicate import persisted source: %#v, err=%v", sources, loadErr)
+	}
+}
+
 func TestGitSourceRejectsCredentialURL(t *testing.T) {
 	storage := sourceStore(t)
 	_, _, err := NewGitManager(storage, catalog.New(storage)).Add(domain.Source{

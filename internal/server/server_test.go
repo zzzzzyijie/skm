@@ -184,7 +184,7 @@ func TestEmbeddedLibraryUIUsesScannedManageableAgents(t *testing.T) {
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("GET /components/library.js = %d, body=%s", recorder.Code, body)
 	}
-	for _, marker := range []string{"btn-scan-agents", "agent.detected", "btn-new-custom-agent", "tagPickerMarkup", "btn-create-tag", "managedTagRowsMarkup", "beginManagedTagRename", "/api/skill-tags", "detail-new-tag", "createSkillDetailTag", "syncSkillTagState", `data-import-mode="command"`, "btn-choose-skill-zip", "/api/dialogs/skill-", "/api/skills/validate", "baseHash", "skill-content-editor", "showSkillEditor"} {
+	for _, marker := range []string{"btn-scan-agents", "agent.detected", "btn-new-custom-agent", "tagPickerMarkup", "btn-create-tag", "managedTagRowsMarkup", "beginManagedTagRename", "/api/skill-tags", "detail-new-tag", "createSkillDetailTag", "syncSkillTagState", `data-import-mode="command"`, "btn-choose-skill-zip", "/api/dialogs/skill-", "/api/skills/validate", "baseHash", "skill-content-editor", "showSkillEditor", "/api/sources/preview", "sourceImportState", "renderSourceImportPreview", "data-source-import-candidate", "selectedPaths"} {
 		if !strings.Contains(body, marker) {
 			t.Fatalf("Library UI is missing %q", marker)
 		}
@@ -208,6 +208,12 @@ func TestEmbeddedLibraryUIUsesScannedManageableAgents(t *testing.T) {
 	}
 	if strings.Contains(body, "promptState.tags = managedTags") {
 		t.Fatal("Skill tag mutations still overwrite the independent Prompt tag registry")
+	}
+	stylesheet := fetchEmbeddedAsset(t, handler, "/app.css")
+	for _, marker := range []string{".modal.source-import-modal", ".source-import-candidate.is-invalid", ".source-import-candidate.is-conflict", ".source-import-selection-error"} {
+		if !strings.Contains(stylesheet, marker) {
+			t.Fatalf("Source import UI stylesheet is missing %q", marker)
+		}
 	}
 
 	agentIcons := map[string]string{
@@ -724,6 +730,70 @@ func TestAddSourceFromSkillsCommand(t *testing.T) {
 	requestJSON(t, handler, http.MethodPost, "/api/sources", map[string]any{
 		"input": "npx skills add owner/repo --agent codex",
 	}, http.StatusBadRequest, nil)
+}
+
+func TestPreviewSourceReportsCandidatesAndImportsSelectedPaths(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git is not installed")
+	}
+	repository := filepath.Join(t.TempDir(), "swiftui source")
+	if err := os.MkdirAll(repository, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	runGitTest(t, repository, "init", "-b", "main")
+	makeRepositorySkill(t, repository, "swiftui-pro", "swiftui-pro")
+	if err := os.MkdirAll(filepath.Join(repository, "swiftui-pro", "references"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(repository, "swiftui-pro", "references", "guide.md"), []byte("guide"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	makeRepositorySkill(t, repository, "swiftui-pro/skills/swiftui-pro", "swiftui-pro")
+	if err := os.Symlink("../../references", filepath.Join(repository, "swiftui-pro", "skills", "swiftui-pro", "references")); err != nil {
+		t.Fatal(err)
+	}
+	runGitTest(t, repository, "add", ".")
+	runGitTest(t, repository, "-c", "user.name=skm-test", "-c", "user.email=skm@example.invalid", "commit", "-m", "initial")
+
+	storage := testStore(t)
+	handler := New(storage).Handler()
+	var preview struct {
+		Source          domain.Source `json:"source"`
+		RequestedSkills []string      `json:"requestedSkills"`
+		Skills          []struct {
+			Name  string `json:"name"`
+			Path  string `json:"path"`
+			Valid bool   `json:"valid"`
+			Error string `json:"error"`
+		} `json:"skills"`
+	}
+	requestJSON(t, handler, http.MethodPost, "/api/sources/preview", map[string]any{
+		"input": `npx skills add "` + repository + `" --skill swiftui-pro`, "name": "swiftui",
+	}, http.StatusOK, &preview)
+	if preview.Source.URL != repository || preview.Source.Revision == "" || !reflect.DeepEqual(preview.RequestedSkills, []string{"swiftui-pro"}) {
+		t.Fatalf("preview source = %#v, requested=%#v", preview.Source, preview.RequestedSkills)
+	}
+	if len(preview.Skills) != 2 || !preview.Skills[0].Valid || preview.Skills[0].Path != "swiftui-pro" {
+		t.Fatalf("preview skills = %#v", preview.Skills)
+	}
+	if preview.Skills[1].Valid || !strings.Contains(preview.Skills[1].Error, "symlink escapes skill root: references") {
+		t.Fatalf("invalid preview candidate = %#v", preview.Skills[1])
+	}
+	configured, err := storage.LoadSources()
+	if err != nil || len(configured.Sources) != 0 {
+		t.Fatalf("preview persisted source: %#v, err=%v", configured, err)
+	}
+
+	var imported struct {
+		Source domain.Source  `json:"source"`
+		Skills []domain.Skill `json:"skills"`
+	}
+	requestJSON(t, handler, http.MethodPost, "/api/sources", map[string]any{
+		"input": preview.Source.URL, "name": preview.Source.Name, "paths": []string{"swiftui-pro"},
+	}, http.StatusCreated, &imported)
+	if len(imported.Skills) != 1 || imported.Skills[0].Name != "swiftui-pro" || !reflect.DeepEqual(imported.Source.Paths, []string{"swiftui-pro"}) {
+		t.Fatalf("selected import = %#v", imported)
+	}
 }
 
 func TestGitSyncIsolatesSourceFailuresRefreshesDeploymentsAndRemovesBindings(t *testing.T) {

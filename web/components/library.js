@@ -3,6 +3,7 @@
 var libraryState = { skills: [], tags: [], agents: [], activeTag: '', query: '', viewMode: collectionViewMode('library'), enabled: {}, gitSources: {}, summary: {} };
 var skillDetailState = { skill: null, savedTags: [] };
 var managedTagState = { scope: 'library', tags: [] };
+var sourceImportState = { mode: '', preview: null, selectedPaths: {} };
 var agentIcons = {
     claude: 'claude.svg', codex: 'codex.svg', cursor: 'cursor.svg', copilot: 'copilot.svg', gemini: 'gemini.svg',
     windsurf: 'windsurf.svg', kiro: 'kiro.svg', cline: 'cline.svg', opencode: 'opencode.svg', trae: 'trae.svg',
@@ -328,6 +329,7 @@ function showAddSkillModal() {
 	var localTags = addSkillTagPickerMarkup('add-skill-tags');
 	var sourceTags = addSkillTagPickerMarkup('git-source-tags');
 	var commandTags = addSkillTagPickerMarkup('command-source-tags');
+	sourceImportState = { mode: '', preview: null, selectedPaths: {} };
     var content = '<div class="import-mode" role="tablist"><button class="import-mode-option active" role="tab" aria-selected="true" type="button" data-import-mode="local">' +
         t('lib.importLocal') + '</button><button class="import-mode-option" role="tab" aria-selected="false" type="button" data-import-mode="git">' + t('lib.importGit') +
         '</button><button class="import-mode-option" role="tab" aria-selected="false" type="button" data-import-mode="command">' + t('lib.importCommand') + '</button></div>' +
@@ -336,32 +338,41 @@ function showAddSkillModal() {
         uiIcon('folder') + t('lib.choosePath') + '</button><button class="btn btn-secondary" type="button" id="btn-choose-skill-zip">' + uiIcon('archive') + t('lib.chooseZIP') + '</button></div></div><p class="form-hint">' +
         t('lib.localImportHint') + '</p></div><div class="form-group"><label class="form-label" for="add-skill-tags">' +
         t('lib.selectTags') + '</label>' + localTags + '</div></div>' +
-        '<div class="import-pane is-hidden" data-import-pane="git"><div class="form-group"><label class="form-label" for="git-source-input">' +
+        '<div class="import-pane is-hidden" data-import-pane="git"><div data-source-import-fields="git"><div class="form-group"><label class="form-label" for="git-source-input">' +
         t('lib.gitInput') + '</label><input class="input mono" id="git-source-input" placeholder="https://github.com/owner/skills.git"></div><div class="form-group"><label class="form-label" for="git-source-name">' +
         t('lib.gitSourceName') + '</label><input class="input" id="git-source-name" placeholder="' + t('lib.gitNamePlaceholder') + '"></div><div class="form-group"><label class="form-label" for="git-source-tags">' +
-        t('lib.selectTags') + '</label>' + sourceTags + '</div></div>' +
-        '<div class="import-pane is-hidden" data-import-pane="command"><div class="form-group"><label class="form-label" for="command-source-input">' +
+        t('lib.selectTags') + '</label>' + sourceTags + '</div></div><div class="source-import-preview is-hidden" data-source-import-preview="git" aria-live="polite"></div></div>' +
+        '<div class="import-pane is-hidden" data-import-pane="command"><div data-source-import-fields="command"><div class="form-group"><label class="form-label" for="command-source-input">' +
         t('lib.commandInput') + '</label><input class="input mono" id="command-source-input" placeholder="npx skills add owner/skills"><p class="form-hint">' + t('lib.commandHint') +
         '</p></div><div class="form-group"><label class="form-label" for="command-source-name">' + t('lib.gitSourceName') + '</label><input class="input" id="command-source-name" placeholder="' +
-        t('lib.gitNamePlaceholder') + '"></div><div class="form-group"><label class="form-label" for="command-source-tags">' + t('lib.selectTags') + '</label>' + commandTags + '</div></div>';
-    var actions = '<button class="btn btn-ghost" type="button" data-close-modal>' + t('lib.cancel') + '</button>' +
+        t('lib.gitNamePlaceholder') + '"></div><div class="form-group"><label class="form-label" for="command-source-tags">' + t('lib.selectTags') + '</label>' + commandTags + '</div></div><div class="source-import-preview is-hidden" data-source-import-preview="command" aria-live="polite"></div></div>';
+    var actions = '<button class="btn btn-ghost source-import-back is-hidden" type="button" id="btn-source-import-back">' + uiIcon('arrow-left') + t('lib.backToRepository') + '</button>' +
+        '<button class="btn btn-ghost" type="button" data-close-modal>' + t('lib.cancel') + '</button>' +
         '<button class="btn btn-primary" type="button" id="btn-confirm-add">' + t('lib.addSkill') + '</button>';
 	showModal(t('lib.addSkillTitle'), content, actions);
+	document.querySelector('.modal').classList.add('source-import-modal');
 	var mode = 'local';
 	bindAddSkillTagCreation();
     document.getElementById('btn-choose-skill-path').addEventListener('click', function () { chooseSkillSource('directory'); });
     document.getElementById('btn-choose-skill-zip').addEventListener('click', function () { chooseSkillSource('archive'); });
     document.querySelectorAll('[data-import-mode]').forEach(function (button) {
         button.addEventListener('click', function () {
+            resetSourceImportPreview();
             mode = button.dataset.importMode;
             document.querySelectorAll('[data-import-mode]').forEach(function (item) { item.classList.toggle('active', item === button); });
             document.querySelectorAll('[data-import-mode]').forEach(function (item) { item.setAttribute('aria-selected', String(item === button)); });
             document.querySelectorAll('[data-import-pane]').forEach(function (pane) { pane.classList.toggle('is-hidden', pane.dataset.importPane !== mode); });
-            document.getElementById('btn-confirm-add').textContent = mode === 'local' ? t('lib.addSkill') : t('lib.import');
+            syncSourceImportAction(mode);
             var input = document.querySelector('[data-import-pane="' + mode + '"] input');
             if (input) input.focus();
         });
     });
+	document.getElementById('btn-source-import-back').addEventListener('click', function () {
+		resetSourceImportPreview();
+		syncSourceImportAction(mode);
+		var input = document.getElementById(mode + '-source-input');
+		if (input) input.focus();
+	});
 	document.getElementById('btn-confirm-add').addEventListener('click', function () {
 		if (mode === 'local') doAddSkill(); else doImportGitSource(mode);
 	});
@@ -458,20 +469,163 @@ async function doAddSkill() {
 }
 
 async function doImportGitSource(mode) {
+	if (!sourceImportState.preview || sourceImportState.mode !== mode) {
+		await previewGitSource(mode);
+		return;
+	}
+	await importSelectedGitSource(mode);
+}
+
+function syncSourceImportAction(mode) {
+	var button = document.getElementById('btn-confirm-add');
+	if (!button) return;
+	button.disabled = false;
+	if (mode === 'local') {
+		button.innerHTML = uiIcon('plus') + t('lib.addSkill');
+		return;
+	}
+	if (sourceImportState.preview && sourceImportState.mode === mode) {
+		syncSourceImportSelection();
+		return;
+	}
+	button.innerHTML = uiIcon('search') + t('lib.scanRepository');
+}
+
+function resetSourceImportPreview() {
+	sourceImportState = { mode: '', preview: null, selectedPaths: {} };
+	document.querySelectorAll('[data-source-import-fields]').forEach(function (fields) { fields.classList.remove('is-hidden'); });
+	document.querySelectorAll('[data-source-import-preview]').forEach(function (preview) {
+		preview.classList.add('is-hidden');
+		preview.innerHTML = '';
+	});
+	var back = document.getElementById('btn-source-import-back');
+	if (back) back.classList.add('is-hidden');
+}
+
+async function previewGitSource(mode) {
     var prefix = mode === 'command' ? 'command' : 'git';
     var name = document.getElementById(prefix + '-source-name').value.trim();
     var input = document.getElementById(prefix + '-source-input').value.trim();
     if (!input) { showToast(t(mode === 'command' ? 'lib.commandRequired' : 'lib.gitRequired'), 'error'); return; }
     var button = document.getElementById('btn-confirm-add');
     button.disabled = true;
+	button.innerHTML = uiIcon('refresh') + t('lib.scanningRepository');
     try {
-        var result = await api.post('/api/sources', {
-            input: input, name: name, ref: '', paths: [], tags: selectedTagValues(prefix + '-source-tags'),
-        });
-        closeModal();
-        showToast(t('lib.importedSource').replace('{0}', (result.skills || []).length).replace('{1}', result.source.name));
-        renderLibrary();
-    } catch (err) { button.disabled = false; showToast(err.message, 'error'); }
+		var preview = await api.post('/api/sources/preview', { input: input, name: name, ref: '', paths: [] });
+		sourceImportState = { mode: mode, preview: preview, selectedPaths: defaultSourceImportSelection(preview) };
+		document.querySelector('[data-source-import-fields="' + mode + '"]').classList.add('is-hidden');
+		var previewContainer = document.querySelector('[data-source-import-preview="' + mode + '"]');
+		previewContainer.classList.remove('is-hidden');
+		document.getElementById('btn-source-import-back').classList.remove('is-hidden');
+		renderSourceImportPreview(mode);
+	} catch (err) {
+		button.disabled = false;
+		button.innerHTML = uiIcon('search') + t('lib.scanRepository');
+		showToast(err.message, 'error');
+	}
+}
+
+function defaultSourceImportSelection(preview) {
+	var selected = {};
+	var valid = (preview.skills || []).filter(function (candidate) { return candidate.valid; });
+	var counts = {};
+	valid.forEach(function (candidate) { counts[candidate.name] = (counts[candidate.name] || 0) + 1; });
+	var requested = preview.requestedSkills || [];
+	valid.forEach(function (candidate) {
+		var requestedCandidate = !requested.length || requested.includes(candidate.name);
+		if (requestedCandidate && counts[candidate.name] === 1) selected[candidate.path] = true;
+	});
+	return selected;
+}
+
+function renderSourceImportPreview(mode) {
+	var preview = sourceImportState.preview;
+	var skills = preview.skills || [];
+	var available = skills.filter(function (candidate) { return candidate.valid; }).length;
+	var unavailable = skills.length - available;
+	var requestedHint = (preview.requestedSkills || []).length
+		? '<p class="source-import-command-hint">' + uiIcon('check') + '<span>' + escapeHtml(t('lib.requestedSelectionHint')) + '</span></p>'
+		: '';
+	var html = '<section class="source-import-review"><div class="source-import-review-header"><div><h3>' + escapeHtml(t('lib.repositoryReview')) +
+		'</h3><p>' + escapeHtml(t('lib.repositoryReviewHint')) + '</p></div><span class="source-import-count" id="source-import-selected-count"></span></div>' +
+		'<div class="source-import-repository"><span class="source-import-repository-icon" aria-hidden="true">' + uiIcon('link') + '</span><div><strong>' +
+		escapeHtml(preview.source.name) + '</strong><span class="mono">' + escapeHtml(preview.source.url) + '</span></div><small class="mono">' +
+		escapeHtml(shortRevision(preview.source.revision)) + '</small></div>' + requestedHint +
+		'<div class="source-import-summary">' + escapeHtml(t('lib.repositorySummary').replace('{0}', available).replace('{1}', unavailable)) + '</div>' +
+		'<div class="source-import-candidates" role="group" aria-label="' + escapeHtml(t('lib.repositoryReview')) + '">';
+	skills.forEach(function (candidate, index) {
+		var inputID = 'source-import-candidate-' + index;
+		var checked = !!sourceImportState.selectedPaths[candidate.path];
+		html += '<label class="source-import-candidate' + (candidate.valid ? '' : ' is-invalid') + '" data-source-import-row="' + index + '" for="' + inputID + '">' +
+			'<input type="checkbox" id="' + inputID + '" data-source-import-candidate="' + index + '"' + (checked ? ' checked' : '') + (candidate.valid ? '' : ' disabled') + '>' +
+			'<span class="source-import-status" aria-hidden="true">' + uiIcon(candidate.valid ? 'check' : 'alert') + '</span><span class="source-import-copy"><span class="source-import-name"><strong>' +
+			escapeHtml(candidate.name) + '</strong><span class="badge ' + (candidate.valid ? 'badge-ok' : 'badge-error') + '">' + escapeHtml(t(candidate.valid ? 'lib.repositoryAvailable' : 'lib.repositoryUnavailable')) +
+			'</span></span><span class="mono source-import-path">' + escapeHtml(candidate.path) + '</span><small>' + escapeHtml(candidate.valid ? candidate.description : candidate.error) +
+			'</small></span></label>';
+	});
+	html += '</div><div class="source-import-selection-error is-hidden" id="source-import-selection-error" role="status"></div></section>';
+	var container = document.querySelector('[data-source-import-preview="' + mode + '"]');
+	container.innerHTML = html;
+	container.querySelectorAll('[data-source-import-candidate]').forEach(function (input) {
+		input.addEventListener('change', function () {
+			var candidate = skills[Number(input.dataset.sourceImportCandidate)];
+			if (input.checked) sourceImportState.selectedPaths[candidate.path] = true;
+			else delete sourceImportState.selectedPaths[candidate.path];
+			syncSourceImportSelection();
+		});
+	});
+	syncSourceImportSelection();
+}
+
+function selectedSourceImportCandidates() {
+	return (sourceImportState.preview.skills || []).filter(function (candidate) {
+		return candidate.valid && sourceImportState.selectedPaths[candidate.path];
+	});
+}
+
+function syncSourceImportSelection() {
+	var button = document.getElementById('btn-confirm-add');
+	if (!button || !sourceImportState.preview) return;
+	var selected = selectedSourceImportCandidates();
+	var names = {};
+	selected.forEach(function (candidate) { names[candidate.name] = (names[candidate.name] || 0) + 1; });
+	var duplicates = Object.keys(names).filter(function (name) { return names[name] > 1; });
+	var count = document.getElementById('source-import-selected-count');
+	if (count) count.textContent = t('lib.repositorySelected').replace('{0}', selected.length);
+	var selectionError = document.getElementById('source-import-selection-error');
+	if (selectionError) {
+		selectionError.textContent = duplicates.length ? t('lib.duplicateImportSkill') : (selected.length ? '' : t('lib.selectImportSkill'));
+		selectionError.classList.toggle('is-hidden', selected.length > 0 && duplicates.length === 0);
+	}
+	(sourceImportState.preview.skills || []).forEach(function (candidate, index) {
+		var row = document.querySelector('[data-source-import-row="' + index + '"]');
+		if (row) row.classList.toggle('is-conflict', !!sourceImportState.selectedPaths[candidate.path] && names[candidate.name] > 1);
+	});
+	button.disabled = selected.length === 0 || duplicates.length > 0;
+	button.innerHTML = uiIcon('check') + t('lib.importSelected').replace('{0}', selected.length);
+}
+
+async function importSelectedGitSource(mode) {
+	var prefix = mode === 'command' ? 'command' : 'git';
+	var selected = selectedSourceImportCandidates();
+	var button = document.getElementById('btn-confirm-add');
+	button.disabled = true;
+	button.innerHTML = uiIcon('refresh') + t('lib.import') + '…';
+	try {
+		var result = await api.post('/api/sources', {
+			input: sourceImportState.preview.source.url,
+			name: sourceImportState.preview.source.name,
+			ref: sourceImportState.preview.source.ref || '',
+			paths: selected.map(function (candidate) { return candidate.path; }),
+			tags: selectedTagValues(prefix + '-source-tags'),
+		});
+		closeModal();
+		showToast(t('lib.importedSource').replace('{0}', (result.skills || []).length).replace('{1}', result.source.name));
+		renderLibrary();
+	} catch (err) {
+		syncSourceImportSelection();
+		showToast(err.message, 'error');
+	}
 }
 
 async function openSkillDetails(id) {

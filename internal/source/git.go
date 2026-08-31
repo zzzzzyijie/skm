@@ -37,6 +37,25 @@ type RemovalResult struct {
 	CheckoutRemoved bool           `json:"checkoutRemoved"`
 }
 
+type SkillCandidate struct {
+	Name        string `json:"name"`
+	Description string `json:"description,omitempty"`
+	Path        string `json:"path"`
+	Valid       bool   `json:"valid"`
+	Error       string `json:"error,omitempty"`
+}
+
+type Inspection struct {
+	Revision string           `json:"revision"`
+	Skills   []SkillCandidate `json:"skills"`
+}
+
+type sourceCheckout struct {
+	TempRoot string
+	Path     string
+	Revision string
+}
+
 func NewGitManager(storage *store.Store, catalogManager *catalog.Manager) *GitManager {
 	return &GitManager{Store: storage, Catalog: catalogManager, GitPath: "git", Now: time.Now}
 }
@@ -75,6 +94,49 @@ func (m *GitManager) AddSelected(value domain.Source, skillNames []string) (doma
 		return domain.Source{}, nil, err
 	}
 	return updated, imported, nil
+}
+
+// Inspect clones a source into temporary storage and reports every discovered
+// Skill independently. It never changes source bindings, checkouts, or Library
+// snapshots, and invalid candidates remain visible for repository previews.
+func (m *GitManager) Inspect(value domain.Source) (Inspection, error) {
+	if err := validateSource(&value); err != nil {
+		return Inspection{}, err
+	}
+	checkout, err := m.checkout(value)
+	if err != nil {
+		return Inspection{}, err
+	}
+	defer os.RemoveAll(checkout.TempRoot)
+
+	directories, err := discoverSkills(checkout.Path, value.Paths)
+	if err != nil {
+		return Inspection{}, err
+	}
+	result := Inspection{Revision: checkout.Revision, Skills: make([]SkillCandidate, 0, len(directories))}
+	for _, directory := range directories {
+		relative, err := filepath.Rel(checkout.Path, directory)
+		if err != nil {
+			return Inspection{}, err
+		}
+		candidate := SkillCandidate{
+			Name: filepath.Base(directory),
+			Path: filepath.ToSlash(relative),
+		}
+		if manifest, manifestErr := skill.ReadManifest(directory); manifestErr == nil {
+			candidate.Name = manifest.Name
+			candidate.Description = manifest.Description
+		}
+		if document, validateErr := skill.Validate(directory); validateErr != nil {
+			candidate.Error = relativeSkillError(directory, validateErr)
+		} else {
+			candidate.Name = document.Name
+			candidate.Description = document.Description
+			candidate.Valid = true
+		}
+		result.Skills = append(result.Skills, candidate)
+	}
+	return result, nil
 }
 
 // RegisterBinding stores a validated source binding without fetching content.
@@ -235,33 +297,12 @@ func (m *GitManager) fetch(value domain.Source, persist bool) (domain.Source, []
 }
 
 func (m *GitManager) fetchSelected(value domain.Source, persist bool, requestedSkills []string) (domain.Source, []domain.Skill, error) {
-	if _, err := exec.LookPath(m.GitPath); err != nil {
-		return domain.Source{}, nil, fmt.Errorf("git executable not found")
-	}
-	parent := filepath.Join(m.Store.Paths.Home, "sources")
-	if err := os.MkdirAll(parent, 0o755); err != nil {
-		return domain.Source{}, nil, err
-	}
-	tempRoot, err := os.MkdirTemp(parent, ".skm-source-")
+	checkout, err := m.checkout(value)
 	if err != nil {
 		return domain.Source{}, nil, err
 	}
-	defer os.RemoveAll(tempRoot)
-	checkout := filepath.Join(tempRoot, "repo")
-	if err := m.runGit(value.URL, "clone", "--no-recurse-submodules", "--", value.URL, checkout); err != nil {
-		return domain.Source{}, nil, err
-	}
-	if value.Ref != "" {
-		if err := m.runGit(value.URL, "-C", checkout, "checkout", "--detach", value.Ref); err != nil {
-			return domain.Source{}, nil, fmt.Errorf("checkout ref %q: %w", value.Ref, err)
-		}
-	}
-	revisionBytes, err := exec.Command(m.GitPath, "-C", checkout, "rev-parse", "HEAD").Output()
-	if err != nil {
-		return domain.Source{}, nil, fmt.Errorf("resolve Git revision: %w", err)
-	}
-	revision := strings.TrimSpace(string(revisionBytes))
-	directories, err := discoverSkills(checkout, value.Paths)
+	defer os.RemoveAll(checkout.TempRoot)
+	directories, err := discoverSkills(checkout.Path, value.Paths)
 	if err != nil {
 		return domain.Source{}, nil, err
 	}
@@ -274,10 +315,13 @@ func (m *GitManager) fetchSelected(value domain.Source, persist bool, requestedS
 		documents = append(documents, document)
 	}
 	if len(requestedSkills) > 0 {
-		documents, value.Paths, err = selectDocuments(checkout, documents, requestedSkills)
+		documents, value.Paths, err = selectDocuments(checkout.Path, documents, requestedSkills)
 		if err != nil {
 			return domain.Source{}, nil, err
 		}
+	}
+	if err := ensureUniqueDocuments(checkout.Path, documents); err != nil {
+		return domain.Source{}, nil, err
 	}
 	existingCatalog, err := m.Store.LoadCatalog()
 	if err != nil {
@@ -295,11 +339,11 @@ func (m *GitManager) fetchSelected(value domain.Source, persist bool, requestedS
 		if preserved := existingTags[value.Name+"/"+document.Name]; len(preserved) > 0 {
 			tagValues = preserved
 		}
-		importedSkill, err := m.Catalog.Snapshot(document, value.Name, revision, tagValues)
+		importedSkill, err := m.Catalog.Snapshot(document, value.Name, checkout.Revision, tagValues)
 		if err != nil {
 			return domain.Source{}, imported, err
 		}
-		relative, relErr := filepath.Rel(checkout, document.Path)
+		relative, relErr := filepath.Rel(checkout.Path, document.Path)
 		if relErr != nil {
 			return domain.Source{}, imported, relErr
 		}
@@ -307,7 +351,7 @@ func (m *GitManager) fetchSelected(value domain.Source, persist bool, requestedS
 		imported = append(imported, importedSkill)
 	}
 	if persist {
-		if err := fsx.ReplacePath(checkout, m.Store.SourcePath(value.Name)); err != nil {
+		if err := fsx.ReplacePath(checkout.Path, m.Store.SourcePath(value.Name)); err != nil {
 			return domain.Source{}, imported, err
 		}
 		updatedCatalog := existingCatalog
@@ -318,9 +362,40 @@ func (m *GitManager) fetchSelected(value domain.Source, persist bool, requestedS
 			return domain.Source{}, imported, err
 		}
 	}
-	value.Revision = revision
+	value.Revision = checkout.Revision
 	value.UpdatedAt = m.Now().UTC()
 	return value, imported, nil
+}
+
+func (m *GitManager) checkout(value domain.Source) (sourceCheckout, error) {
+	if _, err := exec.LookPath(m.GitPath); err != nil {
+		return sourceCheckout{}, fmt.Errorf("git executable not found")
+	}
+	parent := filepath.Join(m.Store.Paths.Home, "sources")
+	if err := os.MkdirAll(parent, 0o755); err != nil {
+		return sourceCheckout{}, err
+	}
+	tempRoot, err := os.MkdirTemp(parent, ".skm-source-")
+	if err != nil {
+		return sourceCheckout{}, err
+	}
+	checkout := filepath.Join(tempRoot, "repo")
+	if err := m.runGit(value.URL, "clone", "--no-recurse-submodules", "--", value.URL, checkout); err != nil {
+		_ = os.RemoveAll(tempRoot)
+		return sourceCheckout{}, err
+	}
+	if value.Ref != "" {
+		if err := m.runGit(value.URL, "-C", checkout, "checkout", "--detach", value.Ref); err != nil {
+			_ = os.RemoveAll(tempRoot)
+			return sourceCheckout{}, fmt.Errorf("checkout ref %q: %w", value.Ref, err)
+		}
+	}
+	revisionBytes, err := exec.Command(m.GitPath, "-C", checkout, "rev-parse", "HEAD").Output()
+	if err != nil {
+		_ = os.RemoveAll(tempRoot)
+		return sourceCheckout{}, fmt.Errorf("resolve Git revision: %w", err)
+	}
+	return sourceCheckout{TempRoot: tempRoot, Path: checkout, Revision: strings.TrimSpace(string(revisionBytes))}, nil
 }
 
 func upsertSourceSkill(values []domain.Skill, value domain.Skill) []domain.Skill {
@@ -331,6 +406,29 @@ func upsertSourceSkill(values []domain.Skill, value domain.Skill) []domain.Skill
 		}
 	}
 	return append(values, value)
+}
+
+func ensureUniqueDocuments(root string, documents []skill.Document) error {
+	seen := make(map[string]string, len(documents))
+	for _, document := range documents {
+		relative, err := filepath.Rel(root, document.Path)
+		if err != nil {
+			return err
+		}
+		relative = filepath.ToSlash(relative)
+		if existing, ok := seen[document.Name]; ok {
+			return fmt.Errorf("Skill %q appears more than once in source (%s and %s); select only one path", document.Name, existing, relative)
+		}
+		seen[document.Name] = relative
+	}
+	return nil
+}
+
+func relativeSkillError(root string, err error) string {
+	message := err.Error()
+	cleanRoot := filepath.Clean(root)
+	message = strings.ReplaceAll(message, cleanRoot+string(os.PathSeparator), "")
+	return strings.ReplaceAll(message, cleanRoot, ".")
 }
 
 func selectDocuments(root string, documents []skill.Document, requestedSkills []string) ([]skill.Document, []string, error) {
