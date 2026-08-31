@@ -16,10 +16,11 @@ struct SourcesSettingsView: View {
                             .foregroundStyle(.secondary)
                     }
                     Spacer()
-                    Button("同步全部", systemImage: "arrow.triangle.2.circlepath") {
+                    Button("更新所有来源", systemImage: "arrow.triangle.2.circlepath") {
                         Task { await model.syncSources() }
                     }
                     .disabled(model.sources.isEmpty || model.isLoading)
+                    .help("重新拉取所有 Git Source 并刷新导入的 Skills")
                     Button("添加 Source", systemImage: "plus") { showsAddSource = true }
                         .buttonStyle(.borderedProminent)
                 }

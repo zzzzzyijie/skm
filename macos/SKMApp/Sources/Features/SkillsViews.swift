@@ -4,56 +4,81 @@ import SwiftUI
 struct SkillsListView: View {
     @Bindable var model: AppModel
     @State private var search = ""
+    @State private var selectedTag: String?
     @State private var showsAdd = false
     @State private var addMode = 0
 
+    private var availableTags: [String] {
+        availableFilterTags(from: model.skills.map(\.tags))
+    }
+
     private var filtered: [SkillSummary] {
-        guard !search.isEmpty else { return model.skills }
         return model.skills.filter {
-            $0.name.localizedStandardContains(search) ||
-            $0.description.localizedCaseInsensitiveContains(search) ||
-            $0.tags.contains(where: { $0.localizedCaseInsensitiveContains(search) })
+            let matchesSearch = search.isEmpty ||
+                $0.name.localizedStandardContains(search) ||
+                $0.description.localizedStandardContains(search) ||
+                $0.tags.contains(where: { $0.localizedStandardContains(search) })
+            return matchesSearch && matchesSelectedTag($0.tags, selectedTag: selectedTag)
         }
     }
 
     var body: some View {
-        Group {
-            if model.skills.isEmpty && !model.isLoading {
-                ContentUnavailableView {
-                    Label("还没有 Skill", systemImage: "square.stack.3d.up")
-                } description: {
-                    Text("从本地目录、ZIP 或 Git Source 导入第一个 Skill。")
-                } actions: {
-                    Button("添加 Skill") {
-                        addMode = 0
-                        showsAdd = true
-                    }
-                    .buttonStyle(.borderedProminent)
-                }
-            } else if filtered.isEmpty {
-                ContentUnavailableView.search(text: search)
-            } else {
-                List(filtered, selection: $model.selectedSkillID) { skill in
-                    VStack(alignment: .leading, spacing: 5) {
-                        HStack {
-                            Text(skill.name).fontWeight(.medium)
-                            Spacer()
-                            HealthBadge(health: skill.health)
+        VStack(spacing: 0) {
+            if !availableTags.isEmpty {
+                TagFilterBar(
+                    tags: availableTags,
+                    filteredCount: filtered.count,
+                    totalCount: model.skills.count,
+                    selectedTag: $selectedTag
+                )
+            }
+
+            Group {
+                if model.skills.isEmpty && !model.isLoading {
+                    ContentUnavailableView {
+                        Label("还没有 Skill", systemImage: "square.stack.3d.up")
+                    } description: {
+                        Text("从本地目录、ZIP 或 Git Source 导入第一个 Skill。")
+                    } actions: {
+                        Button("添加 Skill") {
+                            addMode = 0
+                            showsAdd = true
                         }
-                        Text(skill.description.isEmpty ? String(localized: "无描述") : skill.description)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(2)
-                        if !skill.tags.isEmpty {
-                            Text(skill.tags.joined(separator: " · "))
-                                .font(.caption2)
-                                .foregroundStyle(.tertiary)
-                        }
+                        .buttonStyle(.borderedProminent)
                     }
-                    .padding(.vertical, 4)
-                    .tag(skill.id)
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel(skillAccessibilityLabel(skill))
+                } else if filtered.isEmpty, let tag = selectedTag, search.isEmpty {
+                    ContentUnavailableView {
+                        Label("没有匹配标签的 Skill", systemImage: "tag.slash")
+                    } description: {
+                        Text("当前没有标记为“\(tag)”的 Skill。")
+                    } actions: {
+                        Button("显示全部标签") { selectedTag = nil }
+                    }
+                } else if filtered.isEmpty {
+                    ContentUnavailableView.search(text: search)
+                } else {
+                    List(filtered, selection: $model.selectedSkillID) { skill in
+                        VStack(alignment: .leading, spacing: 5) {
+                            HStack {
+                                Text(skill.name).fontWeight(.medium)
+                                Spacer()
+                                HealthBadge(health: skill.health)
+                            }
+                            Text(skill.description.isEmpty ? String(localized: "无描述") : skill.description)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(2)
+                            if !skill.tags.isEmpty {
+                                Text(skill.tags.joined(separator: " · "))
+                                    .font(.caption)
+                                    .foregroundStyle(.tertiary)
+                            }
+                        }
+                        .padding(.vertical, 4)
+                        .tag(skill.id)
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel(skillAccessibilityLabel(skill))
+                    }
                 }
             }
         }
@@ -68,6 +93,12 @@ struct SkillsListView: View {
             }
         }
         .sheet(isPresented: $showsAdd) { AddSkillSheet(model: model, initialMode: addMode) }
+        .onChange(of: selectedTag) { _, _ in reconcileSelection() }
+        .onChange(of: availableTags) { _, tags in
+            if let selectedTag, !tags.contains(selectedTag) {
+                self.selectedTag = nil
+            }
+        }
         .onChange(of: model.pendingCommand?.id) { _, _ in
             guard let command = model.pendingCommand, command.section == .skills else { return }
             if command.kind == .create || command.kind == .importItem {
@@ -95,6 +126,12 @@ struct SkillsListView: View {
             tags,
             healthLabel(skill.health)
         )
+    }
+
+    private func reconcileSelection() {
+        guard let selectedSkillID = model.selectedSkillID,
+              !filtered.contains(where: { $0.id == selectedSkillID }) else { return }
+        model.selectedSkillID = filtered.first?.id
     }
 }
 

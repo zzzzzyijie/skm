@@ -1,7 +1,6 @@
 import SwiftUI
 
 struct RootView: View {
-    @Environment(\.openSettings) private var openSettings
     @Bindable var model: AppModel
 
     var body: some View {
@@ -43,29 +42,6 @@ struct RootView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .toolbar {
-            ToolbarItem {
-                Menu("同步", systemImage: "arrow.triangle.2.circlepath") {
-                    Button("更新所有技能来源", systemImage: "arrow.triangle.branch") {
-                        Task { await model.syncSources() }
-                    }
-                    .disabled(model.sources.isEmpty || model.isLoading)
-
-                    Button("预览个人 Git 同步…", systemImage: "arrow.left.arrow.right") {
-                        model.settingsSection = .gitSync
-                        openSettings()
-                        Task { await model.previewWorkspace() }
-                    }
-                    .disabled(model.workspace?.configured != true || model.isLoading)
-
-                    Divider()
-
-                    Button("打开 Git 同步设置…", systemImage: "gearshape") {
-                        model.settingsSection = .gitSync
-                        openSettings()
-                    }
-                }
-                .help("更新技能来源或同步个人数据")
-            }
             ToolbarItem(placement: .primaryAction) {
                 Button("刷新", systemImage: "arrow.clockwise") {
                     Task { await model.refresh() }

@@ -4,45 +4,70 @@ import SwiftUI
 struct PromptsListView: View {
     @Bindable var model: AppModel
     @State private var search = ""
+    @State private var selectedTag: String?
     @State private var showsNewPrompt = false
 
+    private var availableTags: [String] {
+        availableFilterTags(from: model.prompts.map(\.tags))
+    }
+
     private var filtered: [PromptSummary] {
-        guard !search.isEmpty else { return model.prompts }
         return model.prompts.filter {
-            $0.name.localizedStandardContains(search) ||
-            $0.description.localizedCaseInsensitiveContains(search) ||
-            $0.tags.contains(where: { $0.localizedCaseInsensitiveContains(search) })
+            let matchesSearch = search.isEmpty ||
+                $0.name.localizedStandardContains(search) ||
+                $0.description.localizedStandardContains(search) ||
+                $0.tags.contains(where: { $0.localizedStandardContains(search) })
+            return matchesSearch && matchesSelectedTag($0.tags, selectedTag: selectedTag)
         }
     }
 
     var body: some View {
-        Group {
-            if model.prompts.isEmpty && !model.isLoading {
-                ContentUnavailableView {
-                    Label("还没有 Prompt", systemImage: "text.bubble")
-                } description: {
-                    Text("创建可复用、带变量定义的提示词。")
-                } actions: {
-                    Button("新建 Prompt") { showsNewPrompt = true }
-                        .buttonStyle(.borderedProminent)
-                }
-            } else if filtered.isEmpty {
-                ContentUnavailableView.search(text: search)
-            } else {
-                List(filtered, selection: $model.selectedPromptID) { prompt in
-                    VStack(alignment: .leading, spacing: 5) {
-                        Text(prompt.name).fontWeight(.medium)
-                        Text(prompt.description.isEmpty ? String(localized: "无描述") : prompt.description)
-                            .font(.caption).foregroundStyle(.secondary).lineLimit(2)
-                        if !prompt.tags.isEmpty {
-                            Text(prompt.tags.joined(separator: " · "))
-                                .font(.caption2).foregroundStyle(.tertiary)
-                        }
+        VStack(spacing: 0) {
+            if !availableTags.isEmpty {
+                TagFilterBar(
+                    tags: availableTags,
+                    filteredCount: filtered.count,
+                    totalCount: model.prompts.count,
+                    selectedTag: $selectedTag
+                )
+            }
+
+            Group {
+                if model.prompts.isEmpty && !model.isLoading {
+                    ContentUnavailableView {
+                        Label("还没有 Prompt", systemImage: "text.bubble")
+                    } description: {
+                        Text("创建可复用、带变量定义的提示词。")
+                    } actions: {
+                        Button("新建 Prompt") { showsNewPrompt = true }
+                            .buttonStyle(.borderedProminent)
                     }
-                    .padding(.vertical, 4)
-                    .tag(prompt.id)
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel(promptAccessibilityLabel(prompt))
+                } else if filtered.isEmpty, let tag = selectedTag, search.isEmpty {
+                    ContentUnavailableView {
+                        Label("没有匹配标签的 Prompt", systemImage: "tag.slash")
+                    } description: {
+                        Text("当前没有标记为“\(tag)”的 Prompt。")
+                    } actions: {
+                        Button("显示全部标签") { selectedTag = nil }
+                    }
+                } else if filtered.isEmpty {
+                    ContentUnavailableView.search(text: search)
+                } else {
+                    List(filtered, selection: $model.selectedPromptID) { prompt in
+                        VStack(alignment: .leading, spacing: 5) {
+                            Text(prompt.name).fontWeight(.medium)
+                            Text(prompt.description.isEmpty ? String(localized: "无描述") : prompt.description)
+                                .font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                            if !prompt.tags.isEmpty {
+                                Text(prompt.tags.joined(separator: " · "))
+                                    .font(.caption).foregroundStyle(.tertiary)
+                            }
+                        }
+                        .padding(.vertical, 4)
+                        .tag(prompt.id)
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel(promptAccessibilityLabel(prompt))
+                    }
                 }
             }
         }
@@ -55,6 +80,12 @@ struct PromptsListView: View {
             }
         }
         .sheet(isPresented: $showsNewPrompt) { PromptEditorSheet(model: model, details: nil) }
+        .onChange(of: selectedTag) { _, _ in reconcileSelection() }
+        .onChange(of: availableTags) { _, tags in
+            if let selectedTag, !tags.contains(selectedTag) {
+                self.selectedTag = nil
+            }
+        }
         .onChange(of: model.pendingCommand?.id) { _, _ in
             guard let command = model.pendingCommand, command.section == .prompts else { return }
             switch command.kind {
@@ -84,6 +115,12 @@ struct PromptsListView: View {
             prompt.source,
             tags
         )
+    }
+
+    private func reconcileSelection() {
+        guard let selectedPromptID = model.selectedPromptID,
+              !filtered.contains(where: { $0.id == selectedPromptID }) else { return }
+        model.selectedPromptID = filtered.first?.id
     }
 
     private func importPrompt() {

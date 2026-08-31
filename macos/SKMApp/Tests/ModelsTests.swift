@@ -22,6 +22,16 @@ final class ModelsTests: XCTestCase {
         XCTAssertEqual(parseTags("general, mac, general"), ["general", "mac"])
     }
 
+    func testTagFilterBuildsUniqueOptionsAndMatchesSelection() {
+        XCTAssertEqual(
+            availableFilterTags(from: [["review", "general"], ["general", "swift"]]),
+            ["general", "review", "swift"]
+        )
+        XCTAssertTrue(matchesSelectedTag(["general", "swift"], selectedTag: nil))
+        XCTAssertTrue(matchesSelectedTag(["general", "swift"], selectedTag: "swift"))
+        XCTAssertFalse(matchesSelectedTag(["general"], selectedTag: "swift"))
+    }
+
     func testPhaseThreeResponsesDecode() throws {
         let render = try JSONDecoder().decode(
             PromptRenderResponse.self,
