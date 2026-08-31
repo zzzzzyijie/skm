@@ -1,5 +1,136 @@
 import SwiftUI
 
+struct AgentsSettingsView: View {
+    @Bindable var model: AppModel
+    @State private var showsEditor = false
+    @State private var editingAgent: AgentModel?
+    @State private var agentToDelete: AgentModel?
+    @State private var confirmsDelete = false
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 22) {
+                HStack(alignment: .firstTextBaseline) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Agent 管理").font(.largeTitle.bold())
+                        Text("选择 SKM 可以部署 Skill 的工具，并管理自定义 Agent 路径。")
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Button("添加自定义 Agent", systemImage: "plus") {
+                        editingAgent = nil
+                        showsEditor = true
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+
+                if model.agents.isEmpty {
+                    ContentUnavailableView(
+                        "没有可用的 Agent",
+                        systemImage: "cpu",
+                        description: Text("可以添加一个自定义 Agent，或安装受支持的工具后重新刷新。")
+                    )
+                    .frame(minHeight: 260)
+                } else {
+                    LazyVStack(spacing: 10) {
+                        ForEach(model.agents) { agent in
+                            AgentSettingsRow(
+                                agent: agent,
+                                onToggle: { enabled in
+                                    Task { await model.configureAgent(agent.id, enabled: enabled) }
+                                },
+                                onEdit: {
+                                    editingAgent = agent
+                                    showsEditor = true
+                                },
+                                onDelete: {
+                                    agentToDelete = agent
+                                    confirmsDelete = true
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+            .padding(26)
+            .frame(maxWidth: 820, alignment: .leading)
+        }
+        .navigationTitle("Agent 管理")
+        .sheet(isPresented: $showsEditor, onDismiss: { editingAgent = nil }) {
+            CustomAgentSheet(model: model, agent: editingAgent)
+        }
+        .confirmationDialog(
+            String(format: String(localized: "删除 %@？"), locale: .current, agentToDelete?.name ?? ""),
+            isPresented: $confirmsDelete
+        ) {
+            if let agentToDelete {
+                Button("删除自定义 Agent", role: .destructive) {
+                    Task { await model.deleteCustomAgent(id: agentToDelete.id) }
+                }
+            }
+        } message: {
+            Text("如果仍有 Skill 在此 Agent 中启用，Core 会拒绝删除。")
+        }
+    }
+}
+
+private struct AgentSettingsRow: View {
+    let agent: AgentModel
+    let onToggle: (Bool) -> Void
+    let onEdit: () -> Void
+    let onDelete: () -> Void
+
+    var body: some View {
+        HStack(spacing: 14) {
+            Image(systemName: agent.custom ? "cpu.fill" : "cpu")
+                .font(.title3)
+                .foregroundStyle(agent.detected ? Color.accentColor : .secondary)
+                .frame(width: 38, height: 38)
+                .background(.quaternary, in: RoundedRectangle(cornerRadius: 9))
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 7) {
+                    Text(agent.name).fontWeight(.semibold)
+                    if agent.custom {
+                        Text("自定义")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                Text(agent.path ?? String(localized: "未提供 Skill 路径"))
+                    .font(.caption.monospaced())
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                Text(agent.detected ? String(localized: "已检测") : String(localized: "未检测"))
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+
+            Spacer(minLength: 12)
+
+            Toggle("允许 SKM 向此 Agent 部署 Skill", isOn: Binding(
+                get: { agent.configured },
+                set: onToggle
+            ))
+            .labelsHidden()
+            .accessibilityLabel("允许 SKM 向此 Agent 部署 Skill")
+            .accessibilityIdentifier("agent-management-\(agent.id)")
+            .disabled(!agent.supported)
+
+            if agent.custom {
+                Menu("更多", systemImage: "ellipsis.circle") {
+                    Button("编辑", systemImage: "pencil", action: onEdit)
+                    Button("删除", systemImage: "trash", role: .destructive, action: onDelete)
+                }
+                .menuStyle(.borderlessButton)
+                .fixedSize()
+            }
+        }
+        .padding(14)
+        .background(.quaternary.opacity(0.45), in: RoundedRectangle(cornerRadius: 12))
+    }
+}
+
 struct AgentsListView: View {
     @Bindable var model: AppModel
     @State private var showsCustomAgent = false
@@ -32,13 +163,6 @@ struct AgentsListView: View {
             }
         }
         .sheet(isPresented: $showsCustomAgent) { CustomAgentSheet(model: model, agent: nil) }
-        .onChange(of: model.pendingCommand?.id) { _, _ in
-            guard let command = model.pendingCommand,
-                  command.section == .agents,
-                  command.kind == .create else { return }
-            showsCustomAgent = true
-            model.consumeCommand(command.id)
-        }
     }
 }
 
@@ -101,14 +225,6 @@ struct AgentDetailView: View {
                 Button("删除自定义 Agent", role: .destructive) { Task { await model.deleteCustomAgent(id: id) } }
             } message: {
                 Text("如果仍有 Skill 在此 Agent 中启用，Core 会拒绝删除。")
-            }
-            .onChange(of: model.pendingCommand?.id) { _, _ in
-                guard let command = model.pendingCommand,
-                      command.section == .agents,
-                      command.kind == .deleteSelection,
-                      agent.custom else { return }
-                confirmsDelete = true
-                model.consumeCommand(command.id)
             }
         } else {
             ContentUnavailableView("选择一个 Agent", systemImage: "cpu")

@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct RootView: View {
+    @Environment(\.openSettings) private var openSettings
     @Bindable var model: AppModel
 
     var body: some View {
@@ -42,6 +43,29 @@ struct RootView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .toolbar {
+            ToolbarItem {
+                Menu("同步", systemImage: "arrow.triangle.2.circlepath") {
+                    Button("更新所有技能来源", systemImage: "arrow.triangle.branch") {
+                        Task { await model.syncSources() }
+                    }
+                    .disabled(model.sources.isEmpty || model.isLoading)
+
+                    Button("预览个人 Git 同步…", systemImage: "arrow.left.arrow.right") {
+                        model.settingsSection = .gitSync
+                        openSettings()
+                        Task { await model.previewWorkspace() }
+                    }
+                    .disabled(model.workspace?.configured != true || model.isLoading)
+
+                    Divider()
+
+                    Button("打开 Git 同步设置…", systemImage: "gearshape") {
+                        model.settingsSection = .gitSync
+                        openSettings()
+                    }
+                }
+                .help("更新技能来源或同步个人数据")
+            }
             ToolbarItem(placement: .primaryAction) {
                 Button("刷新", systemImage: "arrow.clockwise") {
                     Task { await model.refresh() }
@@ -87,6 +111,14 @@ struct RootView: View {
         .safeAreaInset(edge: .bottom) {
             VStack(alignment: .leading, spacing: 6) {
                 Divider()
+                SettingsLink {
+                    Label("设置", systemImage: "gearshape")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("open-settings")
+                .padding(.vertical, 5)
                 Label(
                     model.workspace?.configured == true
                         ? String(localized: "个人工作区已配置")
@@ -111,10 +143,6 @@ struct RootView: View {
         case .skills: SkillsListView(model: model)
         case .prompts: PromptsListView(model: model)
         case .projects: ProjectsListView(model: model)
-        case .sources: SourcesListView(model: model)
-        case .workspace: WorkspaceSidebarView(model: model)
-        case .agents: AgentsListView(model: model)
-        case .diagnostics: DiagnosticsSidebarView(model: model)
         }
     }
 
@@ -124,10 +152,6 @@ struct RootView: View {
         case .skills: SkillDetailView(model: model)
         case .prompts: PromptDetailView(model: model)
         case .projects: ProjectDetailView(model: model)
-        case .sources: SourceDetailView(model: model)
-        case .workspace: WorkspaceDetailView(model: model)
-        case .agents: AgentDetailView(model: model)
-        case .diagnostics: DiagnosticsDetailView(model: model)
         }
     }
 }
@@ -148,6 +172,7 @@ struct StatusPill: View {
 }
 
 struct WelcomeView: View {
+    @Environment(\.openSettings) private var openSettings
     @Bindable var model: AppModel
 
     var body: some View {
@@ -182,7 +207,11 @@ struct WelcomeView: View {
             Spacer()
 
             HStack {
-                Button("管理 Agents") { model.completeWelcome(openAgents: true) }
+                Button("管理 Agents") {
+                    model.completeWelcome()
+                    model.settingsSection = .agents
+                    openSettings()
+                }
                 Spacer()
                 Button(model.hasExistingData ? String(localized: "继续使用现有资料库") : String(localized: "开始使用")) {
                     model.completeWelcome()
@@ -217,6 +246,36 @@ private struct WelcomeMetric: View {
 }
 
 struct SettingsView: View {
+    @Bindable var model: AppModel
+
+    var body: some View {
+        NavigationSplitView {
+            List(SettingsSection.allCases, selection: $model.settingsSection) { section in
+                Label(section.title, systemImage: section.symbol)
+                    .tag(section)
+                    .accessibilityIdentifier("settings-\(section.rawValue)")
+            }
+            .navigationTitle("设置")
+            .navigationSplitViewColumnWidth(min: 170, ideal: 190, max: 230)
+        } detail: {
+            detail
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
+    @ViewBuilder
+    private var detail: some View {
+        switch model.settingsSection {
+        case .general: GeneralSettingsView(model: model)
+        case .agents: AgentsSettingsView(model: model)
+        case .sources: SourcesSettingsView(model: model)
+        case .gitSync: WorkspaceDetailView(model: model)
+        case .diagnostics: DiagnosticsDetailView(model: model)
+        }
+    }
+}
+
+private struct GeneralSettingsView: View {
     let model: AppModel
 
     var body: some View {
@@ -232,8 +291,19 @@ struct SettingsView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+            Section("同步状态") {
+                LabeledContent("技能来源", value: String(model.sources.count))
+                LabeledContent(
+                    "个人 Git 同步",
+                    value: model.workspace?.configured == true ? String(localized: "已配置") : String(localized: "未配置")
+                )
+                LabeledContent(
+                    "已管理 Agent",
+                    value: String(model.agents.filter(\.configured).count)
+                )
+            }
         }
         .formStyle(.grouped)
-        .padding()
+        .navigationTitle("通用")
     }
 }

@@ -1,6 +1,6 @@
 # SKM macOS 原生版开发进度
 
-> 更新日期：2026-08-28
+> 更新日期：2026-08-31
 >
 > 当前工程版本：`0.5.3 (Build 3)`
 >
@@ -45,7 +45,7 @@
 - [x] Prompts 的列表、详情、创建、导入、编辑、校验和移除方法。
 - [x] Sources 添加、列表、更新、移除与统一同步方法。
 - [x] Projects 登记、详情扫描、部署预览/执行、解绑、注销和迁移方法。
-- [x] Workspace 配置、预览、冲突选择与双向同步方法。
+- [x] 个人 Git 同步的配置、预览、冲突选择与双向同步方法（Core 内部仍使用 Workspace 协议名）。
 - [x] Doctor 覆盖 Library、Git、所有已配置 Agent、Projects、Sources 和 Workspace 基础健康状态。
 - [x] 结构化错误包含错误类型和是否可重试信息。
 - [x] Core 异常退出后只自动重试安全的只读请求，不自动重放写请求。
@@ -55,16 +55,16 @@
 
 ### 2.3 Phase 1 原生界面
 
-- [x] 三栏导航和 Skills、Prompts、Projects、Sources、Workspace、Agents、Diagnostics 七个主模块。
+- [x] 主导航聚焦 Skills、Prompts、Projects；技能来源、Git 同步、Agent 管理、诊断与更新迁入独立 Settings 窗口。
 - [x] 首次启动欢迎页，并识别现有 `~/.skm` Library。
 - [x] Core 启动失败阻断页、重试和诊断信息复制。
 - [x] Skills 本地目录、ZIP、Git URL、`owner/repo` 和安装命令导入。
 - [x] Skills 搜索、详情、原文编辑、标签、健康状态、删除和 Agent 启用/停用。
 - [x] Agents 检测、管理、自定义 Agent 新建、编辑和删除。
 - [x] Prompts 搜索、创建、文件导入、编辑、复制、导出和删除。
-- [x] Projects、Sources 与个人 Workspace 的完整读写主流程。
+- [x] Projects、技能来源与个人 Git 同步的完整读写主流程。
 - [x] 监听 SKM 数据文件变化，检测 CLI 修改后自动刷新界面。
-- [x] `⌘N`、`⌘O`、`⌘R`、`⌘⌫`、`⌘1...7` 和系统设置菜单。
+- [x] `⌘N`、`⌘O`、`⌘R`、`⌘⌫`、`⌘1...3`、`⌘,` 和系统设置菜单。
 - [x] 空状态、加载状态、错误状态和操作完成提示。
 - [x] Skill、Prompt、Agent 行摘要和主要控件的 VoiceOver 标签。
 - [x] 简体中文、英文 String Catalog，可跟随 macOS 系统语言。
@@ -74,10 +74,11 @@
 - [x] 空白项目也可选择受支持 Agent，先预览再执行 Link/Copy 部署，并创建目标目录。
 - [x] 未知目标或损坏状态会阻断覆盖；项目支持重新扫描、解绑、注销和 follow/copy/move 迁移。
 - [x] Source 支持新增、编辑标签、更新、移除和逐来源失败隔离的统一同步。
-- [x] Workspace 支持 Git URL/ref/root 配置、连接测试、双向差异预览和逐项冲突选择。
+- [x] 个人 Git 同步支持 Git URL/ref/root 配置、连接测试、双向差异预览和逐项冲突选择。
 - [x] Skill/Prompt 并发编辑保留用户草稿，展示磁盘版本，并提供使用磁盘版、覆盖或另存为副本。
 - [x] Diagnostics 提供完整 Doctor、脱敏复制/导出和 GitHub Release 更新检查。
 - [x] Homebrew Cask 使用独立 token `skm-app`，只安装 `/Applications/SKM.app`，不覆盖 Formula 的 CLI。
+- [x] 主窗口工具栏提供统一同步菜单，可更新所有技能来源、预览个人 Git 同步或直接打开同步设置。
 
 ### 2.5 Phase 3 原生界面
 
@@ -89,10 +90,10 @@
 - [x] Sparkle `2.9.6` 已通过 Swift Package Manager 固定，配置公钥时启用签名 appcast 自动更新；本地未配置时回退到只读版本检查。
 - [x] 正式发布脚本生成 EdDSA 签名 `appcast.xml`，GitHub Release 工作流校验并注入独立 Sparkle 公私钥。
 
-### 2.5 构建、测试与本地预览
+### 2.6 构建、测试与本地预览
 
-- [x] 14 个 Swift 单元测试覆盖 Model、Phase 3 响应、首次启动、版本比较及 Core 并发/损坏响应/stderr/超时/崩溃恢复。
-- [x] 4 个中英文 XCUITest 覆盖空 Library、快捷键、Skill 导入、Agent 管理、Prompt 创建/渲染入口、项目登记和 Workspace 预览。
+- [x] 15 个 Swift 单元测试覆盖 Model、主导航/设置分区、Phase 3 响应、首次启动、版本比较及 Core 并发/损坏响应/stderr/超时/崩溃恢复。
+- [x] 4 个中英文 XCUITest 覆盖空 Library、快捷键、设置入口、Skill 导入、Agent 管理、Prompt 创建/渲染入口、项目登记和 Git 同步预览。
 - [x] 测试使用隔离的 `SKM_HOME`、`SKM_USER_HOME`、`SKM_PROJECT`，不操作真实个人数据。
 - [x] CI 执行 Go 测试、Vet、Build、安装器测试和 macOS App 测试。
 - [x] `--preview` 构建 Universal 2 ZIP、DMG 和 SHA-256 校验文件。
@@ -120,7 +121,7 @@
 - [x] 使用真实 `Developer ID Application` 证书完成 Universal 2 验收构建。
 - [x] 使用 App Store Connect Team API Key 完成 App 和 DMG 公证、staple 与 Gatekeeper 验证。
 - [ ] 在干净的 Apple Silicon Mac 和 Intel Mac 上验证安装、启动、Core 握手和主要读写流程。
-- [x] 完成 Skills、Agents、Prompts、Projects、Workspace 的隔离端到端 XCUITest。
+- [x] 完成 Skills、Agents、Prompts、Projects、个人 Git 同步的隔离端到端 XCUITest。
 - [x] 完成 App/Core 与共享 Store 并发修改的冲突、草稿保留和恢复测试。
 - [ ] 完成正式发布前的 VoiceOver、键盘、浅色、深色和窄窗口人工验收。
 - [ ] 把 Developer ID `.p12` 与 App Store Connect Team API Key 配置为 GitHub Actions Secrets，并验证 Tag 工作流。
@@ -131,7 +132,7 @@
 - [x] 项目登记、重新扫描、注销和解绑。
 - [x] 项目级 Link、Copy、迁移、部署预览和冲突阻断。
 - [x] Sources 管理、更新和统一同步。
-- [x] 个人 Workspace 双向同步、差异预览和冲突解决。
+- [x] 个人 Git 同步、差异预览和冲突解决。
 - [x] 完整 Diagnostics、日志导出和更新检查。
 - [x] Homebrew Cask，且不与 CLI Formula 的安装路径冲突。
 
@@ -160,9 +161,9 @@
 
 ## 6. 最近一次验证记录
 
-截至 2026-08-28，已通过：
+截至 2026-08-31，已通过：
 
-- `xcodebuild ... test`：14 个 Swift 单元测试、4 个中英文 UI 测试通过；
+- `xcodebuild ... test`：15 个 Swift 单元测试、4 个中英文 UI 测试通过，包含主导航与 Settings 分区、Agent 管理和 Git 同步入口验收；
 - `go test ./...`、`go test -race ./...`、`go vet ./...`、`go build ./...`；
 - curl 安装器、Homebrew Formula 和 Homebrew Cask 生成器测试；
 - `0.5.3 (Build 3)` Universal 2 ad-hoc 预览打包，包含 Sparkle 2.9.6；

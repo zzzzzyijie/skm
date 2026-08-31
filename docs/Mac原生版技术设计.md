@@ -385,13 +385,17 @@ App 内操作完成后由对应请求结果直接更新界面，并异步重新�
 | 导入/导出 Prompt | `NSOpenPanel` / `NSSavePanel` |
 | 复制 Prompt | `NSPasteboard` |
 | 打开项目或 Skill 来源 | `NSWorkspace.open` / Finder reveal |
-| 设置 | SwiftUI `Settings` scene，快捷键 `⌘,` |
+| 设置 | SwiftUI `Settings` scene，侧栏底部入口与快捷键 `⌘,` |
 | 菜单 | `Commands`，提供新建、导入、同步、删除、刷新 |
 | 搜索 | `.searchable`，快捷键 `⌘F` |
 | 帮助与诊断 | Help 菜单、诊断窗口、复制诊断信息 |
 
 Finder 路径选择不再由 Go 通过 `osascript` 完成。Swift 只把用户选择的路径传给 Core，Core
 仍必须做规范化、范围、文件类型和 Skill 格式校验。
+
+主窗口只保留 Skills、Prompts、Projects 三个高频内容模块。Source、Workspace、Agent 和
+Diagnostics 的 Core 契约保持不变，原生界面分别以“技能来源”“Git 同步”“Agent 管理”和
+“诊断与更新”呈现在独立设置窗口中；主工具栏保留统一同步菜单，避免增加高频操作层级。
 
 ## 7. 数据、并发与一致性
 

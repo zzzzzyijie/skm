@@ -6,10 +6,6 @@ enum AppSection: String, CaseIterable, Identifiable {
     case skills = "Skills"
     case prompts = "Prompts"
     case projects = "Projects"
-    case sources = "Sources"
-    case workspace = "Workspace"
-    case agents = "Agents"
-    case diagnostics = "Diagnostics"
 
     var id: String { rawValue }
 
@@ -18,9 +14,35 @@ enum AppSection: String, CaseIterable, Identifiable {
         case .skills: "square.stack.3d.up"
         case .prompts: "text.bubble"
         case .projects: "folder"
-        case .sources: "arrow.triangle.branch"
-        case .workspace: "icloud"
+        }
+    }
+}
+
+enum SettingsSection: String, CaseIterable, Identifiable {
+    case general
+    case agents
+    case sources
+    case gitSync
+    case diagnostics
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .general: String(localized: "通用")
+        case .agents: String(localized: "Agent 管理")
+        case .sources: String(localized: "技能来源")
+        case .gitSync: String(localized: "Git 同步")
+        case .diagnostics: String(localized: "诊断与更新")
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .general: "gearshape"
         case .agents: "cpu"
+        case .sources: "arrow.triangle.branch"
+        case .gitSync: "arrow.triangle.2.circlepath.icloud"
         case .diagnostics: "stethoscope"
         }
     }
@@ -48,6 +70,7 @@ final class AppModel {
     @ObservationIgnored private let monitorsFiles: Bool
     @ObservationIgnored private let presentsWelcome: Bool
     var section: AppSection = .skills
+    var settingsSection: SettingsSection = .general
     var skills: [SkillSummary] = []
     var prompts: [PromptSummary] = []
     var projects: [ProjectModel] = []
@@ -144,10 +167,9 @@ final class AppModel {
         await core.stop()
     }
 
-    func completeWelcome(openAgents: Bool = false) {
+    func completeWelcome() {
         preferences.set(true, forKey: Self.welcomePreferenceKey)
         showsWelcome = false
-        if openAgents { section = .agents }
     }
 
     func request(_ kind: AppCommandKind) {
@@ -159,7 +181,7 @@ final class AppModel {
         pendingCommand = nil
     }
 
-    var canCreate: Bool { section != .workspace && section != .diagnostics }
+    var canCreate: Bool { true }
 
     var canImport: Bool { section == .skills || section == .prompts || section == .projects }
 
@@ -168,11 +190,6 @@ final class AppModel {
         case .skills: return selectedSkillID != nil
         case .prompts: return selectedPromptID != nil
         case .projects: return selectedProjectID != nil
-        case .sources: return selectedSourceID != nil
-        case .workspace, .diagnostics: return false
-        case .agents:
-            guard let selectedAgentID else { return false }
-            return agents.first(where: { $0.id == selectedAgentID })?.custom == true
         }
     }
 

@@ -68,6 +68,14 @@ final class AppModelTests: XCTestCase {
         XCTAssertTrue(model.agents.allSatisfy { !$0.configured })
     }
 
+    func testPrimaryNavigationAndSettingsSectionsStaySeparated() {
+        XCTAssertEqual(AppSection.allCases, [.skills, .prompts, .projects])
+        XCTAssertEqual(
+            SettingsSection.allCases,
+            [.general, .agents, .sources, .gitSync, .diagnostics]
+        )
+    }
+
     func testReadOnlyMethodsAreTheOnlyAutomaticallyRetryableCalls() {
         XCTAssertTrue(CoreClient.isSafeToRetry("skills.list"))
         XCTAssertTrue(CoreClient.isSafeToRetry("system.doctor"))

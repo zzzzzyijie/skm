@@ -44,7 +44,7 @@ struct SKMApp: App {
 
         Settings {
             SettingsView(model: model)
-                .frame(width: 520, height: 300)
+                .frame(minWidth: 780, minHeight: 560)
         }
     }
 
@@ -53,10 +53,6 @@ struct SKMApp: App {
         case .skills: String(localized: "添加 Skill")
         case .prompts: String(localized: "新建 Prompt")
         case .projects: String(localized: "添加项目")
-        case .sources: String(localized: "添加 Git Source")
-        case .workspace: String(localized: "配置个人工作区")
-        case .agents: String(localized: "添加自定义 Agent")
-        case .diagnostics: String(localized: "运行诊断")
         }
     }
 

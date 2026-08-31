@@ -84,5 +84,6 @@ struct DiagnosticsDetailView: View {
             .padding(26)
             .frame(maxWidth: 820, alignment: .leading)
         }
+        .navigationTitle("诊断与更新")
     }
 }

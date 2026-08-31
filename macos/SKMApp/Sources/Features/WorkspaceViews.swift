@@ -5,11 +5,11 @@ struct WorkspaceSidebarView: View {
 
     var body: some View {
         List {
-            Label("个人工作区", systemImage: model.workspace?.configured == true ? "checkmark.icloud" : "icloud.slash")
+            Label("个人 Git 同步", systemImage: model.workspace?.configured == true ? "checkmark.icloud" : "icloud.slash")
             Label("同步预览", systemImage: "list.bullet.rectangle")
                 .foregroundStyle(model.workspacePreview == nil ? .secondary : .primary)
         }
-        .navigationTitle("Workspace")
+        .navigationTitle("Git 同步")
     }
 }
 
@@ -22,8 +22,8 @@ struct WorkspaceDetailView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
-                Text("个人工作区").font(.largeTitle.bold())
-                Text("通过一个私人 Git 仓库双向同步 Skills、Prompts 和 Source 绑定。认证信息不会写入 SKM。")
+                Text("个人 Git 同步").font(.largeTitle.bold())
+                Text("通过私人 Git 仓库在多台设备间同步 Skills、Prompts 和 Source 配置。认证信息不会写入 SKM。")
                     .foregroundStyle(.secondary)
                 configuration
                 if model.workspace?.configured == true {
@@ -37,6 +37,7 @@ struct WorkspaceDetailView: View {
             .frame(maxWidth: 860, alignment: .leading)
         }
         .task { loadConfiguration() }
+        .navigationTitle("Git 同步")
     }
 
     private var configuration: some View {

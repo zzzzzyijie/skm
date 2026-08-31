@@ -8,7 +8,8 @@ Developer ID、Apple 公证、stapling 与 Gatekeeper 的完整实操见
 当前工程版本为 `0.5.3`，Phase 1 至 Phase 3 均已完成：
 
 - 支持跟随 macOS 系统语言显示简体中文或英文；
-- SwiftUI 三栏导航与 macOS 原生菜单、搜索、文件面板、剪贴板和 Settings scene；
+- SwiftUI 三栏主界面聚焦 Skills、Prompts、Projects，侧栏底部和 `⌘,` 可打开独立 Settings 窗口；
+- 技能来源、Git 同步、Agent 管理、诊断与更新集中在设置分类中，主工具栏保留统一同步快捷菜单；
 - Skill 本地目录/ZIP/Git/安装命令导入、详情、原文编辑、标签、删除；
 - Agent 检测、管理、自定义 Agent 与用户级 Skill 启用/停用；
 - Prompt 创建、导入、编辑、复制、导出和删除；
@@ -16,7 +17,7 @@ Developer ID、Apple 公证、stapling 与 Gatekeeper 的完整实操见
 - 主操作菜单快捷键、VoiceOver 行摘要与中英文隔离 XCUITest；
 - Project 登记、扫描、Link/Copy 部署、预览、冲突阻断、迁移、解绑与注销；
 - Source 添加、更新、移除与统一同步；
-- 个人 Workspace 配置、双向同步预览与逐项冲突解决；
+- 个人 Git 同步配置、双向预览与逐项冲突解决；Core 内部仍沿用 Workspace 契约；
 - App Bundle 内置 Go Core，通过私有 stdio JSON-RPC 通信，不监听端口。
 - Project Require/Vendor/Apply、Prompt 变量表单与安全渲染、历史差异/回滚、Quick Look；
 - Sparkle 2 签名 appcast 自动更新；未注入发布公钥的开发构建会回退到 GitHub 版本检查。

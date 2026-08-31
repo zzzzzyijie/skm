@@ -55,6 +55,13 @@ final class SKMUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Add Skill"].waitForExistence(timeout: 3))
         XCTAssertTrue(app.buttons["Import"].exists)
         XCTAssertTrue(app.buttons["Cancel"].exists)
+        app.buttons["Cancel"].click()
+
+        app.descendants(matching: .any)["open-settings"].click()
+        XCTAssertTrue(app.staticTexts["Agent Management"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Skill Sources"].exists)
+        XCTAssertTrue(app.staticTexts["Git Sync"].exists)
+        XCTAssertTrue(app.staticTexts["Diagnostics & Updates"].exists)
     }
 
     @MainActor
@@ -83,10 +90,14 @@ final class SKMUITests: XCTestCase {
         app.buttons["导入"].click()
         XCTAssertTrue(app.staticTexts["ui-smoke-skill"].waitForExistence(timeout: 8))
 
-        app.descendants(matching: .any)["navigation-agents"].click()
-        let managementToggle = app.checkBoxes["允许 SKM 向此 Agent 部署 Skill"]
+        app.descendants(matching: .any)["open-settings"].click()
+        let agentsSettings = app.descendants(matching: .any)["settings-agents"]
+        XCTAssertTrue(agentsSettings.waitForExistence(timeout: 5))
+        agentsSettings.click()
+        let managementToggle = app.checkBoxes["agent-management-codex"]
         XCTAssertTrue(managementToggle.waitForExistence(timeout: 5))
         if managementToggle.value as? Int == 0 { managementToggle.click() }
+        app.typeKey("w", modifierFlags: .command)
 
         app.descendants(matching: .any)["navigation-prompts"].click()
         app.typeKey("n", modifierFlags: .command)
@@ -137,9 +148,12 @@ final class SKMUITests: XCTestCase {
         app.buttons["添加"].click()
         XCTAssertTrue(app.staticTexts["registered-project"].waitForExistence(timeout: 8))
 
-        let workspaceNavigation = app.descendants(matching: .any)["navigation-workspace"]
-        XCTAssertTrue(workspaceNavigation.waitForExistence(timeout: 5))
-        workspaceNavigation.click()
+        let settingsEntry = app.descendants(matching: .any)["open-settings"]
+        XCTAssertTrue(settingsEntry.waitForExistence(timeout: 5))
+        settingsEntry.click()
+        let gitSyncSettings = app.descendants(matching: .any)["settings-gitSync"]
+        XCTAssertTrue(gitSyncSettings.waitForExistence(timeout: 5))
+        gitSyncSettings.click()
         let urlField = app.textFields["workspace-url-field"]
         XCTAssertTrue(urlField.waitForExistence(timeout: 5))
         urlField.click()

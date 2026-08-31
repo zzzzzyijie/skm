@@ -61,6 +61,16 @@
     "~/.agent/skills" : {
 
     },
+    "Agent 管理" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agent Management"
+          }
+        }
+      }
+    },
     "Agent 配置已更新" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -164,6 +174,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Git URL, owner/repo, or npx skills add …"
+          }
+        }
+      }
+    },
+    "Git 同步" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Git Sync"
           }
         }
       }
@@ -463,6 +484,28 @@
         }
       }
     },
+    "上传 %lld" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Uploads"
+          }
+        }
+      }
+    },
+    "下载 %lld" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Downloads"
+          }
+        }
+      }
+    },
     "不可访问" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -474,7 +517,18 @@
         }
       }
     },
+    "个人 Git 同步" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Personal Git Sync"
+          }
+        }
+      }
+    },
     "个人工作区" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -570,6 +624,17 @@
         }
       }
     },
+    "保存并测试连接" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save and Test Connection"
+          }
+        }
+      }
+    },
     "保存时会校验 baseHash，防止覆盖来自 CLI 的并发修改。" : {
       "localizations" : {
         "en" : {
@@ -655,6 +720,17 @@
         }
       }
     },
+    "最近一次同步" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Most Recent Sync"
+          }
+        }
+      }
+    },
     "写入项目清单" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -662,6 +738,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Add to Manifest"
+          }
+        }
+      }
+    },
+    "冲突 %lld" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Conflicts"
+          }
+        }
+      }
+    },
+    "冲突选择" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conflict Resolution"
           }
         }
       }
@@ -704,6 +802,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Delete %@?"
+          }
+        }
+      }
+    },
+    "删除 %lld" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Deletions"
           }
         }
       }
@@ -780,6 +889,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Cancel"
+          }
+        }
+      }
+    },
+    "取消预览" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancel Preview"
           }
         }
       }
@@ -870,6 +990,16 @@
         }
       }
     },
+    "可以添加一个自定义 Agent，或安装受支持的工具后重新刷新。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add a custom Agent, or install a supported tool and refresh."
+          }
+        }
+      }
+    },
     "可以直接复制 Prompt 内容。" : {
       "localizations" : {
         "en" : {
@@ -887,6 +1017,61 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Available"
+          }
+        }
+      }
+    },
+    "同步" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sync"
+          }
+        }
+      }
+    },
+    "同步全部" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sync All"
+          }
+        }
+      }
+    },
+    "同步执行前会列出上传、下载、删除与冲突。" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uploads, downloads, deletions, and conflicts are shown before syncing."
+          }
+        }
+      }
+    },
+    "同步状态" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sync Status"
+          }
+        }
+      }
+    },
+    "同步预览" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sync Preview"
           }
         }
       }
@@ -1172,12 +1357,34 @@
         }
       }
     },
+    "已管理 Agent" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Managed Agents"
+          }
+        }
+      }
+    },
     "已经启用的 Skill 必须先停用。不可变快照只会在没有引用时清理。" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Disable an enabled Skill before removing it. Immutable snapshots are cleaned up only when no references remain."
+          }
+        }
+      }
+    },
+    "已配置" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Configured"
           }
         }
       }
@@ -1213,6 +1420,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Get Started"
+          }
+        }
+      }
+    },
+    "开始同步" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start Sync"
           }
         }
       }
@@ -1308,6 +1526,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Restore this historical version?"
+          }
+        }
+      }
+    },
+    "成功 %lld · 失败 %lld · 更新 %lld 个 Skills" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld succeeded · %2$lld failed · %3$lld Skills updated"
+          }
+        }
+      }
+    },
+    "打开 Git 同步设置…" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Git Sync Settings…"
+          }
+        }
+      }
+    },
+    "技能来源" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skill Sources"
           }
         }
       }
@@ -1443,6 +1693,61 @@
         }
       }
     },
+    "暂无技能来源" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No Skill Sources"
+          }
+        }
+      }
+    },
+    "更多" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "More"
+          }
+        }
+      }
+    },
+    "更新" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Update"
+          }
+        }
+      }
+    },
+    "更新所有技能来源" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Update All Skill Sources"
+          }
+        }
+      }
+    },
+    "更新技能来源或同步个人数据" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Update Skill sources or sync personal data"
+          }
+        }
+      }
+    },
     "有效路径" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1461,6 +1766,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Not provided"
+          }
+        }
+      }
+    },
+    "未提供 Skill 路径" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No Skill path provided"
           }
         }
       }
@@ -1494,6 +1810,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Not connected"
+          }
+        }
+      }
+    },
+    "未配置" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not Configured"
           }
         }
       }
@@ -1724,6 +2051,17 @@
         }
       }
     },
+    "没有可用的 Agent" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No Available Agents"
+          }
+        }
+      }
+    },
     "没有已注册项目" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1746,6 +2084,17 @@
         }
       }
     },
+    "没有需要同步的更改" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No Changes to Sync"
+          }
+        }
+      }
+    },
     "添加 Git Source" : {
       "localizations" : {
         "en" : {
@@ -1756,12 +2105,33 @@
         }
       }
     },
+    "添加 Git 仓库后，可以统一更新其中的 Skills。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add Git repositories to update their Skills together."
+          }
+        }
+      }
+    },
     "添加 Skill" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Add Skill"
+          }
+        }
+      }
+    },
+    "添加 Source" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add Source"
           }
         }
       }
@@ -1894,6 +2264,17 @@
         }
       }
     },
+    "生成同步预览" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Generate Sync Preview"
+          }
+        }
+      }
+    },
     "目标 Agents" : {
       "localizations" : {
         "en" : {
@@ -1945,6 +2326,17 @@
         }
       }
     },
+    "移除" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove"
+          }
+        }
+      }
+    },
     "移除 %@？" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1974,6 +2366,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Remove Skill"
+          }
+        }
+      }
+    },
+    "移除 Source" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove Source"
           }
         }
       }
@@ -2174,6 +2577,16 @@
         }
       }
     },
+    "自定义" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Custom"
+          }
+        }
+      }
+    },
     "自定义 Agent" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -2203,6 +2616,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Custom Agent deleted"
+          }
+        }
+      }
+    },
+    "设置" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Settings"
           }
         }
       }
@@ -2323,6 +2747,27 @@
         }
       }
     },
+    "连接" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connection"
+          }
+        }
+      }
+    },
+    "选择 SKM 可以部署 Skill 的工具，并管理自定义 Agent 路径。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose the tools where SKM can deploy Skills, and manage custom Agent paths."
+          }
+        }
+      }
+    },
     "选择…" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -2419,12 +2864,44 @@
         }
       }
     },
+    "通用" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "General"
+          }
+        }
+      }
+    },
     "通过一个私人 Git 仓库双向同步 Skills、Prompts 和 Source 绑定。认证信息不会写入 SKM。" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Synchronize Skills, Prompts, and Source bindings through a private Git repository. Credentials are never written to SKM."
+          }
+        }
+      }
+    },
+    "通过团队或社区 Git 仓库获取并更新 Skills。认证继续由系统 Git 管理。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Get and update Skills from team or community Git repositories. Authentication continues to use system Git."
+          }
+        }
+      }
+    },
+    "通过私人 Git 仓库在多台设备间同步 Skills、Prompts 和 Source 配置。认证信息不会写入 SKM。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sync Skills, Prompts, and Source settings across devices through a private Git repository. Credentials are never written to SKM."
           }
         }
       }
@@ -2435,6 +2912,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Deployment"
+          }
+        }
+      }
+    },
+    "配置并测试连接" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Configure and Test Connection"
           }
         }
       }
@@ -2501,6 +2989,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Project manifest entry removed"
+          }
+        }
+      }
+    },
+    "预览个人 Git 同步…" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Preview Personal Git Sync…"
           }
         }
       }
