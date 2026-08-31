@@ -1,17 +1,23 @@
 import SwiftUI
 
+/// RootView - macOS App 根视图
+/// 负责根据 Core 握手状态在“启动/重试加载屏”与“三栏主界面（NavigationSplitView）”之间切换，
+/// 并承载底部全局状态气泡（StatusPill）、全局错误弹窗以及新用户欢迎向导（WelcomeView）。
 struct RootView: View {
     @Bindable var model: AppModel
 
     var body: some View {
         Group {
             if model.handshake == nil {
+                // 尚未完成 Core 握手时展示启动中或错误重试屏
                 startupContent
             } else {
+                // 握手成功后展示三栏主界面
                 mainContent
             }
         }
         .overlay(alignment: .bottom) {
+            // 底部居中悬浮状态胶囊
             if let status = model.statusMessage {
                 StatusPill(text: status, symbol: model.isLoading ? "arrow.triangle.2.circlepath" : "checkmark.circle.fill")
                     .padding(.bottom, 16)
@@ -30,6 +36,7 @@ struct RootView: View {
         }
     }
 
+    /// 三栏主界面布局：侧边栏（Sidebar） -> 内容列表栏（Content） -> 详情面板（Detail）
     private var mainContent: some View {
         NavigationSplitView {
             sidebar
@@ -52,6 +59,7 @@ struct RootView: View {
         }
     }
 
+    /// Core 启动连接状态视图：加载中旋转菊花 或 启动失败诊断重试视图
     @ViewBuilder
     private var startupContent: some View {
         if model.isLoading || model.startupErrorMessage == nil {

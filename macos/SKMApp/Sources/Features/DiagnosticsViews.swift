@@ -1,5 +1,6 @@
 import SwiftUI
 
+/// 系统诊断侧栏列表
 struct DiagnosticsSidebarView: View {
     let model: AppModel
 
@@ -28,6 +29,11 @@ private struct DoctorSidebarRow: View {
     }
 }
 
+/// DiagnosticsDetailView - 系统诊断与软件更新视图
+/// 包含三大模块：
+/// 1. Doctor 健康检查：展示存储目录、Git 环境、Go Core 状态及各 Agent 安装状态；
+/// 2. 诊断报告导出：生成自动脱敏（隐藏家目录用户名及 URL Token）的系统报告并支持一键复制与导出；
+/// 3. 软件更新：触发 Sparkle 自动更新或 GitHub Releases 检查。
 struct DiagnosticsDetailView: View {
     @Bindable var model: AppModel
 

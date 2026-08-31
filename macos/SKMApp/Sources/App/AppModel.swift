@@ -2,9 +2,13 @@ import AppKit
 import Foundation
 import Observation
 
+/// 主界面业务分区（左侧主导航栏）
 enum AppSection: String, CaseIterable, Identifiable {
+    /// 技能库：管理本地与远程导入的 AI Skills
     case skills = "Skills"
+    /// 提示词库：管理带参数定义的复用 Prompt 模板
     case prompts = "Prompts"
+    /// 项目管理：管理项目维度的 Skill 部署、Require 与 Vendor 状态
     case projects = "Projects"
 
     var id: String { rawValue }
@@ -18,11 +22,17 @@ enum AppSection: String, CaseIterable, Identifiable {
     }
 }
 
+/// 偏好设置分区
 enum SettingsSection: String, CaseIterable, Identifiable {
+    /// 通用：版本信息、存储路径与概览统计
     case general
+    /// Agent 管理：Claude Desktop、Codex 等 AI 客户端配置与自定义路径
     case agents
+    /// 技能来源：Git 仓库源列表管理与批量拉取
     case sources
+    /// Git 同步：个人工作区（Workspace）远端仓库配置与冲突合并
     case gitSync
+    /// 诊断与更新：Doctor 健康检查与 Sparkle 软件升级
     case diagnostics
 
     var id: String { rawValue }
@@ -48,18 +58,28 @@ enum SettingsSection: String, CaseIterable, Identifiable {
     }
 }
 
+/// 全局命令类型（由系统菜单快捷键触发，再分发给各子视图消费）
 enum AppCommandKind: Equatable, Sendable {
     case create
     case importItem
     case deleteSelection
 }
 
+/// 全局命令包装
 struct AppCommand: Identifiable, Sendable {
     let id = UUID()
     let kind: AppCommandKind
     let section: AppSection
 }
 
+/// AppModel - 主应用程序 ViewModel 状态机
+/// 采用 Swift 5.9+ @Observable 宏进行响应式状态跟踪。
+/// 核心职责：
+/// 1. 驱动与底层 Go Core 子进程（JSON-RPC 2.0）的通信和数据同步；
+/// 2. 维护 Skills、Prompts、Projects、Agents、Sources、Workspace 全局数据与当前选中项；
+/// 3. 通过 FileChangeMonitor 监听 ~/.skm 本地数据变化并实现自动热重载；
+/// 4. 统一处理加载状态、状态提示气泡（StatusPill）、错误弹窗与无障碍语音播报；
+/// 5. 集中管理业务增删改查（mutate/mutateResult）与冲突处理逻辑。
 @MainActor
 @Observable
 final class AppModel {
@@ -112,6 +132,7 @@ final class AppModel {
         self.presentsWelcome = presentsWelcome
     }
 
+    /// 启动应用：发起握手连接 Core，全量拉取业务数据，开启本地文件监控，并在首次使用时展示欢迎向导
     func start() async {
         guard handshake == nil, !isLoading else { return }
         isLoading = true
@@ -135,16 +156,19 @@ final class AppModel {
         }
     }
 
+    /// 重启并重新连接 Core（用于启动失败后的用户手动重试）
     func retryStart() async {
         await core.stop()
         handshake = nil
         await start()
     }
 
+    /// 手动全量刷新所有业务数据
     func refresh() async {
         await perform(String(localized: "正在刷新…")) { try await self.reload() }
     }
 
+    /// 发布状态提示文案，并在 2.5 秒后自动清除，同时触发 macOS VoiceOver 辅助功能播报
     func announce(_ message: String) {
         statusMessage = message
         NSAccessibility.post(
@@ -161,21 +185,25 @@ final class AppModel {
         }
     }
 
+    /// 停止文件监听并关闭 Core 进程连接
     func stop() async {
         fileMonitor.stop()
         isMonitoring = false
         await core.stop()
     }
 
+    /// 完成欢迎向导并记录到 UserDefaults 避免重复弹出
     func completeWelcome() {
         preferences.set(true, forKey: Self.welcomePreferenceKey)
         showsWelcome = false
     }
 
+    /// 分发系统级菜单命令
     func request(_ kind: AppCommandKind) {
         pendingCommand = AppCommand(kind: kind, section: section)
     }
 
+    /// 消费已处理的菜单命令
     func consumeCommand(_ id: UUID) {
         guard pendingCommand?.id == id else { return }
         pendingCommand = nil
@@ -237,26 +265,31 @@ final class AppModel {
         }
     }
 
+    /// 查询指定 Skill 的详细信息（包含完整 Frontmatter 与正文）
     func skillDetails(_ id: String) async throws -> SkillDetails {
         try await core.call("skills.get", params: IDParams(id: id))
     }
 
+    /// 查询指定 Prompt 的详细信息
     func promptDetails(_ id: String) async throws -> PromptDetails {
         try await core.call("prompts.get", params: IDParams(id: id))
     }
 
+    /// 导入本地目录或 ZIP 压缩包作为 Skill
     func addLocalSkill(path: String, tags: [String]) async {
         await mutate(success: String(localized: "Skill 已导入")) {
             let _: MutationSkill = try await self.core.call("skills.add", params: AddSkillParams(path: path, tags: tags, source: "local"))
         }
     }
 
+    /// 从 Git 远程仓库导入 Skill/Source
     func addRemoteSkill(input: String) async {
         await mutate(success: String(localized: "Git Source 已导入")) {
             let _: AddSourceResponse = try await self.core.call("sources.add", params: AddSourceParams(input: input, tags: []))
         }
     }
 
+    /// 在线更新 Skill 内容（带基于 baseHash 的乐观并发冲突检测）
     @discardableResult
     func updateSkill(id: String, content: String, baseHash: String, tags: [String]) async -> Bool {
         await mutateResult(success: String(localized: "Skill 已保存并重新部署"), handlesConflict: true) {
@@ -264,6 +297,7 @@ final class AppModel {
         }
     }
 
+    /// 移除指定 Skill（若有已生效部署将阻止或提示）
     func removeSkill(id: String) async {
         await mutate(success: String(localized: "Skill 已移除")) {
             let _: MutationSkill = try await self.core.call("skills.remove", params: IDParams(id: id))
@@ -271,6 +305,7 @@ final class AppModel {
         }
     }
 
+    /// 针对指定 Agent 启用或停用全局 Skill
     func setSkill(_ skillID: String, agentID: String, enabled: Bool) async {
         await mutate(success: enabled ? String(localized: "已为 Agent 启用") : String(localized: "已停用")) {
             if enabled {
@@ -281,10 +316,12 @@ final class AppModel {
         }
     }
 
+    /// 检查指定 Skill 是否已对某 Agent 全局启用
     func isEnabled(_ skillID: String, for agentID: String) -> Bool {
         plan.operations.contains { $0.skillId == skillID && $0.agent == agentID && $0.placement == "user" }
     }
 
+    /// 勾选/取消勾选受管 Agent 列表
     func configureAgent(_ id: String, enabled: Bool) async {
         var selected = Set(agents.filter(\.configured).map(\.id))
         if enabled { selected.insert(id) } else { selected.remove(id) }
@@ -293,12 +330,14 @@ final class AppModel {
         }
     }
 
+    /// 保存自定义 Agent 适配器路径配置
     func saveCustomAgent(id: String, name: String, path: String) async {
         await mutate(success: String(localized: "自定义 Agent 已保存")) {
             let _: [AgentModel] = try await self.core.call("agents.custom.save", params: CustomAgentParams(id: id, name: name, skillsPath: path))
         }
     }
 
+    /// 删除自定义 Agent 适配器
     func deleteCustomAgent(id: String) async {
         await mutate(success: String(localized: "自定义 Agent 已删除")) {
             let _: StatusResponse = try await self.core.call("agents.custom.delete", params: IDParams(id: id))
@@ -306,6 +345,7 @@ final class AppModel {
         }
     }
 
+    /// 新建或更新 Prompt 模板
     @discardableResult
     func savePrompt(
         id: String?,
@@ -322,6 +362,7 @@ final class AppModel {
         }
     }
 
+    /// 导入外部 Markdown 文本为 Prompt
     func importPrompt(content: String) async {
         await mutate(success: String(localized: "Prompt 已导入")) {
             let params = PromptWriteParams(id: nil, content: content, name: "", description: "", tags: [], body: "", variables: [], source: "local", baseHash: nil)
@@ -329,18 +370,22 @@ final class AppModel {
         }
     }
 
+    /// 参数化实时渲染 Prompt 模板
     func renderPrompt(id: String, values: [String: String]) async throws -> PromptRenderResponse {
         try await core.call("prompts.render", params: PromptRenderParams(id: id, values: values))
     }
 
+    /// 获取项目/Prompt/Skill 的历史版本记录列表
     func history(kind: String, itemID: String) async throws -> [HistoryEntryModel] {
         try await core.call("history.list", params: HistoryParams(kind: kind, itemId: itemID))
     }
 
+    /// 对比两个历史快照版本间的 Diff
     func historyDiff(kind: String, itemID: String, from: String, to: String = "current") async throws -> HistoryDiffResponse {
         try await core.call("history.diff", params: HistoryDiffParams(kind: kind, itemId: itemID, from: from, to: to))
     }
 
+    /// 回滚到指定的历史版本
     @discardableResult
     func rollbackHistory(kind: String, itemID: String, entryID: String) async -> Bool {
         await mutateResult(success: String(localized: "历史版本已恢复"), handlesConflict: true) {
@@ -351,6 +396,7 @@ final class AppModel {
         }
     }
 
+    /// 移除 Prompt 模板
     func removePrompt(id: String) async {
         await mutate(success: String(localized: "Prompt 已移除")) {
             let _: PromptSummary = try await self.core.call("prompts.remove", params: IDParams(id: id))
@@ -358,18 +404,21 @@ final class AppModel {
         }
     }
 
+    /// 加载并扫描指定项目的内部 Skills 与各 Agent 部署情况
     func loadProjectDetails(_ id: String) async {
         await perform(String(localized: "正在扫描项目…")) {
             self.projectDetails = try await self.core.call("projects.get", params: IDParams(id: id))
         }
     }
 
+    /// 登记本机项目目录
     func addProject(path: String, name: String) async {
         await mutate(success: String(localized: "项目已登记")) {
             let _: RegisteredProject = try await self.core.call("projects.add", params: AddProjectParams(path: path, name: name))
         }
     }
 
+    /// 注销项目登记（不删除项目源码文件）
     func unregisterProject(id: String) async {
         await mutate(success: String(localized: "项目已注销")) {
             let _: RegisteredProject = try await self.core.call("projects.unregister", params: IDParams(id: id))
@@ -378,6 +427,7 @@ final class AppModel {
         }
     }
 
+    /// 部署 Skill 到指定项目（支持 dryRun 预演预览与真实应用）
     func deployProject(project: String, skill: String, agents: [String], mode: String, dryRun: Bool) async {
         let succeeded = await mutateResult(
             success: dryRun ? String(localized: "部署预览已生成") : String(localized: "项目部署已完成"),
@@ -395,6 +445,7 @@ final class AppModel {
         }
     }
 
+    /// 解除项目内 Skill 与各 Agent 的部署绑定
     func unlinkProject(project: String, skill: String, agents: [String]) async {
         let succeeded = await mutateResult(success: String(localized: "项目 Skill 已解绑")) {
             let _: StatusResponse = try await self.core.call(
@@ -405,6 +456,7 @@ final class AppModel {
         if succeeded { await loadProjectDetails(project) }
     }
 
+    /// 迁移项目内已有的散装 Skill 为 SKM 受管格式
     func migrateProjectSkill(project: String, skill: String, agent: String, mode: String, removeSource: Bool) async {
         let succeeded = await mutateResult(success: String(localized: "项目 Skill 已迁移")) {
             let _: ProjectMigrateResponse = try await self.core.call(
@@ -415,6 +467,7 @@ final class AppModel {
         if succeeded { await loadProjectDetails(project) }
     }
 
+    /// 固定项目依赖（在项目清单中声明 Require）
     func requireProjectSkill(project: String, skill: String, agents: [String], mode: String) async {
         let succeeded = await mutateResult(success: String(localized: "项目依赖已固定")) {
             let _: ProjectAdvancedResponse = try await self.core.call(
@@ -425,6 +478,7 @@ final class AppModel {
         if succeeded { await loadProjectDetails(project) }
     }
 
+    /// 将 Skill 源码直接 Vendor 拷贝到项目中
     func vendorProjectSkill(project: String, skill: String, agents: [String], mode: String) async {
         let succeeded = await mutateResult(success: String(localized: "Skill 已 Vendor 到项目")) {
             let _: ProjectAdvancedResponse = try await self.core.call(
@@ -435,6 +489,7 @@ final class AppModel {
         if succeeded { await loadProjectDetails(project) }
     }
 
+    /// 根据项目清单（Manifest）应用并修复所有依赖部署
     func applyProjectManifest(project: String, force: Bool = false) async {
         let succeeded = await mutateResult(success: String(localized: "项目清单已应用")) {
             let _: ProjectAdvancedResponse = try await self.core.call(
@@ -445,6 +500,7 @@ final class AppModel {
         if succeeded { await loadProjectDetails(project) }
     }
 
+    /// 移除项目清单中的特定条目
     func removeProjectEntry(project: String, entry: String, force: Bool = false) async {
         let succeeded = await mutateResult(success: String(localized: "项目清单条目已移除")) {
             let _: ProjectAdvancedResponse = try await self.core.call(
@@ -455,6 +511,7 @@ final class AppModel {
         if succeeded { await loadProjectDetails(project) }
     }
 
+    /// 查找当前选中项的预览文件路径（SKILL.md 或 PROMPT.md）供 QuickLook 使用
     func quickLookURL() async throws -> URL? {
         switch section {
         case .skills:
@@ -471,18 +528,21 @@ final class AppModel {
         }
     }
 
+    /// 添加 Git 技能源
     func addSource(input: String) async {
         await mutate(success: String(localized: "Git Source 已添加")) {
             let _: AddSourceResponse = try await self.core.call("sources.add", params: AddSourceParams(input: input, tags: []))
         }
     }
 
+    /// 更新指定的单个 Git 技能源
     func updateSource(name: String) async {
         await mutate(success: String(localized: "Git Source 已更新")) {
             let _: SourceUpdateResponse = try await self.core.call("sources.update", params: SourceNamesParams(names: [name]))
         }
     }
 
+    /// 移除 Git 技能源
     func removeSource(name: String) async {
         await mutate(success: String(localized: "Git Source 已移除")) {
             let _: SourceRemovalResponse = try await self.core.call("sources.remove", params: IDParams(id: name))
@@ -490,12 +550,14 @@ final class AppModel {
         }
     }
 
+    /// 批量拉取并同步所有 Git 来源
     func syncSources() async {
         await mutate(success: String(localized: "所有 Git Sources 已同步")) {
             self.sourceSyncResult = try await self.core.call("sources.sync", params: EmptyParams())
         }
     }
 
+    /// 配置个人 Git 工作区（绑定同步远端）
     func configureWorkspace(url: String, ref: String, root: String) async {
         await mutate(success: String(localized: "个人工作区已配置")) {
             let _: WorkspaceView = try await self.core.call(
@@ -505,6 +567,7 @@ final class AppModel {
         }
     }
 
+    /// 预演个人工作区双向同步差异
     func previewWorkspace() async {
         await perform(String(localized: "正在预览同步…")) {
             self.workspacePreview = try await self.core.call("workspace.preview", params: EmptyParams())
@@ -512,6 +575,7 @@ final class AppModel {
         }
     }
 
+    /// 执行个人工作区同步（应用冲突决议方案并提交推拉）
     func syncWorkspace() async {
         let succeeded = await mutateResult(success: String(localized: "个人工作区同步完成")) {
             let _: WorkspaceSyncResponse = try await self.core.call(
@@ -525,12 +589,14 @@ final class AppModel {
         }
     }
 
+    /// 运行系统 Doctor 健康诊断
     func runDoctor() async {
         await perform(String(localized: "正在运行诊断…")) {
             self.doctorChecks = try await self.core.call("system.doctor", params: EmptyParams())
         }
     }
 
+    /// 检查软件更新（优先 Sparkle，次选 GitHub Releases API）
     func checkForUpdates() async {
         if SparkleUpdater.shared.isConfigured {
             updateStatus = String(localized: "已打开安全更新检查窗口")
@@ -556,6 +622,7 @@ final class AppModel {
         }
     }
 
+    /// 语义化版本比对助手（如 v1.2.0 vs 1.1.9）
     static func isVersion(_ candidate: String, newerThan current: String) -> Bool {
         let lhs = candidate.trimmingCharacters(in: CharacterSet(charactersIn: "vV")).split(separator: ".").map { Int($0) ?? 0 }
         let rhs = current.trimmingCharacters(in: CharacterSet(charactersIn: "vV")).split(separator: ".").map { Int($0) ?? 0 }
@@ -567,6 +634,7 @@ final class AppModel {
         return false
     }
 
+    /// 从 Core 重新拉取所有全量状态，并尽可能维持各业务分区的选中项
     private func reload() async throws {
         let previousSkillID = selectedSkillID
         let previousPromptID = selectedPromptID

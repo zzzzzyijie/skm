@@ -1,5 +1,8 @@
 import SwiftUI
 
+/// AgentsSettingsView - Agent 管理设置页面
+/// 控制允许 SKM 部署 Skills 的 AI 客户端（如 Claude Desktop、Codex、Cursor、Windsurf 等），
+/// 并支持添加、编辑与删除指向特定目录的自定义 Agent 适配器。
 struct AgentsSettingsView: View {
     @Bindable var model: AppModel
     @State private var showsEditor = false

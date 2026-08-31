@@ -1,21 +1,34 @@
 import Foundation
 
+/// SKM Core 客户端通信协议
+/// 抽象了与底层 Go 核心服务（skm-core 进程）的交互接口
 protocol CoreServing: Sendable {
+    /// 与 Core 建立初始握手，协商协议版本与应用能力
     func handshake() async throws -> Handshake
+    /// 调用 Core 暴露的 JSON-RPC 2.0 方法
     func call<Params: Encodable & Sendable, Result: Decodable & Sendable>(
         _ method: String,
         params: Params
     ) async throws -> Result
+    /// 停止与 Core 进程的连接并回收资源
     func stop() async
 }
 
+/// Core 客户端错误分类
 enum CoreClientError: LocalizedError, Sendable {
+    /// 找不到 skm-core 可执行文件
     case executableMissing
+    /// Core 进程异常退出或管道断开
     case processStopped(String)
+    /// 接收到无法解析的非 JSON-RPC 响应数据
     case malformedResponse
+    /// 请求在设定时间内未得到 Core 响应
     case requestTimedOut
+    /// 协议版本不匹配（App 与 Core 协议代数不一致）
     case protocolMismatch(Int)
+    /// App 与 Core 发布版本不一致
     case versionMismatch(app: String, core: String)
+    /// Core 业务端返回的 RPC 错误（包含业务 code、错误类型及是否支持重试）
     case remote(code: Int, message: String, kind: String, retryable: Bool)
 
     var errorDescription: String? {
@@ -90,6 +103,9 @@ private struct RPCEnvelope<Result: Decodable>: Decodable {
     let error: RPCErrorEnvelope?
 }
 
+/// CoreClient Actor
+/// 负责管理 `skm-core --stdio` 进程生命周期并通过标准输入输出（stdin/stdout）进行 JSON-RPC 2.0 通信。
+/// 通过 CoreCallGate 确保请求的单飞互斥，并为幂等只读方法提供进程崩溃自动拉起与重试机制。
 actor CoreClient: CoreServing {
     private let executableOverride: URL?
     private let requestTimeout: Duration
@@ -106,6 +122,8 @@ actor CoreClient: CoreServing {
         self.requestTimeout = requestTimeout
     }
 
+    /// 启动 Go Core 子进程（若尚未启动）
+    /// 优先级顺序查找可执行文件：初始化指定 > 环境变量 SKM_CORE_EXECUTABLE > App Bundle 内置 skm-core
     func start() throws {
         guard process == nil else { return }
         let executable: URL
@@ -135,6 +153,7 @@ actor CoreClient: CoreServing {
         errorOutput = standardError.fileHandleForReading
     }
 
+    /// 执行握手检测：校验协议版本是否匹配，并在正式版本下比对 App 与 Core 版本号
     func handshake() async throws -> Handshake {
         let appVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev"
         let value: Handshake = try await call(
@@ -150,6 +169,8 @@ actor CoreClient: CoreServing {
         return value
     }
 
+    /// 发起 RPC 调用
+    /// 包含请求网关排队调度与只读幂等调用的自动重启重试保护
     func call<Params: Encodable & Sendable, Result: Decodable & Sendable>(
         _ method: String,
         params: Params
@@ -160,6 +181,7 @@ actor CoreClient: CoreServing {
 			do {
 				value = try await send(method, params: params)
 			} catch let error as CoreClientError where Self.isSafeToRetry(method) && error.isProcessStopped {
+				// 若 Core 意外停止且该方法为幂等只读，则重启进程后重试一次
 				stopProcess()
 				value = try await send(method, params: params)
 			}
@@ -171,6 +193,7 @@ actor CoreClient: CoreServing {
         }
     }
 
+    /// 判断指定 RPC 方法是否属于无副作用的只读/查询操作，可在进程崩溃时安全重试
     static func isSafeToRetry(_ method: String) -> Bool {
         switch method {
         case "system.handshake", "system.doctor",
@@ -184,6 +207,7 @@ actor CoreClient: CoreServing {
         }
     }
 
+    /// 底层发送 JSON-RPC 请求，通过 stdin 写入并等待 stdout 的单行响应
     private func send<Params: Encodable, Result: Decodable>(_ method: String, params: Params) async throws -> Result {
         try start()
         requestNumber += 1
@@ -280,6 +304,8 @@ actor CoreClient: CoreServing {
     }
 }
 
+/// 异步请求网关锁
+/// 保证所有发送到 stdin/stdout 的 JSON-RPC 请求按序排队执行，防止多线程并发读写破坏单行协议帧
 private actor CoreCallGate {
     private var locked = false
     private var waiters: [CheckedContinuation<Void, Never>] = []
@@ -312,6 +338,8 @@ private extension CoreClientError {
     }
 }
 
+/// 异步文件句柄读取器
+/// 包装 FileHandle.readabilityHandler，提供支持超时的异步单次数据块读取
 private final class AsyncFileRead: @unchecked Sendable {
     private let lock = NSLock()
     private var continuation: CheckedContinuation<Data, any Error>?

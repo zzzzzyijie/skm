@@ -1,6 +1,9 @@
 import AppKit
 import SwiftUI
 
+/// SkillsListView - 技能列表视图
+/// 支持基于名称/描述/标签的本地化模糊搜索、TagFilterBar 标签筛选与项数统计、
+/// 空数据向导以及无障碍屏幕阅读适配。
 struct SkillsListView: View {
     @Bindable var model: AppModel
     @State private var search = ""
@@ -128,6 +131,7 @@ struct SkillsListView: View {
         )
     }
 
+    /// 标签过滤切换时重新对齐选中项，防止选中的条目被过滤掉后造成空选
     private func reconcileSelection() {
         guard let selectedSkillID = model.selectedSkillID,
               !filtered.contains(where: { $0.id == selectedSkillID }) else { return }
@@ -135,6 +139,9 @@ struct SkillsListView: View {
     }
 }
 
+/// SkillDetailView - 技能详情视图
+/// 包含“概览”、“SKILL.md 源码”、“Agent 部署矩阵”三段内容，
+/// 提供 QuickLook 快捷预览、修改历史查看（HistorySheet）、在线编辑（SkillEditorSheet）与删除安全确认。
 struct SkillDetailView: View {
     @Bindable var model: AppModel
     @State private var details: SkillDetails?
@@ -284,6 +291,10 @@ struct SkillDetailView: View {
     }
 }
 
+/// AddSkillSheet - 添加/导入 Skill 弹窗
+/// 支持两类导入模式：
+/// 1. 本地导入：选取本地目录或 ZIP 压缩包，校验结构后写入 SKM 不可变对象存储；
+/// 2. Git/命令行导入：支持输入 Git URL、GitHub 简写或 npx skills add 命令，直接调用系统的 Git/SSH 认证链。
 struct AddSkillSheet: View {
     @Environment(\.dismiss) private var dismiss
     let model: AppModel
@@ -347,6 +358,10 @@ struct AddSkillSheet: View {
     }
 }
 
+/// SkillEditorSheet - 在线编辑 Skill 弹窗
+/// 包含 Markdown 源码编辑器与标签输入。
+/// 内置乐观并发控制：保存时向 Core 发送 baseHash，当检测到底层文件在编辑期间被 CLI 修改时，
+/// 呈现左右分栏冲突对比（ConflictPreview），允许用户选择“保留草稿覆盖”或“采用磁盘版本”。
 struct SkillEditorSheet: View {
     @Environment(\.dismiss) private var dismiss
     let model: AppModel

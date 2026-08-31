@@ -1,6 +1,9 @@
 import AppKit
 import SwiftUI
 
+/// ProjectsListView - 项目列表视图
+/// 管理在本机登记的开发项目仓库，实时展示各项目的 Skill 总数与部署生效数，
+/// 支持右键在 Finder 中快速定位或安全注销项目登记。
 struct ProjectsListView: View {
     @Bindable var model: AppModel
     @State private var showsAddProject = false
@@ -70,6 +73,8 @@ struct ProjectsListView: View {
     }
 }
 
+/// AddProjectSheet - 登记本机开发项目弹窗
+/// 选取本地文件夹目录并登记，SKM 仅记录路径信息，不会主动修改任何现有代码文件。
 struct AddProjectSheet: View {
     @Environment(\.dismiss) private var dismiss
     let model: AppModel
@@ -121,6 +126,8 @@ struct AddProjectSheet: View {
     }
 }
 
+/// ProjectDetailView - 项目技能详情与部署管理视图
+/// 包含项目全局扫描概览、Skill 部署（Symlink / Copy / Require / Vendor）、解绑、迁移与清单锁定管理。
 struct ProjectDetailView: View {
     @Bindable var model: AppModel
     @State private var selectedLibrarySkill = ""

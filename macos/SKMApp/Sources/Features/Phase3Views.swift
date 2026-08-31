@@ -1,6 +1,8 @@
 import AppKit
 import SwiftUI
 
+/// PromptVariableDraft - 提示词变量草稿模型
+/// 用于在 SwiftUI 表单中安全编辑 PromptVariable，负责将类型字符串、默认值、必填标记及以逗号分隔的 options 进行双向映射。
 struct PromptVariableDraft: Identifiable, Hashable {
     let id: UUID
     var name: String
@@ -63,6 +65,7 @@ private extension String {
     }
 }
 
+/// 提示词单个变量编辑表单行组件
 struct PromptVariableEditor: View {
     @Binding var variable: PromptVariableDraft
     let remove: () -> Void
@@ -100,6 +103,8 @@ struct PromptVariableEditor: View {
     }
 }
 
+/// PromptRenderSheet - 提示词变量填充与动态渲染测试弹窗
+/// 允许用户在应用内输入实际参数并即时测试渲染结果；secret 变量在内存中加密处理，不落盘。
 struct PromptRenderSheet: View {
     @Environment(\.dismiss) private var dismiss
     let model: AppModel
@@ -227,6 +232,9 @@ struct PromptRenderSheet: View {
     }
 }
 
+/// HistorySheet - 历史版本快照列表与 Diff 对比回滚弹窗
+/// 支持查看 Skill 或 Prompt 的修改时间线（编辑前快照与回滚前快照），
+/// 点击历史条目实时请求 Core 计算 Diff 差异并展示，支持一键恢复到指定版本。
 struct HistorySheet: View {
     @Environment(\.dismiss) private var dismiss
     let model: AppModel

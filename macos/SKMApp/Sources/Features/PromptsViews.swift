@@ -1,6 +1,8 @@
 import AppKit
 import SwiftUI
 
+/// PromptsListView - 提示词列表视图
+/// 展示所有已创建/导入的 Prompt 模板，支持标签过滤、搜索、导入外部 Markdown 及新建提示词。
 struct PromptsListView: View {
     @Bindable var model: AppModel
     @State private var search = ""
@@ -139,6 +141,9 @@ struct PromptsListView: View {
     }
 }
 
+/// PromptDetailView - 提示词详情视图
+/// 展示提示词变量列表与 Markdown 正文，提供“填写变量并渲染”（PromptRenderSheet）、
+/// QuickLook 预览、版本历史快照比对、一键复制与导出 .md 文件。
 struct PromptDetailView: View {
     @Bindable var model: AppModel
     @State private var details: PromptDetails?
@@ -250,6 +255,9 @@ struct PromptDetailView: View {
     }
 }
 
+/// PromptEditorSheet - 提示词创建与编辑弹窗
+/// 支持配置 Prompt 名称、描述、标签、正文模板以及动态参数变量（PromptVariableDraft）。
+/// 具备 baseHash 乐观锁并发冲突处理，若检测到冲突可选择“使用磁盘版本”、“另存为新副本”或“保留草稿覆盖”。
 struct PromptEditorSheet: View {
     @Environment(\.dismiss) private var dismiss
     let model: AppModel

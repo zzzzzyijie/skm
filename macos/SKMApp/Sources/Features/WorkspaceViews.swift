@@ -1,5 +1,6 @@
 import SwiftUI
 
+/// 个人 Git 工作区侧栏概览
 struct WorkspaceSidebarView: View {
     let model: AppModel
 
@@ -13,6 +14,12 @@ struct WorkspaceSidebarView: View {
     }
 }
 
+/// WorkspaceDetailView - 个人 Git 工作区配置与双向同步视图
+/// 允许用户绑定私有 Git 仓库，同步本机的 Skills、Prompts 与配置。
+/// 同步流程严格遵循“两阶段确认”：
+/// 1. 生成同步预览：计算上传、下载、删除与双端冲突列表；
+/// 2. 交互式决议：用户针对每个冲突项选择“保留本地”或“使用远端”；
+/// 3. 执行同步：提交变更并拉取合并。
 struct WorkspaceDetailView: View {
     @Bindable var model: AppModel
     @State private var url = ""

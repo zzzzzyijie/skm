@@ -1,5 +1,8 @@
 import SwiftUI
 
+/// SourcesSettingsView - 技能来源管理设置页面
+/// 支持查看已添加的 Git 源仓库列表、分支与提交 Revision，
+/// 提供单源单独更新、批量“更新所有来源”以及安全移除功能。
 struct SourcesSettingsView: View {
     @Bindable var model: AppModel
     @State private var showsAddSource = false
