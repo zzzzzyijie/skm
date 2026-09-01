@@ -117,13 +117,12 @@ struct SkillsListView: View {
 
 /// SkillDetailView - 技能详情视图
 /// 包含“概览”、“SKILL.md 源码”、“Agent 部署矩阵”三段内容，
-/// 提供 QuickLook 快捷预览、修改历史查看（HistorySheet）、在线编辑（SkillEditorSheet）与删除安全确认。
+/// 提供 QuickLook 快捷预览、在线编辑（SkillEditorSheet，内含历史版本回滚）与删除安全确认。
 struct SkillDetailView: View {
     @Bindable var model: AppModel
     @State private var details: SkillDetails?
     @State private var tab = 0
     @State private var showsEditor = false
-    @State private var showsHistory = false
     @State private var confirmsDelete = false
 
     var body: some View {
@@ -151,7 +150,6 @@ struct SkillDetailView: View {
                 .toolbar {
                     ToolbarItemGroup(placement: .primaryAction) {
                         Button("快速查看", systemImage: "eye") { Task { await showQuickLook() } }
-                        Button("历史", systemImage: "clock.arrow.circlepath") { showsHistory = true }
                         Button("编辑", systemImage: "pencil") { showsEditor = true }
                             .disabled(details?.editable != true)
                         Button("删除", systemImage: "trash", role: .destructive) { confirmsDelete = true }
@@ -159,9 +157,6 @@ struct SkillDetailView: View {
                 }
                 .sheet(isPresented: $showsEditor, onDismiss: { Task { await loadDetails(id) } }) {
                     if let details { SkillEditorSheet(model: model, details: details) }
-                }
-                .sheet(isPresented: $showsHistory, onDismiss: { Task { await loadDetails(id) } }) {
-                    HistorySheet(model: model, kind: "skill", itemID: id, title: summary.name)
                 }
                 .confirmationDialog("移除 \(summary.name)？", isPresented: $confirmsDelete) {
                     Button("移除 Skill", role: .destructive) { Task { await model.removeSkill(id: id) } }
@@ -270,14 +265,23 @@ struct SkillDetailView: View {
 /// AddSkillSheet - 添加/导入 Skill 弹窗
 /// 支持两类导入模式：
 /// 1. 本地导入：选取本地目录或 ZIP 压缩包，校验结构后写入 SKM 不可变对象存储；
-/// 2. Git/命令行导入：支持输入 Git URL、GitHub 简写或 npx skills add 命令，直接调用系统的 Git/SSH 认证链。
+/// 2. Git/命令行两步式导入向导：
+///    - 第一步：输入 Git URL、GitHub 简写或 npx skills add 命令；
+///    - 第二步：调用 Core sources.preview 扫描仓库候选技能，展示合法性与冲突提示，由用户勾选所需技能后批量导入。
 struct AddSkillSheet: View {
     @Environment(\.dismiss) private var dismiss
     let model: AppModel
     @State private var mode = 0
     @State private var path = ""
     @State private var remote = ""
+    @State private var sourceName = ""
     @State private var tags = ""
+
+    // Git 两步向导状态
+    @State private var wizardStep = 0
+    @State private var isScanning = false
+    @State private var previewResult: SourcePreviewResult?
+    @State private var selectedPaths: Set<String> = []
 
     init(model: AppModel, initialMode: Int = 0) {
         self.model = model
@@ -285,43 +289,195 @@ struct AddSkillSheet: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            Text("添加 Skill").font(.title2.bold())
-            Picker("来源", selection: $mode) {
-                Text("本地").tag(0)
-                Text("Git / 命令").tag(1)
-            }
-            .pickerStyle(.segmented)
+        VStack(alignment: .leading, spacing: 16) {
+            headerView
+
             if mode == 0 {
-                HStack {
-                    TextField("Skill 目录或 ZIP", text: $path)
-                    Button("选择…") { chooseLocalSkill() }
-                }
-                TextField("标签，以逗号分隔（可选）", text: $tags)
-                Text("本地内容会被验证并写入 SKM 的不可变对象库。")
-                    .font(.caption).foregroundStyle(.secondary)
+                localImportView
             } else {
-                TextField("Git URL、owner/repo 或 npx skills add …", text: $remote)
-                Text("凭据由系统 Git、SSH Agent 或 Credential Helper 管理，SKM 不保存 Token。")
-                    .font(.caption).foregroundStyle(.secondary)
+                if wizardStep == 0 {
+                    gitInputStepView
+                } else {
+                    gitPreviewStepView
+                }
             }
+        }
+        .padding(24)
+        .frame(
+            minWidth: mode == 1 && wizardStep == 1 ? 660 : 560,
+            minHeight: mode == 1 && wizardStep == 1 ? 480 : 300
+        )
+    }
+
+    private var headerView: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text(mode == 1 && wizardStep == 1 ? String(localized: "选择要导入的 Skill") : String(localized: "添加 Skill"))
+                    .font(.title2.bold())
+                Spacer()
+                if mode == 1 {
+                    Text(wizardStep == 0 ? "1/2 步：输入来源" : "2/2 步：勾选技能")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(.quaternary, in: Capsule())
+                }
+            }
+
+            if wizardStep == 0 {
+                Picker("来源", selection: $mode) {
+                    Text("本地").tag(0)
+                    Text("Git / 命令").tag(1)
+                }
+                .pickerStyle(.segmented)
+            }
+        }
+    }
+
+    private var localImportView: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                TextField("Skill 目录或 ZIP", text: $path)
+                Button("选择…") { chooseLocalSkill() }
+            }
+            TextField("标签，以逗号分隔（可选）", text: $tags)
+            Text("本地内容会被验证并写入 SKM 的不可变对象库。")
+                .font(.caption).foregroundStyle(.secondary)
+
             Spacer()
+
             HStack {
                 Spacer()
                 Button("取消", role: .cancel) { dismiss() }
                 Button("导入") {
                     Task {
-                        if mode == 0 { await model.addLocalSkill(path: path, tags: parseTags(tags)) }
-                        else { await model.addRemoteSkill(input: remote) }
+                        await model.addLocalSkill(path: path, tags: parseTags(tags))
                         if model.errorMessage == nil { dismiss() }
                     }
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(mode == 0 ? path.trimmingCharacters(in: .whitespaces).isEmpty : remote.trimmingCharacters(in: .whitespaces).isEmpty)
+                .disabled(path.trimmingCharacters(in: .whitespaces).isEmpty)
             }
         }
-        .padding(24)
-        .frame(width: 560, height: 300)
+    }
+
+    private var gitInputStepView: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            TextField("Git URL、owner/repo 或 npx skills add …", text: $remote)
+            TextField("来源名称（可选，留空自动提取）", text: $sourceName)
+            TextField("标签，以逗号分隔（可选）", text: $tags)
+            Text("凭据由系统 Git、SSH Agent 或 Credential Helper 管理，SKM 不保存 Token。")
+                .font(.caption).foregroundStyle(.secondary)
+
+            Spacer()
+
+            HStack {
+                Spacer()
+                Button("取消", role: .cancel) { dismiss() }
+                Button {
+                    Task { await startPreview() }
+                } label: {
+                    HStack(spacing: 6) {
+                        if isScanning {
+                            ProgressView().controlSize(.small)
+                            Text("正在扫描…")
+                        } else {
+                            Text("下一步：扫描技能")
+                            Image(systemName: "arrow.right")
+                        }
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(remote.trimmingCharacters(in: .whitespaces).isEmpty || isScanning)
+            }
+        }
+    }
+
+    private var gitPreviewStepView: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if let preview = previewResult {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(preview.source.name).fontWeight(.semibold)
+                        Text(preview.source.url)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                    Spacer()
+                    if let rev = preview.source.revision {
+                        Text(String(rev.prefix(8)))
+                            .font(.caption.monospaced())
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(.quaternary, in: RoundedRectangle(cornerRadius: 4))
+                    }
+                }
+                .padding(10)
+                .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 8))
+
+                HStack {
+                    let validCandidates = preview.skills.filter(\.valid)
+                    Text(String(format: String(localized: "已选择 %lld / %lld 个可用技能"), locale: .current, selectedPaths.count, validCandidates.count))
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button("全选") {
+                        selectedPaths = Set(validCandidates.map(\.path))
+                    }
+                    .buttonStyle(.link)
+                    .disabled(selectedPaths.count == validCandidates.count)
+
+                    Text("·").foregroundStyle(.secondary)
+
+                    Button("取消全选") {
+                        selectedPaths.removeAll()
+                    }
+                    .buttonStyle(.link)
+                    .disabled(selectedPaths.isEmpty)
+                }
+
+                ScrollView {
+                    LazyVStack(spacing: 8) {
+                        ForEach(preview.skills) { candidate in
+                            SkillCandidateRow(
+                                candidate: candidate,
+                                isSelected: selectedPaths.contains(candidate.path),
+                                onToggle: {
+                                    if selectedPaths.contains(candidate.path) {
+                                        selectedPaths.remove(candidate.path)
+                                    } else {
+                                        selectedPaths.insert(candidate.path)
+                                    }
+                                }
+                            )
+                        }
+                    }
+                    .padding(.vertical, 2)
+                }
+                .frame(maxHeight: 260)
+            }
+
+            Spacer()
+
+            HStack {
+                Button("上一步", systemImage: "arrow.left") {
+                    wizardStep = 0
+                }
+                .disabled(model.isLoading)
+
+                Spacer()
+
+                Button("取消", role: .cancel) { dismiss() }
+                Button(String(format: String(localized: "导入所选技能 (%lld)"), locale: .current, selectedPaths.count)) {
+                    Task { await confirmImport() }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(selectedPaths.isEmpty || model.isLoading)
+            }
+        }
     }
 
     private func chooseLocalSkill() {
@@ -332,10 +488,109 @@ struct AddSkillSheet: View {
         panel.allowedContentTypes = [.zip]
         if panel.runModal() == .OK { path = panel.url?.path ?? path }
     }
+
+    private func startPreview() async {
+        isScanning = true
+        defer { isScanning = false }
+        do {
+            let result = try await model.previewSource(
+                input: remote,
+                name: sourceName.trimmingCharacters(in: .whitespaces).isEmpty ? nil : sourceName
+            )
+            previewResult = result
+            // 默认勾选所有有效技能；如果有 requestedSkills 则按 requestedSkills 过滤
+            let valid = result.skills.filter(\.valid)
+            if let requested = result.requestedSkills, !requested.isEmpty {
+                let requestedSet = Set(requested)
+                selectedPaths = Set(valid.filter { requestedSet.contains($0.name) || requestedSet.contains($0.path) }.map(\.path))
+                if selectedPaths.isEmpty {
+                    selectedPaths = Set(valid.map(\.path))
+                }
+            } else {
+                selectedPaths = Set(valid.map(\.path))
+            }
+            wizardStep = 1
+        } catch {
+            model.errorMessage = error.localizedDescription
+        }
+    }
+
+    private func confirmImport() async {
+        guard let preview = previewResult else { return }
+        let success = await model.addRemoteSkill(
+            input: preview.source.url,
+            name: preview.source.name,
+            ref: preview.source.ref,
+            paths: Array(selectedPaths),
+            tags: parseTags(tags)
+        )
+        if success {
+            dismiss()
+        }
+    }
+}
+
+/// SkillCandidateRow - 候选技能列表项
+private struct SkillCandidateRow: View {
+    let candidate: SkillCandidate
+    let isSelected: Bool
+    let onToggle: () -> Void
+
+    var body: some View {
+        Button(action: {
+            if candidate.valid { onToggle() }
+        }) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: candidate.valid ? (isSelected ? "checkmark.square.fill" : "square") : "xmark.square")
+                    .font(.title3)
+                    .foregroundStyle(candidate.valid ? (isSelected ? Color.accentColor : Color.secondary) : Color.secondary.opacity(0.4))
+                    .frame(width: 20)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 8) {
+                        Text(candidate.name)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(candidate.valid ? Color.primary : Color.secondary)
+                        if !candidate.path.isEmpty && candidate.path != candidate.name {
+                            Text(candidate.path)
+                                .font(.caption.monospaced())
+                                .foregroundStyle(Color.secondary)
+                        }
+                    }
+
+                    if let desc = candidate.description, !desc.isEmpty {
+                        Text(desc)
+                            .font(.caption)
+                            .foregroundStyle(Color.secondary)
+                            .lineLimit(2)
+                    }
+
+                    if !candidate.valid, let error = candidate.error {
+                        Label(error, systemImage: "exclamationmark.triangle.fill")
+                            .font(.caption2)
+                            .foregroundStyle(Color.orange)
+                    }
+                }
+
+                Spacer()
+            }
+            .padding(10)
+            .background(
+                isSelected ? Color.accentColor.opacity(0.08) : Color.primary.opacity(0.04),
+                in: RoundedRectangle(cornerRadius: 8)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(isSelected ? Color.accentColor.opacity(0.35) : Color.clear, lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+        .disabled(!candidate.valid)
+    }
 }
 
 /// SkillEditorSheet - 在线编辑 Skill 弹窗
-/// 包含 Markdown 源码编辑器与标签输入。
+/// 包含 Markdown 源码编辑器、标签输入与历史版本快照回滚入口。
 /// 内置乐观并发控制：保存时向 Core 发送 baseHash，当检测到底层文件在编辑期间被 CLI 修改时，
 /// 呈现左右分栏冲突对比（ConflictPreview），允许用户选择“保留草稿覆盖”或“采用磁盘版本”。
 struct SkillEditorSheet: View {
@@ -346,6 +601,7 @@ struct SkillEditorSheet: View {
     @State private var tags: String
     @State private var baseHash: String
     @State private var latest: SkillDetails?
+    @State private var showsHistory = false
 
     init(model: AppModel, details: SkillDetails) {
         self.model = model
@@ -391,9 +647,15 @@ struct SkillEditorSheet: View {
                 }
             }
             HStack {
-                Text("保存时会校验 baseHash，防止覆盖来自 CLI 的并发修改。")
-                    .font(.caption).foregroundStyle(.secondary)
+                Button("历史版本…", systemImage: "clock.arrow.circlepath") {
+                    showsHistory = true
+                }
+                .help("查看修改历史快照、Diff 与回滚")
+
                 Spacer()
+
+                Text("保存时校验 baseHash 防止并发冲突。")
+                    .font(.caption).foregroundStyle(.secondary)
                 Button("取消", role: .cancel) { dismiss() }
                 Button("保存") {
                     Task { await save() }
@@ -403,6 +665,9 @@ struct SkillEditorSheet: View {
         }
         .padding(24)
         .frame(minWidth: 720, minHeight: 560)
+        .sheet(isPresented: $showsHistory, onDismiss: { Task { await reloadDetails() } }) {
+            HistorySheet(model: model, kind: "skill", itemID: details.id, title: details.name)
+        }
     }
 
     private func save() async {
@@ -412,6 +677,18 @@ struct SkillEditorSheet: View {
         } else if model.lastErrorKind == "conflict" {
             do { latest = try await model.skillDetails(details.id) }
             catch { model.errorMessage = error.localizedDescription }
+        }
+    }
+
+    private func reloadDetails() async {
+        do {
+            let refreshed = try await model.skillDetails(details.id)
+            content = refreshed.content
+            tags = refreshed.tags.joined(separator: ", ")
+            baseHash = refreshed.hash
+            latest = nil
+        } catch {
+            model.errorMessage = error.localizedDescription
         }
     }
 }

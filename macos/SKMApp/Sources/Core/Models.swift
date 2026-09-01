@@ -418,6 +418,23 @@ struct MutationSkill: Codable, Identifiable, Sendable {
     let name: String
 }
 
+/// Git 仓库中扫描到的候选 Skill
+struct SkillCandidate: Codable, Identifiable, Hashable, Sendable {
+    var id: String { path.isEmpty ? name : path }
+    let name: String
+    let description: String?
+    let path: String
+    let valid: Bool
+    let error: String?
+}
+
+/// 来源预览结果（包含仓库元数据、请求的技能列表以及扫描到的所有候选技能）
+struct SourcePreviewResult: Codable, Sendable {
+    let source: SourceModel
+    let requestedSkills: [String]?
+    let skills: [SkillCandidate]
+}
+
 /// 添加 Git 来源的响应
 struct AddSourceResponse: Codable, Sendable {
     let source: SourceModel

@@ -12,6 +12,9 @@
         }
       }
     },
+    "·" : {
+
+    },
     "{{%@}}" : {
 
     },
@@ -499,6 +502,9 @@
         }
       }
     },
+    "下一步：扫描技能" : {
+
+    },
     "下载 %lld" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -640,6 +646,7 @@
       }
     },
     "保存时会校验 baseHash，防止覆盖来自 CLI 的并发修改。" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -648,6 +655,9 @@
           }
         }
       }
+    },
+    "保存时校验 baseHash 防止并发冲突。" : {
+
     },
     "保留本地" : {
       "localizations" : {
@@ -2056,6 +2066,9 @@
         }
       }
     },
+    "正在扫描…" : {
+
+    },
     "正在读取…" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -2144,6 +2157,7 @@
       }
     },
     "添加 Git Source" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2164,6 +2178,7 @@
       }
     },
     "添加 Skill" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {

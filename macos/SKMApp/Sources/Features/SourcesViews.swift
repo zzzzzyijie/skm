@@ -271,28 +271,259 @@ struct AddSourceSheet: View {
     @Environment(\.dismiss) private var dismiss
     let model: AppModel
     @State private var input = ""
+    @State private var sourceName = ""
+    @State private var tags = ""
+
+    // 两步向导状态
+    @State private var wizardStep = 0
+    @State private var isScanning = false
+    @State private var previewResult: SourcePreviewResult?
+    @State private var selectedPaths: Set<String> = []
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            Text("添加 Git Source").font(.title2.bold())
-            TextField("Git URL、owner/repo 或 npx skills add …", text: $input)
-            Text("SKM 不保存密码或 Token；SSH Agent 与 Git Credential Helper 的行为和终端一致。")
-                .font(.caption).foregroundStyle(.secondary)
-            Spacer()
-            HStack {
-                Spacer()
-                Button("取消", role: .cancel) { dismiss() }
-                Button("添加并导入") {
-                    Task {
-                        await model.addSource(input: input)
-                        if model.errorMessage == nil { dismiss() }
-                    }
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        VStack(alignment: .leading, spacing: 16) {
+            headerView
+
+            if wizardStep == 0 {
+                inputStepView
+            } else {
+                previewStepView
             }
         }
         .padding(24)
-        .frame(width: 560, height: 260)
+        .frame(
+            minWidth: wizardStep == 1 ? 660 : 560,
+            minHeight: wizardStep == 1 ? 480 : 280
+        )
+    }
+
+    private var headerView: some View {
+        HStack {
+            Text(wizardStep == 0 ? String(localized: "添加 Git Source") : String(localized: "选择要导入的 Skill"))
+                .font(.title2.bold())
+            Spacer()
+            Text(wizardStep == 0 ? "1/2 步：输入仓库" : "2/2 步：勾选技能")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(.quaternary, in: Capsule())
+        }
+    }
+
+    private var inputStepView: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            TextField("Git URL、owner/repo 或 npx skills add …", text: $input)
+            TextField("来源名称（可选，留空自动提取）", text: $sourceName)
+            TextField("标签，以逗号分隔（可选）", text: $tags)
+            Text("SKM 不保存密码或 Token；SSH Agent 与 Git Credential Helper 的行为和终端一致。")
+                .font(.caption).foregroundStyle(.secondary)
+
+            Spacer()
+
+            HStack {
+                Spacer()
+                Button("取消", role: .cancel) { dismiss() }
+                Button {
+                    Task { await startPreview() }
+                } label: {
+                    HStack(spacing: 6) {
+                        if isScanning {
+                            ProgressView().controlSize(.small)
+                            Text("正在扫描…")
+                        } else {
+                            Text("下一步：扫描技能")
+                            Image(systemName: "arrow.right")
+                        }
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isScanning)
+            }
+        }
+    }
+
+    private var previewStepView: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if let preview = previewResult {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(preview.source.name).fontWeight(.semibold)
+                        Text(preview.source.url)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                    Spacer()
+                    if let rev = preview.source.revision {
+                        Text(String(rev.prefix(8)))
+                            .font(.caption.monospaced())
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(.quaternary, in: RoundedRectangle(cornerRadius: 4))
+                    }
+                }
+                .padding(10)
+                .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 8))
+
+                HStack {
+                    let validCandidates = preview.skills.filter(\.valid)
+                    Text(String(format: String(localized: "已选择 %lld / %lld 个可用技能"), locale: .current, selectedPaths.count, validCandidates.count))
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button("全选") {
+                        selectedPaths = Set(validCandidates.map(\.path))
+                    }
+                    .buttonStyle(.link)
+                    .disabled(selectedPaths.count == validCandidates.count)
+
+                    Text("·").foregroundStyle(.secondary)
+
+                    Button("取消全选") {
+                        selectedPaths.removeAll()
+                    }
+                    .buttonStyle(.link)
+                    .disabled(selectedPaths.isEmpty)
+                }
+
+                ScrollView {
+                    LazyVStack(spacing: 8) {
+                        ForEach(preview.skills) { candidate in
+                            SourceSkillCandidateRow(
+                                candidate: candidate,
+                                isSelected: selectedPaths.contains(candidate.path),
+                                onToggle: {
+                                    if selectedPaths.contains(candidate.path) {
+                                        selectedPaths.remove(candidate.path)
+                                    } else {
+                                        selectedPaths.insert(candidate.path)
+                                    }
+                                }
+                            )
+                        }
+                    }
+                    .padding(.vertical, 2)
+                }
+                .frame(maxHeight: 260)
+            }
+
+            Spacer()
+
+            HStack {
+                Button("上一步", systemImage: "arrow.left") {
+                    wizardStep = 0
+                }
+                .disabled(model.isLoading)
+
+                Spacer()
+
+                Button("取消", role: .cancel) { dismiss() }
+                Button(String(format: String(localized: "添加并导入 (%lld)"), locale: .current, selectedPaths.count)) {
+                    Task { await confirmImport() }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(selectedPaths.isEmpty || model.isLoading)
+            }
+        }
+    }
+
+    private func startPreview() async {
+        isScanning = true
+        defer { isScanning = false }
+        do {
+            let result = try await model.previewSource(
+                input: input,
+                name: sourceName.trimmingCharacters(in: .whitespaces).isEmpty ? nil : sourceName
+            )
+            previewResult = result
+            let valid = result.skills.filter(\.valid)
+            if let requested = result.requestedSkills, !requested.isEmpty {
+                let requestedSet = Set(requested)
+                selectedPaths = Set(valid.filter { requestedSet.contains($0.name) || requestedSet.contains($0.path) }.map(\.path))
+                if selectedPaths.isEmpty {
+                    selectedPaths = Set(valid.map(\.path))
+                }
+            } else {
+                selectedPaths = Set(valid.map(\.path))
+            }
+            wizardStep = 1
+        } catch {
+            model.errorMessage = error.localizedDescription
+        }
+    }
+
+    private func confirmImport() async {
+        guard let preview = previewResult else { return }
+        let success = await model.addSource(
+            input: preview.source.url,
+            name: preview.source.name,
+            ref: preview.source.ref,
+            paths: Array(selectedPaths),
+            tags: parseTags(tags)
+        )
+        if success {
+            dismiss()
+        }
+    }
+}
+
+/// SourceSkillCandidateRow - Source 中的候选技能行
+private struct SourceSkillCandidateRow: View {
+    let candidate: SkillCandidate
+    let isSelected: Bool
+    let onToggle: () -> Void
+
+    var body: some View {
+        Button(action: {
+            if candidate.valid { onToggle() }
+        }) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: candidate.valid ? (isSelected ? "checkmark.square.fill" : "square") : "xmark.square")
+                    .font(.title3)
+                    .foregroundStyle(candidate.valid ? (isSelected ? Color.accentColor : Color.secondary) : Color.secondary.opacity(0.4))
+                    .frame(width: 20)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 8) {
+                        Text(candidate.name)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(candidate.valid ? Color.primary : Color.secondary)
+                        if !candidate.path.isEmpty && candidate.path != candidate.name {
+                            Text(candidate.path)
+                                .font(.caption.monospaced())
+                                .foregroundStyle(Color.secondary)
+                        }
+                    }
+
+                    if let desc = candidate.description, !desc.isEmpty {
+                        Text(desc)
+                            .font(.caption)
+                            .foregroundStyle(Color.secondary)
+                            .lineLimit(2)
+                    }
+
+                    if !candidate.valid, let error = candidate.error {
+                        Label(error, systemImage: "exclamationmark.triangle.fill")
+                            .font(.caption2)
+                            .foregroundStyle(Color.orange)
+                    }
+                }
+
+                Spacer()
+            }
+            .padding(10)
+            .background(
+                isSelected ? Color.accentColor.opacity(0.08) : Color.primary.opacity(0.04),
+                in: RoundedRectangle(cornerRadius: 8)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(isSelected ? Color.accentColor.opacity(0.35) : Color.clear, lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+        .disabled(!candidate.valid)
     }
 }

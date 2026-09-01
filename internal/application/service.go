@@ -112,6 +112,9 @@ func (s *Service) Invoke(ctx context.Context, method string, params json.RawMess
 		return decoded(params, &input, func() (any, error) { return result(s.RollbackHistory(input)) })
 	case "sources.list":
 		return result(s.ListSources())
+	case "sources.preview":
+		var input AddSourceInput
+		return decoded(params, &input, func() (any, error) { return result(s.PreviewSource(input)) })
 	case "sources.add":
 		var input AddSourceInput
 		return decoded(params, &input, func() (any, error) { return result(s.AddSource(input)) })

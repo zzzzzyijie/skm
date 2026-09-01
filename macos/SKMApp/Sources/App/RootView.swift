@@ -48,15 +48,6 @@ struct RootView: View {
             detail
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button("刷新", systemImage: "arrow.clockwise") {
-                    Task { await model.refresh() }
-                }
-                .disabled(model.isLoading)
-                .help("从 ~/.skm 重新载入")
-            }
-        }
     }
 
     /// Core 启动连接状态视图：加载中旋转菊花 或 启动失败诊断重试视图

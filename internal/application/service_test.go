@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -330,6 +331,64 @@ func TestPromptRenderAndSkillPromptHistoryRollback(t *testing.T) {
 	restoredSkill, err := service.GetSkill(skillValue.ID)
 	if err != nil || !strings.Contains(restoredSkill.Content, "History Skill") {
 		t.Fatalf("restored Skill = %+v, err=%v", restoredSkill, err)
+	}
+}
+
+func TestSourcesPreviewAndAddSelected(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git is not installed")
+	}
+	service, root := newTestService(t)
+	repoPath := filepath.Join(root, "fixture-repo")
+	if err := os.MkdirAll(repoPath, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	gitRun := func(args ...string) {
+		cmd := exec.Command("git", args...)
+		cmd.Dir = repoPath
+		cmd.Env = append(os.Environ(), "GIT_AUTHOR_NAME=test", "GIT_AUTHOR_EMAIL=test@example.com", "GIT_COMMITTER_NAME=test", "GIT_COMMITTER_EMAIL=test@example.com")
+		if output, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %s failed: %v\n%s", strings.Join(args, " "), err, output)
+		}
+	}
+	gitRun("init", "-b", "main")
+
+	skill1Path := filepath.Join(repoPath, "skills", "skill-one")
+	skill2Path := filepath.Join(repoPath, "skills", "skill-two")
+	if err := os.MkdirAll(skill1Path, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(skill2Path, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(skill1Path, "SKILL.md"), []byte("---\nname: skill-one\ndescription: Skill One\n---\nBody"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(skill2Path, "SKILL.md"), []byte("---\nname: skill-two\ndescription: Skill Two\n---\nBody"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	gitRun("add", ".")
+	gitRun("commit", "-m", "initial")
+
+	preview, err := service.PreviewSource(AddSourceInput{Input: repoPath, Name: "test-repo"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(preview.Skills) != 2 {
+		t.Fatalf("expected 2 candidates in preview, got %d", len(preview.Skills))
+	}
+
+	result, err := service.AddSource(AddSourceInput{
+		Input: repoPath,
+		Name:  "test-repo",
+		Paths: []string{"skills/skill-one"},
+		Tags:  []string{"selected"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Skills) != 1 || result.Skills[0].ID != "test-repo/skill-one" {
+		t.Fatalf("expected 1 imported skill test-repo/skill-one, got %+v", result.Skills)
 	}
 }
 

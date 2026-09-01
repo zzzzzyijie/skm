@@ -95,6 +95,50 @@ func (s *Service) ListSources() ([]domain.Source, error) {
 	return values.Sources, err
 }
 
+type SourcePreviewResult struct {
+	Source          domain.Source              `json:"source"`
+	RequestedSkills []string                   `json:"requestedSkills"`
+	Skills          []gitSource.SkillCandidate `json:"skills"`
+}
+
+func (s *Service) PreviewSource(input AddSourceInput) (SourcePreviewResult, error) {
+	rawInput := strings.TrimSpace(input.Input)
+	if rawInput == "" {
+		rawInput = strings.TrimSpace(input.URL)
+	}
+	parsed, err := gitSource.ParseInstallInput(rawInput)
+	if err != nil {
+		return SourcePreviewResult{}, err
+	}
+	name := strings.TrimSpace(input.Name)
+	if name == "" {
+		name = parsed.SuggestedName
+	}
+	value := domain.Source{
+		Name:  name,
+		URL:   parsed.URL,
+		Ref:   input.Ref,
+		Paths: input.Paths,
+		Tags:  input.Tags,
+	}
+	inspection, err := gitSource.NewGitManager(s.Store, catalog.New(s.Store)).Inspect(value)
+	if err != nil {
+		return SourcePreviewResult{}, err
+	}
+	value.Revision = inspection.Revision
+	if inspection.Skills == nil {
+		inspection.Skills = []gitSource.SkillCandidate{}
+	}
+	if parsed.RequestedSkills == nil {
+		parsed.RequestedSkills = []string{}
+	}
+	return SourcePreviewResult{
+		Source:          value,
+		RequestedSkills: parsed.RequestedSkills,
+		Skills:          inspection.Skills,
+	}, nil
+}
+
 func (s *Service) AddSource(input AddSourceInput) (AddSourceResult, error) {
 	rawInput := strings.TrimSpace(input.Input)
 	if rawInput == "" {

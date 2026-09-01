@@ -290,10 +290,26 @@ final class AppModel {
         }
     }
 
-    /// 从 Git 远程仓库导入 Skill/Source
-    func addRemoteSkill(input: String) async {
-        await mutate(success: String(localized: "Git Source 已导入")) {
-            let _: AddSourceResponse = try await self.core.call("sources.add", params: AddSourceParams(input: input, tags: []))
+    /// 预览 Git 仓库中的候选 Skill 列表与合法性状态
+    func previewSource(input: String, name: String? = nil, ref: String? = nil) async throws -> SourcePreviewResult {
+        let params = AddSourceParams(input: input, name: name, ref: ref, paths: nil, tags: [])
+        return try await core.call("sources.preview", params: params)
+    }
+
+    /// 从 Git 远程仓库导入选中的 Skills 并注册 Source
+    @discardableResult
+    func addRemoteSkill(
+        input: String,
+        name: String? = nil,
+        ref: String? = nil,
+        paths: [String]? = nil,
+        tags: [String] = []
+    ) async -> Bool {
+        await mutateResult(success: String(localized: "Skills 已从 Git 仓库导入")) {
+            let _: AddSourceResponse = try await self.core.call(
+                "sources.add",
+                params: AddSourceParams(input: input, name: name, ref: ref, paths: paths, tags: tags)
+            )
         }
     }
 
@@ -536,10 +552,20 @@ final class AppModel {
         }
     }
 
-    /// 添加 Git 技能源
-    func addSource(input: String) async {
-        await mutate(success: String(localized: "Git Source 已添加")) {
-            let _: AddSourceResponse = try await self.core.call("sources.add", params: AddSourceParams(input: input, tags: []))
+    /// 添加 Git 技能源并支持筛选路径与预设标签
+    @discardableResult
+    func addSource(
+        input: String,
+        name: String? = nil,
+        ref: String? = nil,
+        paths: [String]? = nil,
+        tags: [String] = []
+    ) async -> Bool {
+        await mutateResult(success: String(localized: "Git Source 已添加")) {
+            let _: AddSourceResponse = try await self.core.call(
+                "sources.add",
+                params: AddSourceParams(input: input, name: name, ref: ref, paths: paths, tags: tags)
+            )
         }
     }
 
@@ -763,7 +789,13 @@ final class AppModel {
 
 struct IDParams: Codable, Sendable { let id: String }
 struct AddSkillParams: Codable, Sendable { let path: String; let tags: [String]; let source: String }
-struct AddSourceParams: Codable, Sendable { let input: String; let tags: [String] }
+struct AddSourceParams: Codable, Sendable {
+    let input: String
+    var name: String? = nil
+    var ref: String? = nil
+    var paths: [String]? = nil
+    var tags: [String] = []
+}
 struct UpdateSkillParams: Codable, Sendable { let id: String; let content: String; let baseHash: String; let tags: [String] }
 struct ConfigureAgentsParams: Codable, Sendable { let agents: [String] }
 struct CustomAgentParams: Codable, Sendable { let id: String; let name: String; let skillsPath: String }
