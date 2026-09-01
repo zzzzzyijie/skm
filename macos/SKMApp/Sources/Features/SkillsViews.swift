@@ -116,12 +116,11 @@ struct SkillsListView: View {
 }
 
 /// SkillDetailView - 技能详情视图
-/// 包含“概览”、“SKILL.md 源码”、“Agent 部署矩阵”三段内容，
+/// 一体化滚动布局：顶部标题与元数据、Agent 激活卡片区、Markdown 正文渲染、底部路径与来源信息。
 /// 提供 QuickLook 快捷预览、在线编辑（SkillEditorSheet，内含历史版本回滚）与删除安全确认。
 struct SkillDetailView: View {
     @Bindable var model: AppModel
     @State private var details: SkillDetails?
-    @State private var tab = 0
     @State private var showsEditor = false
     @State private var confirmsDelete = false
 
@@ -129,19 +128,23 @@ struct SkillDetailView: View {
         Group {
             if let id = model.selectedSkillID, let summary = model.skills.first(where: { $0.id == id }) {
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 22) {
-                        header(summary)
-                        Picker("内容", selection: $tab) {
-                            Text("概览").tag(0)
-                            Text("SKILL.md").tag(1)
-                            Text("部署").tag(2)
-                        }
-                        .pickerStyle(.segmented)
-                        switch tab {
-                        case 1: sourceView
-                        case 2: deployments(summary)
-                        default: overview(summary)
-                        }
+                    VStack(alignment: .leading, spacing: 0) {
+                        // ── 顶部：标题、描述、标签与元数据 ──
+                        headerSection(summary)
+
+                        // ── Agent 激活卡片区 ──
+                        agentSection(summary)
+                            .padding(.top, 20)
+
+                        // ── 分隔线 ──
+                        Divider().padding(.vertical, 20)
+
+                        // ── Markdown 正文 ──
+                        markdownSection
+
+                        // ── 底部元数据 ──
+                        footerSection(summary)
+                            .padding(.top, 20)
                     }
                     .padding(26)
                     .frame(maxWidth: 820, alignment: .leading)
@@ -152,6 +155,7 @@ struct SkillDetailView: View {
                         Button("快速查看", systemImage: "eye") { Task { await showQuickLook() } }
                         Button("编辑", systemImage: "pencil") { showsEditor = true }
                             .disabled(details?.editable != true)
+                        Button("在 Finder 中显示", systemImage: "folder") { revealInFinder(summary) }
                         Button("删除", systemImage: "trash", role: .destructive) { confirmsDelete = true }
                     }
                 }
@@ -176,78 +180,150 @@ struct SkillDetailView: View {
         }
     }
 
-    private func header(_ skill: SkillSummary) -> some View {
-        VStack(alignment: .leading, spacing: 9) {
+    // MARK: - 顶部：标题、描述、标签、元数据
+
+    private func headerSection(_ skill: SkillSummary) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // 标题行
             HStack(alignment: .firstTextBaseline) {
                 Text(skill.name).font(.largeTitle.bold())
                 HealthBadge(health: skill.health)
             }
+
+            // 描述
             Text(skill.description.isEmpty ? String(localized: "无描述") : skill.description)
                 .font(.title3)
                 .foregroundStyle(.secondary)
+
+            // Fallback 警告
             if skill.usingFallback == true {
                 Label("源目录当前不可用，正在读取安全快照", systemImage: "exclamationmark.triangle.fill")
+                    .font(.callout)
                     .foregroundStyle(.orange)
+            }
+
+            // 标签 + 来源元数据（同行）
+            HStack(spacing: 12) {
+                if !skill.tags.isEmpty {
+                    HStack(spacing: 5) {
+                        ForEach(skill.tags, id: \.self) { tag in
+                            Text(tag)
+                                .font(.caption)
+                                .padding(.horizontal, 7)
+                                .padding(.vertical, 3)
+                                .background(Color.accentColor.opacity(0.1), in: Capsule())
+                                .foregroundStyle(Color.accentColor)
+                        }
+                    }
+
+                    Text("·")
+                        .foregroundStyle(Color.secondary.opacity(0.5))
+                }
+
+                Label(skill.source.isEmpty ? "local" : skill.source, systemImage: skill.source == "git" ? "arrow.triangle.branch" : "externaldrive")
+                    .font(.caption)
+                    .foregroundStyle(Color.secondary)
+
+                Text(String(skill.hash.prefix(8)))
+                    .font(.caption.monospaced())
+                    .foregroundStyle(Color.secondary)
+                    .padding(.horizontal, 5)
+                    .padding(.vertical, 2)
+                    .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 4))
             }
         }
     }
 
-    private func overview(_ skill: SkillSummary) -> some View {
-        VStack(alignment: .leading, spacing: 16) {
-            GroupBox("信息") {
-                VStack(spacing: 10) {
-                    LabeledContent("来源", value: skill.source.isEmpty ? "local" : skill.source)
-                    LabeledContent("标签", value: skill.tags.isEmpty ? "—" : skill.tags.joined(separator: ", "))
-                    LabeledContent("Hash", value: String(skill.hash.prefix(12)))
-                    LabeledContent("有效路径", value: skill.effectivePath)
+    // MARK: - Agent 激活卡片区
+
+    private func agentSection(_ skill: SkillSummary) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Agent 激活")
+                .font(.headline)
+                .foregroundStyle(Color.secondary)
+
+            let configuredAgents = model.agents.filter(\.configured)
+
+            if configuredAgents.isEmpty {
+                HStack {
+                    Image(systemName: "cpu")
+                        .foregroundStyle(Color.secondary)
+                    Text("还没有已管理的 Agent，请先在设置中启用。")
+                        .font(.callout)
+                        .foregroundStyle(Color.secondary)
                 }
-                .textSelection(.enabled)
-                .padding(4)
+                .padding(12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.primary.opacity(0.03), in: RoundedRectangle(cornerRadius: 10))
+            } else {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 160), spacing: 10)], spacing: 10) {
+                    ForEach(configuredAgents) { agent in
+                        AgentToggleCard(
+                            agent: agent,
+                            isEnabled: model.isEnabled(skill.id, for: agent.id),
+                            isLoading: model.isLoading
+                        ) { enabled in
+                            Task { await model.setSkill(skill.id, agentID: agent.id, enabled: enabled) }
+                        }
+                        .accessibilityLabel(String(
+                            format: String(localized: "为 %1$@ 启用 %2$@"),
+                            locale: .current,
+                            agent.name,
+                            skill.name
+                        ))
+                    }
+                }
             }
+        }
+    }
+
+    // MARK: - Markdown 正文
+
+    private var markdownSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if let details {
+                if details.body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    Text("此 Skill 没有正文内容。")
+                        .foregroundStyle(Color.secondary)
+                        .italic()
+                } else {
+                    MarkdownBodyView(markdown: details.body)
+                }
+            } else {
+                HStack(spacing: 8) {
+                    ProgressView().controlSize(.small)
+                    Text("正在读取文档…")
+                        .foregroundStyle(Color.secondary)
+                }
+            }
+        }
+    }
+
+    // MARK: - 底部元数据
+
+    private func footerSection(_ skill: SkillSummary) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
             if let reason = skill.editReason, !skill.editable {
                 Label(reason, systemImage: "lock.fill")
                     .font(.callout)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color.secondary)
             }
-        }
-    }
 
-    private var sourceView: some View {
-        GroupBox {
-            ScrollView(.horizontal) {
-                Text(details?.content ?? String(localized: "正在读取…"))
-                    .font(.system(.body, design: .monospaced))
+            HStack(spacing: 16) {
+                Label(skill.effectivePath, systemImage: "folder")
+                    .font(.caption)
+                    .foregroundStyle(Color.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
                     .textSelection(.enabled)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(8)
             }
         }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.primary.opacity(0.03), in: RoundedRectangle(cornerRadius: 8))
     }
 
-    private func deployments(_ skill: SkillSummary) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("选择要加载此 Skill 的 Agent。变更由 Go Planner 校验后原子应用。")
-                .foregroundStyle(.secondary)
-            ForEach(model.agents.filter(\.configured)) { agent in
-                Toggle(isOn: Binding(
-                    get: { model.isEnabled(skill.id, for: agent.id) },
-                    set: { enabled in Task { await model.setSkill(skill.id, agentID: agent.id, enabled: enabled) } }
-                )) {
-                    Label(agent.name, systemImage: agent.detected ? "checkmark.circle" : "circle.dashed")
-                }
-                .disabled(model.isLoading)
-                .accessibilityLabel(String(
-                    format: String(localized: "为 %1$@ 启用 %2$@"),
-                    locale: .current,
-                    agent.name,
-                    skill.name
-                ))
-            }
-            if model.agents.allSatisfy({ !$0.configured }) {
-                ContentUnavailableView("没有已管理的 Agent", systemImage: "cpu", description: Text("先在 Agents 中添加或启用一个 Agent。"))
-            }
-        }
-    }
+    // MARK: - 辅助方法
 
     private func loadDetails(_ id: String) async {
         do { details = try await model.skillDetails(id) }
@@ -259,6 +335,183 @@ struct SkillDetailView: View {
             guard let url = try await model.quickLookURL() else { return }
             QuickLookPresenter.shared.show(url)
         } catch { model.errorMessage = error.localizedDescription }
+    }
+
+    private func revealInFinder(_ skill: SkillSummary) {
+        let url = URL(fileURLWithPath: skill.effectivePath)
+        NSWorkspace.shared.activateFileViewerSelecting([url])
+    }
+}
+
+// MARK: - AgentToggleCard
+
+/// Agent 激活卡片组件 — 水平排列的可点击卡片，替代原 Toggle 列表
+private struct AgentToggleCard: View {
+    let agent: AgentModel
+    let isEnabled: Bool
+    let isLoading: Bool
+    let onToggle: (Bool) -> Void
+
+    var body: some View {
+        Button {
+            onToggle(!isEnabled)
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: isEnabled ? "checkmark.circle.fill" : "circle")
+                    .font(.title3)
+                    .foregroundStyle(isEnabled ? Color.accentColor : Color.secondary.opacity(0.5))
+                    .symbolEffect(.bounce, value: isEnabled)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(agent.name)
+                        .font(.callout.weight(.medium))
+                        .foregroundStyle(isEnabled ? Color.primary : Color.secondary)
+
+                    HStack(spacing: 4) {
+                        Circle()
+                            .fill(agent.detected ? Color.green : Color.orange)
+                            .frame(width: 6, height: 6)
+                        Text(agent.detected ? String(localized: "已安装") : String(localized: "未检测到"))
+                            .font(.caption2)
+                            .foregroundStyle(Color.secondary)
+                    }
+                }
+
+                Spacer()
+            }
+            .padding(12)
+            .background(
+                isEnabled ? Color.accentColor.opacity(0.08) : Color.primary.opacity(0.03),
+                in: RoundedRectangle(cornerRadius: 10)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(isEnabled ? Color.accentColor.opacity(0.35) : Color.primary.opacity(0.08), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+        .disabled(isLoading)
+    }
+}
+
+// MARK: - MarkdownBodyView
+
+/// Markdown 正文渲染组件 — 使用 SwiftUI 原生 AttributedString 解析渲染
+private struct MarkdownBodyView: View {
+    let markdown: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            ForEach(Array(blocks.enumerated()), id: \.offset) { _, block in
+                switch block {
+                case .heading(let level, let text):
+                    Text(text)
+                        .font(headingFont(level))
+                        .fontWeight(.bold)
+                        .padding(.top, level <= 2 ? 8 : 4)
+                case .codeBlock(let code):
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        Text(code)
+                            .font(.system(.callout, design: .monospaced))
+                            .textSelection(.enabled)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .padding(12)
+                    .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 8))
+                case .paragraph(let text):
+                    Text(attributedString(from: text))
+                        .font(.body)
+                        .textSelection(.enabled)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    // MARK: - 块级解析
+
+    private enum Block {
+        case heading(Int, String)
+        case codeBlock(String)
+        case paragraph(String)
+    }
+
+    private var blocks: [Block] {
+        var result: [Block] = []
+        let lines = markdown.components(separatedBy: "\n")
+        var i = 0
+        var paragraphBuffer: [String] = []
+
+        func flushParagraph() {
+            let text = paragraphBuffer.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+            if !text.isEmpty {
+                result.append(.paragraph(text))
+            }
+            paragraphBuffer.removeAll()
+        }
+
+        while i < lines.count {
+            let line = lines[i]
+
+            // 代码块
+            if line.hasPrefix("```") {
+                flushParagraph()
+                var codeLines: [String] = []
+                i += 1
+                while i < lines.count && !lines[i].hasPrefix("```") {
+                    codeLines.append(lines[i])
+                    i += 1
+                }
+                i += 1 // 跳过结尾 ```
+                result.append(.codeBlock(codeLines.joined(separator: "\n")))
+                continue
+            }
+
+            // 标题（# ~ ######）
+            if let match = line.wholeMatch(of: /^(#{1,6})\s+(.+)$/) {
+                flushParagraph()
+                let level = match.1.count
+                let text = String(match.2)
+                result.append(.heading(level, text))
+                i += 1
+                continue
+            }
+
+            // 空行分段
+            if line.trimmingCharacters(in: .whitespaces).isEmpty {
+                flushParagraph()
+                i += 1
+                continue
+            }
+
+            // 普通文本行
+            paragraphBuffer.append(line)
+            i += 1
+        }
+
+        flushParagraph()
+        return result
+    }
+
+    // MARK: - 行内 Markdown → AttributedString
+
+    private func attributedString(from text: String) -> AttributedString {
+        // 使用 SwiftUI 原生 Markdown 解析（支持粗体、斜体、代码、链接）
+        if let attributed = try? AttributedString(markdown: text, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)) {
+            return attributed
+        }
+        // 解析失败时回退为纯文本
+        return AttributedString(text)
+    }
+
+    private func headingFont(_ level: Int) -> Font {
+        switch level {
+        case 1: .title
+        case 2: .title2
+        case 3: .title3
+        default: .headline
+        }
     }
 }
 

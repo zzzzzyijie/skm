@@ -156,9 +156,9 @@
 - [x] **【Skills】评估与精简【历史版本】功能入口**：
   - 现状：Skill 多数为只读或来自 Git 导入，主工具栏常驻“历史”按钮认知负担重；
   - 完成：已从 Skill 详情主工具栏移除常驻“历史”按钮，收纳至「编辑」弹窗左下角（仅在编辑修改场景提供历史快照与 Diff 回滚，回滚后自动重载当前草稿）。
-- [ ] **【Skills】重构 Skill 详情页交互体验**：
-  - 现状：硬拆为“概览 / SKILL.md / 部署”三段 Segmented Control，割裂严重且 Markdown 为纯文本 monospaced 字体；
-  - 待办：改为一体化布局——顶部展示元数据与快速操作（在 Finder 中打开、编辑、删除），右侧/上方直观展示 Agent 启用开关卡片，正文区域直接渲染排版精美的 Markdown 文档。
+- [x] **【Skills】重构 Skill 详情页交互体验**：
+  - 现状：原为"概览 / SKILL.md / 部署"三段 Segmented Control，割裂严重且 Markdown 为纯文本等宽字体；
+  - 完成：合并为一体化滚动布局——顶部展示名称、健康 Badge、描述、标签与来源元数据，中部 Agent 激活采用水平卡片式切换（LazyVGrid + AgentToggleCard），正文区域使用 SwiftUI 原生 `AttributedString(markdown:)` 零依赖渲染 Markdown（支持标题层级、粗体/斜体/链接/代码/代码块），底部路径元数据卡片；工具栏新增"在 Finder 中显示"快捷按钮。
 - [x] **【添加 Skill】同步 Web 端的两步式扫描预览与勾选导入能力**：
   - 现状：macOS 端原为旧版一步式直接导入，无法在导入前识别仓库内的多子技能；
   - 完成：Core Bridge 接入 `sources.preview` 能力，App 端升级为两步式导入向导（第 1 步输入仓库 URL/简写 -> 异步扫描多子技能与有效性 -> 第 2 步展示候选技能列表与错误 Badge -> 支持全选/反选与多选 -> 确认按需批量导入）。

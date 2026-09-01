@@ -74,6 +74,9 @@
     "~/.agent/skills" : {
 
     },
+    "Agent 激活" : {
+
+    },
     "Agent 管理" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -401,9 +404,6 @@
         }
       }
     },
-    "SKILL.md" : {
-
-    },
     "SKM Core 已停止。" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -692,6 +692,7 @@
       }
     },
     "先在 Agents 中添加或启用一个 Agent。" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2013,6 +2014,7 @@
       }
     },
     "概览" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2080,6 +2082,9 @@
         }
       }
     },
+    "正在读取文档…" : {
+
+    },
     "正在连接 Core…" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -2100,6 +2105,9 @@
           }
         }
       }
+    },
+    "此 Skill 没有正文内容。" : {
+
     },
     "没有变量" : {
       "extractionState" : "stale",
@@ -2823,6 +2831,9 @@
         }
       }
     },
+    "还没有已管理的 Agent，请先在设置中启用。" : {
+
+    },
     "连接" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -2914,6 +2925,7 @@
       }
     },
     "选择要加载此 Skill 的 Agent。变更由 Go Planner 校验后原子应用。" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2987,6 +2999,7 @@
       }
     },
     "部署" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
