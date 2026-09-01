@@ -29,11 +29,10 @@ private struct DoctorSidebarRow: View {
     }
 }
 
-/// DiagnosticsDetailView - 系统诊断与软件更新视图
-/// 包含三大模块：
+/// DiagnosticsDetailView - 系统诊断详情视图
+/// 包含两大模块：
 /// 1. Doctor 健康检查：展示存储目录、Git 环境、Go Core 状态及各 Agent 安装状态；
-/// 2. 诊断报告导出：生成自动脱敏（隐藏家目录用户名及 URL Token）的系统报告并支持一键复制与导出；
-/// 3. 软件更新：触发 Sparkle 自动更新或 GitHub Releases 检查。
+/// 2. 诊断报告导出：生成自动脱敏（隐藏家目录用户名及 URL Token）的系统报告并支持一键复制与导出。
 struct DiagnosticsDetailView: View {
     @Bindable var model: AppModel
 
@@ -41,7 +40,7 @@ struct DiagnosticsDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
                 HStack {
-                    Text("诊断与更新").font(.largeTitle.bold())
+                    Text("系统诊断").font(.largeTitle.bold())
                     Spacer()
                     Button("重新运行", systemImage: "arrow.clockwise") { Task { await model.runDoctor() } }
                 }
@@ -73,9 +72,26 @@ struct DiagnosticsDetailView: View {
                     }
                     .padding(8)
                 }
-                GroupBox("软件更新") {
+            }
+            .padding(26)
+            .frame(maxWidth: 820, alignment: .leading)
+        }
+        .navigationTitle("系统诊断")
+    }
+}
+
+/// UpdatesSettingsView - 软件更新设置视图
+/// 展示当前版本、Sparkle 2 签名升级状态与手动检查更新。
+struct UpdatesSettingsView: View {
+    @Bindable var model: AppModel
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 22) {
+                Text("软件更新").font(.largeTitle.bold())
+                GroupBox("版本与更新") {
                     HStack {
-                        VStack(alignment: .leading, spacing: 4) {
+                        VStack(alignment: .leading, spacing: 6) {
                             Text(model.updateStatus ?? String(localized: "Sparkle 2 可验证并安装签名更新；未配置发布公钥时回退为 GitHub Releases 版本检查。"))
                             Text("当前版本：\(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev")")
                                 .font(.caption).foregroundStyle(.secondary)
@@ -90,6 +106,6 @@ struct DiagnosticsDetailView: View {
             .padding(26)
             .frame(maxWidth: 820, alignment: .leading)
         }
-        .navigationTitle("诊断与更新")
+        .navigationTitle("软件更新")
     }
 }

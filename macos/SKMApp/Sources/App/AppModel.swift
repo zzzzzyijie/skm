@@ -26,7 +26,7 @@ enum AppSection: String, CaseIterable, Identifiable {
 enum SettingsSection: String, CaseIterable, Identifiable {
     /// 通用：版本信息、存储路径与概览统计
     case general
-    /// 文件访问：项目目录读取状态与 macOS 授权恢复
+    /// 权限访问：项目目录读取状态与 macOS 授权恢复
     case fileAccess
     /// Agent 管理：Claude Desktop、Codex 等 AI 客户端配置与自定义路径
     case agents
@@ -34,7 +34,9 @@ enum SettingsSection: String, CaseIterable, Identifiable {
     case sources
     /// Git 同步：个人工作区（Workspace）远端仓库配置与冲突合并
     case gitSync
-    /// 诊断与更新：Doctor 健康检查与 Sparkle 软件升级
+    /// 软件更新：Sparkle 签名升级与 GitHub Releases 版本检查
+    case updates
+    /// 系统诊断：Doctor 健康检查与诊断报告导出
     case diagnostics
 
     var id: String { rawValue }
@@ -42,11 +44,12 @@ enum SettingsSection: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .general: String(localized: "通用")
-        case .fileAccess: String(localized: "文件访问")
+        case .fileAccess: String(localized: "权限访问")
         case .agents: String(localized: "Agent 管理")
         case .sources: String(localized: "技能来源")
         case .gitSync: String(localized: "Git 同步")
-        case .diagnostics: String(localized: "诊断与更新")
+        case .updates: String(localized: "软件更新")
+        case .diagnostics: String(localized: "系统诊断")
         }
     }
 
@@ -57,6 +60,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .agents: "cpu"
         case .sources: "arrow.triangle.branch"
         case .gitSync: "arrow.triangle.2.circlepath.icloud"
+        case .updates: "arrow.triangle.2.circlepath.circle"
         case .diagnostics: "stethoscope"
         }
     }

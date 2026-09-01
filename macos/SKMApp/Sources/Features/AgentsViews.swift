@@ -10,13 +10,30 @@ struct AgentsSettingsView: View {
     @State private var agentToDelete: AgentModel?
     @State private var confirmsDelete = false
 
+    private var configuredCount: Int {
+        model.agents.filter(\.configured).count
+    }
+
+    private var sortedAgents: [AgentModel] {
+        model.agents.sorted { lhs, rhs in
+            if lhs.configured != rhs.configured {
+                return lhs.configured && !rhs.configured
+            }
+            if lhs.detected != rhs.detected {
+                return lhs.detected && !rhs.detected
+            }
+            return lhs.name.localizedStandardCompare(rhs.name) == .orderedAscending
+        }
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
                 HStack(alignment: .firstTextBaseline) {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("Agent 管理").font(.largeTitle.bold())
-                        Text("选择 SKM 可以部署 Skill 的工具，并管理自定义 Agent 路径。")
+                        Text(String(format: String(localized: "Agent 管理 (%lld)"), locale: .current, configuredCount))
+                            .font(.largeTitle.bold())
+                        Text("选择 SKM 可以部署 Skill 的工具，并管理自定义 Agent 路径。已勾选启用的 Agent 会置顶显示。")
                             .foregroundStyle(.secondary)
                     }
                     Spacer()
@@ -36,7 +53,7 @@ struct AgentsSettingsView: View {
                     .frame(minHeight: 260)
                 } else {
                     LazyVStack(spacing: 10) {
-                        ForEach(model.agents) { agent in
+                        ForEach(sortedAgents) { agent in
                             AgentSettingsRow(
                                 agent: agent,
                                 onToggle: { enabled in
@@ -138,8 +155,20 @@ struct AgentsListView: View {
     @Bindable var model: AppModel
     @State private var showsCustomAgent = false
 
+    private var sortedAgents: [AgentModel] {
+        model.agents.sorted { lhs, rhs in
+            if lhs.configured != rhs.configured {
+                return lhs.configured && !rhs.configured
+            }
+            if lhs.detected != rhs.detected {
+                return lhs.detected && !rhs.detected
+            }
+            return lhs.name.localizedStandardCompare(rhs.name) == .orderedAscending
+        }
+    }
+
     var body: some View {
-        List(model.agents, selection: $model.selectedAgentID) { agent in
+        List(sortedAgents, selection: $model.selectedAgentID) { agent in
             HStack(spacing: 10) {
                 Image(systemName: agent.custom ? "cpu.fill" : "cpu")
                     .foregroundStyle(agent.detected ? Color.accentColor : .secondary)

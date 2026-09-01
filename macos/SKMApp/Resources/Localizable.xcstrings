@@ -72,6 +72,7 @@
 
     },
     "Agent 管理" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -120,16 +121,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Copy (independent copy)"
-          }
-        }
-      }
-    },
-    "Core %@ · Schema %@" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Core %1$@ · Schema %2$@"
           }
         }
       }
@@ -1329,6 +1320,16 @@
         }
       }
     },
+    "已展开" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Expanded"
+          }
+        }
+      }
+    },
     "已打开安全更新检查窗口" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1336,6 +1337,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Secure update window opened"
+          }
+        }
+      }
+    },
+    "已收起" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Collapsed"
           }
         }
       }
@@ -1369,26 +1380,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "An existing ~/.skm library was found. Continue using it without importing or migrating."
-          }
-        }
-      }
-    },
-    "已收起" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Collapsed"
-          }
-        }
-      }
-    },
-    "已展开" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Expanded"
           }
         }
       }
@@ -1663,9 +1654,6 @@
         }
       }
     },
-    "文件访问" : {
-
-    },
     "新建 Prompt" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1902,6 +1890,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Local Detection"
+          }
+        }
+      }
+    },
+    "权限访问" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Permission Access"
           }
         }
       }
@@ -2540,6 +2538,16 @@
         }
       }
     },
+    "系统诊断" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diagnostics"
+          }
+        }
+      }
+    },
     "继续使用现有资料库" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -2681,16 +2689,6 @@
         }
       }
     },
-    "诊断与更新" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Diagnostics & Updates"
-          }
-        }
-      }
-    },
     "诊断信息已复制" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -2768,6 +2766,16 @@
         }
       }
     },
+    "软件更新" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Software Updates"
+          }
+        }
+      }
+    },
     "迁移 %@" : {
       "localizations" : {
         "en" : {
@@ -2812,6 +2820,7 @@
       }
     },
     "选择 SKM 可以部署 Skill 的工具，并管理自定义 Agent 路径。" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2820,6 +2829,9 @@
           }
         }
       }
+    },
+    "选择 SKM 可以部署 Skill 的工具，并管理自定义 Agent 路径。已勾选启用的 Agent 会置顶显示。" : {
+
     },
     "选择…" : {
       "extractionState" : "stale",

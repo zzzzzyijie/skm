@@ -171,7 +171,7 @@ struct ProjectDetailView: View {
                 } description: {
                     Text(access.detail)
                 } actions: {
-                    Button("打开文件访问设置…", systemImage: "folder.badge.gearshape", action: openFileAccessSettings)
+                    Button("打开权限访问设置…", systemImage: "folder.badge.gearshape", action: openFileAccessSettings)
                         .buttonStyle(.borderedProminent)
                     if project.exists {
                         Button("在 Finder 中显示") {

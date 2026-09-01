@@ -93,7 +93,7 @@ struct RootView: View {
                 .tag(section)
         }
         .safeAreaInset(edge: .bottom) {
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 0) {
                 Divider()
                 SettingsLink {
                     Label("设置", systemImage: "gearshape")
@@ -102,21 +102,9 @@ struct RootView: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("open-settings")
-                .padding(.vertical, 5)
-                Label(
-                    model.workspace?.configured == true
-                        ? String(localized: "个人工作区已配置")
-                        : String(localized: "个人工作区未配置"),
-                    systemImage: model.workspace?.configured == true ? "checkmark.icloud" : "icloud.slash"
-                )
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                Text("Core \(model.handshake?.coreVersion ?? "—") · Schema \(model.handshake?.schemaVersion.description ?? "—")")
-                    .font(.caption2.monospacedDigit())
-                    .foregroundStyle(.tertiary)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
             }
-            .padding(.horizontal, 12)
-            .padding(.bottom, 10)
         }
         .navigationTitle("SKM")
     }
@@ -255,6 +243,7 @@ struct SettingsView: View {
         case .agents: AgentsSettingsView(model: model)
         case .sources: SourcesSettingsView(model: model)
         case .gitSync: WorkspaceDetailView(model: model)
+        case .updates: UpdatesSettingsView(model: model)
         case .diagnostics: DiagnosticsDetailView(model: model)
         }
     }

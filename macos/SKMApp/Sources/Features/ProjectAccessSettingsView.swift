@@ -31,7 +31,7 @@ struct ProjectAccessSettingsView: View {
             VStack(alignment: .leading, spacing: 22) {
                 HStack(alignment: .firstTextBaseline) {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("文件访问").font(.largeTitle.bold())
+                        Text("权限访问").font(.largeTitle.bold())
                         Text("SKM 只保存项目路径。这里实时检查读取状态；写入权限会在部署确认后由 Core 实际校验。")
                             .foregroundStyle(.secondary)
                     }
@@ -116,7 +116,7 @@ struct ProjectAccessSettingsView: View {
             .padding(26)
             .frame(maxWidth: 860, alignment: .leading)
         }
-        .navigationTitle("文件访问")
+        .navigationTitle("权限访问")
     }
 
     private func refreshAccess() {
