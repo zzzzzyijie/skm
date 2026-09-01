@@ -1,7 +1,10 @@
 package application
 
 import (
+	"errors"
 	"fmt"
+	"io"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -38,6 +41,8 @@ type AddSourceResult struct {
 type ProjectView struct {
 	domain.Project
 	Exists          bool           `json:"exists"`
+	Access          string         `json:"access"`
+	AccessMessage   string         `json:"accessMessage,omitempty"`
 	ActivationCount int            `json:"activationCount"`
 	SkillCount      int            `json:"skillCount"`
 	AgentCounts     map[string]int `json:"agentCounts"`
@@ -137,19 +142,53 @@ func (s *Service) ListProjects() ([]ProjectView, error) {
 	}
 	result := make([]ProjectView, 0, len(projects.Projects))
 	for _, project := range projects.Projects {
-		info, statErr := os.Stat(project.Path)
+		exists, access, accessMessage := inspectProjectAccess(project.Path)
 		root := filepath.Clean(project.Path)
-		scan, scanErr := scanProjectSkills(project.Path)
-		if scanErr != nil {
-			scan = ProjectScan{AgentCounts: map[string]int{}, Agents: []ProjectScanAgent{}, Skills: []ProjectScanSkill{}}
+		scan := ProjectScan{AgentCounts: map[string]int{}, Agents: []ProjectScanAgent{}, Skills: []ProjectScanSkill{}}
+		if access == "available" {
+			var scanErr error
+			scan, scanErr = scanProjectSkills(project.Path)
+			if scanErr != nil {
+				scan = ProjectScan{AgentCounts: map[string]int{}, Agents: []ProjectScanAgent{}, Skills: []ProjectScanSkill{}}
+			}
 		}
 		result = append(result, ProjectView{
-			Project: project, Exists: statErr == nil && info.IsDir(), ActivationCount: counts[root],
+			Project: project, Exists: exists, Access: access, AccessMessage: accessMessage, ActivationCount: counts[root],
 			SkillCount: scan.SkillCount, AgentCounts: scan.AgentCounts,
 		})
 	}
 	sort.Slice(result, func(i, j int) bool { return result[i].ID < result[j].ID })
 	return result, nil
+}
+
+func inspectProjectAccess(path string) (bool, string, string) {
+	info, err := os.Stat(path)
+	if err != nil {
+		return false, projectAccessForError(err), err.Error()
+	}
+	if !info.IsDir() {
+		return false, "unavailable", "registered project path is not a directory"
+	}
+	directory, err := os.Open(path)
+	if err != nil {
+		return true, projectAccessForError(err), err.Error()
+	}
+	defer directory.Close()
+	if _, err := directory.Readdirnames(1); err != nil && err != io.EOF {
+		return true, projectAccessForError(err), err.Error()
+	}
+	return true, "available", ""
+}
+
+func projectAccessForError(err error) string {
+	switch {
+	case errors.Is(err, fs.ErrNotExist):
+		return "missing"
+	case errors.Is(err, fs.ErrPermission):
+		return "permission-denied"
+	default:
+		return "unavailable"
+	}
 }
 
 func (s *Service) GetWorkspace() (WorkspaceView, error) {

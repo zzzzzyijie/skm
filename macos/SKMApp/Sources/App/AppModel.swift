@@ -26,6 +26,8 @@ enum AppSection: String, CaseIterable, Identifiable {
 enum SettingsSection: String, CaseIterable, Identifiable {
     /// 通用：版本信息、存储路径与概览统计
     case general
+    /// 文件访问：项目目录读取状态与 macOS 授权恢复
+    case fileAccess
     /// Agent 管理：Claude Desktop、Codex 等 AI 客户端配置与自定义路径
     case agents
     /// 技能来源：Git 仓库源列表管理与批量拉取
@@ -40,6 +42,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .general: String(localized: "通用")
+        case .fileAccess: String(localized: "文件访问")
         case .agents: String(localized: "Agent 管理")
         case .sources: String(localized: "技能来源")
         case .gitSync: String(localized: "Git 同步")
@@ -50,6 +53,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
     var symbol: String {
         switch self {
         case .general: "gearshape"
+        case .fileAccess: "folder.badge.gearshape"
         case .agents: "cpu"
         case .sources: "arrow.triangle.branch"
         case .gitSync: "arrow.triangle.2.circlepath.icloud"

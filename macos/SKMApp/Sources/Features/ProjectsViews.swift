@@ -22,17 +22,18 @@ struct ProjectsListView: View {
                 }
             } else {
                 List(model.projects, selection: $model.selectedProjectID) { project in
+                    let access = ProjectAccessStatus(project: project)
                     VStack(alignment: .leading, spacing: 4) {
                         HStack {
-                            Text(project.id).fontWeight(.medium)
+                            Text(project.id).bold()
                             Spacer()
-                            Image(systemName: project.exists ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
-                                .foregroundStyle(project.exists ? .green : .orange)
-                                .accessibilityLabel(project.exists ? String(localized: "项目可用") : String(localized: "项目路径缺失"))
+                            Image(systemName: access.symbol)
+                                .foregroundStyle(access.color)
+                                .accessibilityLabel(access.title)
                         }
                         Text(project.path).font(.caption).foregroundStyle(.secondary).lineLimit(1)
                         Text(String(format: String(localized: "%lld 个 Skills · %lld 个部署"), locale: .current, project.skillCount, project.activationCount))
-                            .font(.caption2)
+                            .font(.caption)
                             .foregroundStyle(.tertiary)
                     }
                     .padding(.vertical, 4)
@@ -129,6 +130,7 @@ struct AddProjectSheet: View {
 /// ProjectDetailView - 项目技能详情与部署管理视图
 /// 包含项目全局扫描概览、Skill 部署（Symlink / Copy / Require / Vendor）、解绑、迁移与清单锁定管理。
 struct ProjectDetailView: View {
+    @Environment(\.openSettings) private var openSettings
     @Bindable var model: AppModel
     @State private var selectedLibrarySkill = ""
     @State private var selectedAgents = Set<String>()
@@ -139,31 +141,53 @@ struct ProjectDetailView: View {
     var body: some View {
         if let id = model.selectedProjectID,
            let project = model.projects.first(where: { $0.id == id }) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 22) {
-                    header(project)
-                    if let details = model.projectDetails, details.project.id == id {
-                        deploymentSection(details)
-                        planSection
-                        projectManifestSection(details)
-                        scannedSkills(details)
-                    } else {
-                        ProgressView("正在扫描项目…")
-                            .frame(maxWidth: .infinity, minHeight: 220)
+            let access = ProjectAccessStatus(project: project)
+            if access.canRead {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 22) {
+                        header(project)
+                        if let details = model.projectDetails, details.project.id == id {
+                            deploymentSection(details)
+                            planSection
+                            projectManifestSection(details)
+                            scannedSkills(details)
+                        } else {
+                            ProgressView("正在扫描项目…")
+                                .frame(maxWidth: .infinity, minHeight: 220)
+                        }
+                    }
+                    .padding(26)
+                    .frame(maxWidth: 900, alignment: .leading)
+                }
+                .task(id: id) {
+                    selectedAgents = Set(model.agents.filter(\.configured).map(\.id))
+                    if selectedAgents.isEmpty { selectedAgents = ["codex"] }
+                    selectedLibrarySkill = model.skills.first?.id ?? ""
+                    await model.loadProjectDetails(id)
+                }
+            } else {
+                ContentUnavailableView {
+                    Label(access.title, systemImage: access.symbol)
+                } description: {
+                    Text(access.detail)
+                } actions: {
+                    Button("打开文件访问设置…", systemImage: "folder.badge.gearshape", action: openFileAccessSettings)
+                        .buttonStyle(.borderedProminent)
+                    if project.exists {
+                        Button("在 Finder 中显示") {
+                            NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: project.path)
+                        }
                     }
                 }
-                .padding(26)
-                .frame(maxWidth: 900, alignment: .leading)
-            }
-            .task(id: id) {
-                selectedAgents = Set(model.agents.filter(\.configured).map(\.id))
-                if selectedAgents.isEmpty { selectedAgents = ["codex"] }
-                selectedLibrarySkill = model.skills.first?.id ?? ""
-                await model.loadProjectDetails(id)
             }
         } else {
             ContentUnavailableView("选择一个项目", systemImage: "folder")
         }
+    }
+
+    private func openFileAccessSettings() {
+        model.settingsSection = .fileAccess
+        openSettings()
     }
 
     private func header(_ project: ProjectModel) -> some View {

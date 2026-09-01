@@ -251,6 +251,7 @@ struct SettingsView: View {
     private var detail: some View {
         switch model.settingsSection {
         case .general: GeneralSettingsView(model: model)
+        case .fileAccess: ProjectAccessSettingsView(model: model)
         case .agents: AgentsSettingsView(model: model)
         case .sources: SourcesSettingsView(model: model)
         case .gitSync: WorkspaceDetailView(model: model)

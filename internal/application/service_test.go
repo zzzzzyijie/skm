@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -81,6 +82,23 @@ func TestEmptyCollectionsUseArraysInRPCContract(t *testing.T) {
 	}
 	if sources == nil {
 		t.Fatal("expected empty sources array, got nil")
+	}
+}
+
+func TestProjectAccessStatusDistinguishesRecoveryPaths(t *testing.T) {
+	root := t.TempDir()
+	exists, access, message := inspectProjectAccess(root)
+	if !exists || access != "available" || message != "" {
+		t.Fatalf("available directory = exists:%v access:%q message:%q", exists, access, message)
+	}
+
+	exists, access, message = inspectProjectAccess(filepath.Join(root, "missing"))
+	if exists || access != "missing" || message == "" {
+		t.Fatalf("missing directory = exists:%v access:%q message:%q", exists, access, message)
+	}
+
+	if access := projectAccessForError(fs.ErrPermission); access != "permission-denied" {
+		t.Fatalf("permission error access = %q", access)
 	}
 }
 

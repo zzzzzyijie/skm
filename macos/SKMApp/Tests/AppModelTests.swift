@@ -72,7 +72,7 @@ final class AppModelTests: XCTestCase {
         XCTAssertEqual(AppSection.allCases, [.skills, .prompts, .projects])
         XCTAssertEqual(
             SettingsSection.allCases,
-            [.general, .agents, .sources, .gitSync, .diagnostics]
+            [.general, .fileAccess, .agents, .sources, .gitSync, .diagnostics]
         )
     }
 

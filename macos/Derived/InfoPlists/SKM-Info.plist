@@ -26,12 +26,22 @@
 	<string>public.app-category.developer-tools</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>$(MACOSX_DEPLOYMENT_TARGET)</string>
+	<key>NSDesktopFolderUsageDescription</key>
+	<string>SKM 需要读取已登记的项目目录以扫描 Skills，并仅在你确认部署后写入受管文件。</string>
+	<key>NSDocumentsFolderUsageDescription</key>
+	<string>SKM 需要读取已登记的项目目录以扫描 Skills，并仅在你确认部署后写入受管文件。</string>
+	<key>NSDownloadsFolderUsageDescription</key>
+	<string>SKM 需要读取已登记的项目目录以扫描 Skills，并仅在你确认部署后写入受管文件。</string>
 	<key>NSHumanReadableCopyright</key>
 	<string>Copyright © 2026 SKM Contributors</string>
 	<key>NSMainStoryboardFile</key>
 	<string>Main</string>
+	<key>NSNetworkVolumesUsageDescription</key>
+	<string>SKM 需要访问你已登记在网络卷上的项目目录。</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<key>NSRemovableVolumesUsageDescription</key>
+	<string>SKM 需要访问你已登记在可移动磁盘上的项目目录。</string>
 	<key>SUEnableAutomaticChecks</key>
 	<true/>
 	<key>SUFeedURL</key>

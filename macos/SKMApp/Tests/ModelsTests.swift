@@ -32,6 +32,20 @@ final class ModelsTests: XCTestCase {
         XCTAssertFalse(matchesSelectedTag(["general"], selectedTag: "swift"))
     }
 
+    func testProjectAccessStatusDecodesCoreStateAndLegacyFallback() throws {
+        let denied = try JSONDecoder().decode(
+            ProjectModel.self,
+            from: Data(#"{"id":"demo","path":"/tmp/demo","exists":true,"access":"permission-denied","accessMessage":"permission denied","activationCount":0,"skillCount":0,"agentCounts":{}}"#.utf8)
+        )
+        XCTAssertEqual(ProjectAccessStatus(project: denied), .permissionDenied)
+
+        let legacyMissing = try JSONDecoder().decode(
+            ProjectModel.self,
+            from: Data(#"{"id":"old","path":"/tmp/old","exists":false,"activationCount":0,"skillCount":0,"agentCounts":{}}"#.utf8)
+        )
+        XCTAssertEqual(ProjectAccessStatus(project: legacyMissing), .missing)
+    }
+
     func testPhaseThreeResponsesDecode() throws {
         let render = try JSONDecoder().decode(
             PromptRenderResponse.self,

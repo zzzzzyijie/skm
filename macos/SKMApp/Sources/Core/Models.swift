@@ -144,6 +144,8 @@ struct ProjectModel: Codable, Identifiable, Hashable, Sendable {
     let id: String
     let path: String
     let exists: Bool
+    let access: String?
+    let accessMessage: String?
     let activationCount: Int
     let skillCount: Int
     let agentCounts: [String: Int]
