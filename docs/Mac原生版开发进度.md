@@ -1,6 +1,6 @@
 # SKM macOS 原生版开发进度
 
-> 更新日期：2026-08-31
+> 更新日期：2026-09-01
 >
 > 当前工程版本：`0.5.3 (Build 3)`
 >
@@ -146,9 +146,10 @@
 
 ### 4.4 macOS 交互体验重构与功能精简清单（TODO）
 
-- [ ] **【Skills / Prompts】标签筛选交互重构**：
-  - 现状：当前顶部下拉菜单（Menu Picker）层级偏深且不直观；
-  - 待办：探索在主侧边栏增加标签分类列表，或在列表顶部改用横向水平平铺的 Filter Chips（胶囊药丸）单选/多选，支持快捷点击与一键切换。
+- [x] **【Skills / Prompts】标签筛选交互重构**：
+  - 方案：标签直接成为 Skills / Prompts 列表的分组层级，不再保留独立筛选控件，也不混入承载全局模块导航的主侧边栏；
+  - 完成：列表由默认展开的“全部”分组与默认收起的各标签分组组成，每个分组均可独立展开、收起并显示条目数；
+  - 交互：同一条目可同时出现在“全部”和多个标签分组中，任一入口都打开同一详情；搜索会同步收窄所有分组。
 - [ ] **【Skills】评估与精简主工具栏【刷新】按钮**：
   - 现状：macOS App 已具备 `FileChangeMonitor` 文件系统事件监听与 250ms 防抖热重载机制；
   - 待办：评估将主工具栏的“刷新”显式按钮移除或降级收敛到“视图菜单”/快捷键（`⌘R`），避免占用主要工具栏视觉焦点。
@@ -179,8 +180,10 @@
 
 ## 6. 最近一次验证记录
 
-截至 2026-08-31，已通过：
+截至 2026-09-01，已通过：
 
+- `xcodebuild ... -only-testing:SKMUITests/SKMUITests/testChineseTagGroupsRenderAsSeparateListRows`：超长标签、分组折叠/展开以及标题行与 Skill 行不重叠的聚焦 UI 回归通过；
+- `xcodebuild ... -only-testing:SKMTests/ModelsTests/testTagGroupsBuildUniqueSectionsAndRepeatMultiTagItems`：Skills / Prompts 标签分组的去重排序与多标签归组通过；
 - `xcodebuild ... test`：15 个 Swift 单元测试、4 个中英文 UI 测试通过，包含主导航与 Settings 分区、Agent 管理和 Git 同步入口验收；
 - `go test ./...`、`go test -race ./...`、`go vet ./...`、`go build ./...`；
 - curl 安装器、Homebrew Formula 和 Homebrew Cask 生成器测试；

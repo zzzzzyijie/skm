@@ -711,8 +711,16 @@
         }
       }
     },
-    "全部标签" : {
-
+    "全部" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All"
+          }
+        }
+      }
     },
     "内容" : {
       "extractionState" : "stale",
@@ -1365,6 +1373,26 @@
         }
       }
     },
+    "已收起" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Collapsed"
+          }
+        }
+      }
+    },
+    "已展开" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Expanded"
+          }
+        }
+      }
+    },
     "已管理" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1473,12 +1501,6 @@
           }
         }
       }
-    },
-    "当前没有标记为“%@”的 Prompt。" : {
-
-    },
-    "当前没有标记为“%@”的 Skill。" : {
-
     },
     "当前版本" : {
       "extractionState" : "stale",

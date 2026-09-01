@@ -22,14 +22,23 @@ final class ModelsTests: XCTestCase {
         XCTAssertEqual(parseTags("general, mac, general"), ["general", "mac"])
     }
 
-    func testTagFilterBuildsUniqueOptionsAndMatchesSelection() {
+    func testTagGroupsBuildUniqueSectionsAndRepeatMultiTagItems() {
         XCTAssertEqual(
             availableFilterTags(from: [["review", "general"], ["general", "swift"]]),
             ["general", "review", "swift"]
         )
-        XCTAssertTrue(matchesSelectedTag(["general", "swift"], selectedTag: nil))
-        XCTAssertTrue(matchesSelectedTag(["general", "swift"], selectedTag: "swift"))
-        XCTAssertFalse(matchesSelectedTag(["general"], selectedTag: "swift"))
+
+        let items = [
+            (name: "A", tags: ["general", "swift"]),
+            (name: "B", tags: ["review"]),
+            (name: "C", tags: [String]()),
+        ]
+        let groups = itemsGroupedByTag(items) { $0.tags }
+
+        XCTAssertEqual(groups.map { $0.tag }, ["general", "review", "swift"])
+        XCTAssertEqual(groups[0].items.map { $0.name }, ["A"])
+        XCTAssertEqual(groups[1].items.map { $0.name }, ["B"])
+        XCTAssertEqual(groups[2].items.map { $0.name }, ["A"])
     }
 
     func testProjectAccessStatusDecodesCoreStateAndLegacyFallback() throws {

@@ -2,73 +2,80 @@ import AppKit
 import SwiftUI
 
 /// PromptsListView - 提示词列表视图
-/// 展示所有已创建/导入的 Prompt 模板，支持标签过滤、搜索、导入外部 Markdown 及新建提示词。
+/// 展示所有已创建/导入的 Prompt 模板，支持按标签展开/收起、搜索、导入外部 Markdown 及新建提示词。
 struct PromptsListView: View {
     @Bindable var model: AppModel
     @State private var search = ""
-    @State private var selectedTag: String?
     @State private var showsNewPrompt = false
-
-    private var availableTags: [String] {
-        availableFilterTags(from: model.prompts.map(\.tags))
-    }
+    @State private var isAllGroupExpanded = true
+    @State private var expandedTags: Set<String> = []
 
     private var filtered: [PromptSummary] {
         return model.prompts.filter {
-            let matchesSearch = search.isEmpty ||
+            search.isEmpty ||
                 $0.name.localizedStandardContains(search) ||
                 $0.description.localizedStandardContains(search) ||
                 $0.tags.contains(where: { $0.localizedStandardContains(search) })
-            return matchesSearch && matchesSelectedTag($0.tags, selectedTag: selectedTag)
         }
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            if !availableTags.isEmpty {
-                TagFilterBar(
-                    tags: availableTags,
-                    filteredCount: filtered.count,
-                    totalCount: model.prompts.count,
-                    selectedTag: $selectedTag
-                )
-            }
+        let visiblePrompts = filtered
+        let tagGroups = itemsGroupedByTag(visiblePrompts, tags: \.tags)
 
-            Group {
-                if model.prompts.isEmpty && !model.isLoading {
-                    ContentUnavailableView {
-                        Label("还没有 Prompt", systemImage: "text.bubble")
-                    } description: {
-                        Text("创建可复用、带变量定义的提示词。")
-                    } actions: {
-                        Button("新建 Prompt") { showsNewPrompt = true }
-                            .buttonStyle(.borderedProminent)
+        Group {
+            if model.prompts.isEmpty && !model.isLoading {
+                ContentUnavailableView {
+                    Label("还没有 Prompt", systemImage: "text.bubble")
+                } description: {
+                    Text("创建可复用、带变量定义的提示词。")
+                } actions: {
+                    Button("新建 Prompt") { showsNewPrompt = true }
+                        .buttonStyle(.borderedProminent)
+                }
+            } else if visiblePrompts.isEmpty {
+                ContentUnavailableView.search(text: search)
+            } else {
+                List(selection: $model.selectedPromptID) {
+                    TagGroupHeader(
+                        title: String(localized: "全部"),
+                        systemImage: "text.bubble",
+                        count: visiblePrompts.count,
+                        isExpanded: isAllGroupExpanded
+                    ) {
+                        isAllGroupExpanded.toggle()
                     }
-                } else if filtered.isEmpty, let tag = selectedTag, search.isEmpty {
-                    ContentUnavailableView {
-                        Label("没有匹配标签的 Prompt", systemImage: "tag.slash")
-                    } description: {
-                        Text("当前没有标记为“\(tag)”的 Prompt。")
-                    } actions: {
-                        Button("显示全部标签") { selectedTag = nil }
+                    .accessibilityIdentifier("prompts-group-all")
+
+                    if isAllGroupExpanded {
+                        ForEach(visiblePrompts) { prompt in
+                            PromptSummaryRow(prompt: prompt)
+                                .padding(.leading, 28)
+                                .listRowInsets(EdgeInsets(top: 3, leading: 12, bottom: 3, trailing: 12))
+                                .accessibilityIdentifier("prompt-row-\(prompt.id)")
+                                .tag(prompt.id)
+                        }
                     }
-                } else if filtered.isEmpty {
-                    ContentUnavailableView.search(text: search)
-                } else {
-                    List(filtered, selection: $model.selectedPromptID) { prompt in
-                        VStack(alignment: .leading, spacing: 5) {
-                            Text(prompt.name).fontWeight(.medium)
-                            Text(prompt.description.isEmpty ? String(localized: "无描述") : prompt.description)
-                                .font(.caption).foregroundStyle(.secondary).lineLimit(2)
-                            if !prompt.tags.isEmpty {
-                                Text(prompt.tags.joined(separator: " · "))
-                                    .font(.caption).foregroundStyle(.tertiary)
+
+                    ForEach(tagGroups, id: \.tag) { group in
+                        TagGroupHeader(
+                            title: group.tag,
+                            count: group.items.count,
+                            isExpanded: expandedTags.contains(group.tag)
+                        ) {
+                            toggleTag(group.tag)
+                        }
+                        .accessibilityIdentifier("prompts-group-\(group.tag)")
+
+                        if expandedTags.contains(group.tag) {
+                            ForEach(group.items) { prompt in
+                                PromptSummaryRow(prompt: prompt)
+                                    .padding(.leading, 28)
+                                    .listRowInsets(EdgeInsets(top: 3, leading: 12, bottom: 3, trailing: 12))
+                                    .accessibilityIdentifier("prompt-row-\(prompt.id)")
+                                    .tag(prompt.id)
                             }
                         }
-                        .padding(.vertical, 4)
-                        .tag(prompt.id)
-                        .accessibilityElement(children: .ignore)
-                        .accessibilityLabel(promptAccessibilityLabel(prompt))
                     }
                 }
             }
@@ -82,12 +89,6 @@ struct PromptsListView: View {
             }
         }
         .sheet(isPresented: $showsNewPrompt) { PromptEditorSheet(model: model, details: nil) }
-        .onChange(of: selectedTag) { _, _ in reconcileSelection() }
-        .onChange(of: availableTags) { _, tags in
-            if let selectedTag, !tags.contains(selectedTag) {
-                self.selectedTag = nil
-            }
-        }
         .onChange(of: model.pendingCommand?.id) { _, _ in
             guard let command = model.pendingCommand, command.section == .prompts else { return }
             switch command.kind {
@@ -102,27 +103,12 @@ struct PromptsListView: View {
         }
     }
 
-    private func promptAccessibilityLabel(_ prompt: PromptSummary) -> String {
-        let tags = prompt.tags.isEmpty
-            ? String(localized: "无标签")
-            : String(
-                format: String(localized: "标签 %@"),
-                locale: .current,
-                prompt.tags.joined(separator: String(localized: "、"))
-            )
-        return String(
-            format: String(localized: "%1$@，来源 %2$@，%3$@"),
-            locale: .current,
-            prompt.name,
-            prompt.source,
-            tags
-        )
-    }
-
-    private func reconcileSelection() {
-        guard let selectedPromptID = model.selectedPromptID,
-              !filtered.contains(where: { $0.id == selectedPromptID }) else { return }
-        model.selectedPromptID = filtered.first?.id
+    private func toggleTag(_ tag: String) {
+        if expandedTags.contains(tag) {
+            expandedTags.remove(tag)
+        } else {
+            expandedTags.insert(tag)
+        }
     }
 
     private func importPrompt() {

@@ -21,7 +21,9 @@
 		9F549DC12757A782F7B5AA03 /* TuistBundle+SKM.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FE6F8EA1789EACD76C69584 /* TuistBundle+SKM.swift */; };
 		9FDDA2849C51B2419F28CE50 /* AppModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D911E9F0468B541067E4B286 /* AppModelTests.swift */; };
 		A59F9AC65EC3577FF5D8CA74 /* AgentsViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19FCDAC7FF254EBCA9F8F78C /* AgentsViews.swift */; };
-		B8F0C11B6F7742B093A51E01 /* TagFilterBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8F0C11B6F7742B093A51E02 /* TagFilterBar.swift */; };
+		B8F0C11B6F7742B093A51E01 /* TagGroupHeader.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8F0C11B6F7742B093A51E02 /* TagGroupHeader.swift */; };
+		C2A55E570000000000000001 /* SkillSummaryRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2A55E570000000000000002 /* SkillSummaryRow.swift */; };
+		C2A55E580000000000000001 /* PromptSummaryRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2A55E580000000000000002 /* PromptSummaryRow.swift */; };
 		C1A55E550000000000000001 /* ProjectAccessStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1A55E550000000000000002 /* ProjectAccessStatus.swift */; };
 		C1A55E560000000000000001 /* ProjectAccessSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1A55E560000000000000002 /* ProjectAccessSettingsView.swift */; };
 		C9B9B1E200AB7B41C7565D5D /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E58F665593E8DCC13790995F /* RootView.swift */; };
@@ -110,7 +112,9 @@
 		925BF8832F4F69FCAB6ECE74 /* SKMUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SKMUITests.swift; sourceTree = "<group>"; };
 		A31D5DC3D0B1C74CA854A593 /* PromptsViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptsViews.swift; sourceTree = "<group>"; };
 		AA350D100C89E308AB417EA4 /* SparkleUpdater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SparkleUpdater.swift; sourceTree = "<group>"; };
-		B8F0C11B6F7742B093A51E02 /* TagFilterBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagFilterBar.swift; sourceTree = "<group>"; };
+		B8F0C11B6F7742B093A51E02 /* TagGroupHeader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagGroupHeader.swift; sourceTree = "<group>"; };
+		C2A55E570000000000000002 /* SkillSummaryRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillSummaryRow.swift; sourceTree = "<group>"; };
+		C2A55E580000000000000002 /* PromptSummaryRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptSummaryRow.swift; sourceTree = "<group>"; };
 		C1A55E550000000000000002 /* ProjectAccessStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectAccessStatus.swift; sourceTree = "<group>"; };
 		C1A55E560000000000000002 /* ProjectAccessSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectAccessSettingsView.swift; sourceTree = "<group>"; };
 		BB6FCBC6C244094C7D0648A4 /* SKMUITests-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "SKMUITests-Info.plist"; sourceTree = "<group>"; };
@@ -216,9 +220,11 @@
 				C1A55E560000000000000002 /* ProjectAccessSettingsView.swift */,
 				6BCD029EDC835D56BCC8D2FF /* ProjectsViews.swift */,
 				A31D5DC3D0B1C74CA854A593 /* PromptsViews.swift */,
+				C2A55E580000000000000002 /* PromptSummaryRow.swift */,
 				8A3742F40E78420077C423A6 /* SkillsViews.swift */,
+				C2A55E570000000000000002 /* SkillSummaryRow.swift */,
 				5B79C9520FC49E3978FE9DCA /* SourcesViews.swift */,
-				B8F0C11B6F7742B093A51E02 /* TagFilterBar.swift */,
+				B8F0C11B6F7742B093A51E02 /* TagGroupHeader.swift */,
 				76395AA4D3CDB13A2EA08F96 /* WorkspaceViews.swift */,
 			);
 			path = Features;
@@ -474,9 +480,11 @@
 				C1A55E560000000000000001 /* ProjectAccessSettingsView.swift in Sources */,
 				D5BD2C26163524C81996F417 /* ProjectsViews.swift in Sources */,
 				E2A97B6A3F3445B3C7C92E68 /* PromptsViews.swift in Sources */,
+				C2A55E580000000000000001 /* PromptSummaryRow.swift in Sources */,
 				6E990A3952BFAE9AD9669E5C /* SkillsViews.swift in Sources */,
+				C2A55E570000000000000001 /* SkillSummaryRow.swift in Sources */,
 				5AB7331AA5DD7E18A9FF5E9E /* SourcesViews.swift in Sources */,
-				B8F0C11B6F7742B093A51E01 /* TagFilterBar.swift in Sources */,
+				B8F0C11B6F7742B093A51E01 /* TagGroupHeader.swift in Sources */,
 				D02A6A7F6F768ECB352AB371 /* WorkspaceViews.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

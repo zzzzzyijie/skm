@@ -123,6 +123,54 @@ final class SKMUITests: XCTestCase {
     }
 
     @MainActor
+    func testChineseTagGroupsRenderAsSeparateListRows() throws {
+        let skillDirectory = temporaryRoot.appendingPathComponent("tag-layout-skill", isDirectory: true)
+        try FileManager.default.createDirectory(at: skillDirectory, withIntermediateDirectories: true)
+        try """
+        ---
+        name: tag-layout-skill
+        description: A deliberately long description used to verify that group headers and Skill rows keep independent vertical space in a narrow list.
+        ---
+
+        Verify the grouped list layout.
+        """.write(to: skillDirectory.appendingPathComponent("SKILL.md"), atomically: true, encoding: .utf8)
+
+        let app = application(language: "zh-Hans")
+        app.launch()
+        defer { app.terminate() }
+
+        XCTAssertTrue(app.staticTexts["还没有 Skill"].waitForExistence(timeout: 10))
+        app.typeKey("n", modifierFlags: .command)
+
+        let pathField = app.textFields["Skill 目录或 ZIP"]
+        XCTAssertTrue(pathField.waitForExistence(timeout: 3))
+        pathField.click()
+        paste(skillDirectory.path, into: pathField)
+
+        let tagsField = app.textFields["标签，以逗号分隔（可选）"]
+        tagsField.click()
+        paste("开发, 这是一个用于验证窄窗口截断表现的超长标签名称", into: tagsField)
+        app.buttons["导入"].click()
+
+        let allHeader = app.descendants(matching: .any)["skills-group-all"]
+        let skillRow = app.descendants(matching: .any)["skill-row-local/tag-layout-skill"].firstMatch
+        let longTagHeader = app.descendants(matching: .any)["skills-group-这是一个用于验证窄窗口截断表现的超长标签名称"]
+
+        XCTAssertTrue(allHeader.waitForExistence(timeout: 8))
+        XCTAssertTrue(skillRow.waitForExistence(timeout: 8))
+        XCTAssertTrue(longTagHeader.waitForExistence(timeout: 8))
+        XCTAssertLessThanOrEqual(allHeader.frame.maxY, skillRow.frame.minY)
+        XCTAssertLessThanOrEqual(skillRow.frame.maxY, longTagHeader.frame.minY)
+
+        allHeader.click()
+        XCTAssertFalse(skillRow.waitForExistence(timeout: 1))
+
+        longTagHeader.click()
+        XCTAssertTrue(skillRow.waitForExistence(timeout: 3))
+        XCTAssertLessThanOrEqual(longTagHeader.frame.maxY, skillRow.frame.minY)
+    }
+
+    @MainActor
     func testChineseProjectRegistrationAndWorkspacePreview() throws {
         let registeredProject = temporaryRoot.appendingPathComponent("registered-project", isDirectory: true)
         let workspaceRemote = temporaryRoot.appendingPathComponent("workspace.git", isDirectory: true)
