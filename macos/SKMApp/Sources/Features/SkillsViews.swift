@@ -203,35 +203,34 @@ struct SkillDetailView: View {
                     .foregroundStyle(.orange)
             }
 
-            // 标签 + 来源元数据（同行）
-            HStack(spacing: 12) {
-                if !skill.tags.isEmpty {
-                    HStack(spacing: 5) {
-                        ForEach(skill.tags, id: \.self) { tag in
-                            Text(tag)
-                                .font(.caption)
-                                .padding(.horizontal, 7)
-                                .padding(.vertical, 3)
-                                .background(Color.accentColor.opacity(0.1), in: Capsule())
-                                .foregroundStyle(Color.accentColor)
-                        }
+            // 标签（capsule 样式）
+            if !skill.tags.isEmpty {
+                HStack(spacing: 5) {
+                    ForEach(skill.tags, id: \.self) { tag in
+                        Text(tag)
+                            .font(.caption)
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 3)
+                            .background(Color.accentColor.opacity(0.1), in: Capsule())
+                            .foregroundStyle(Color.accentColor)
                     }
-
-                    Text("·")
-                        .foregroundStyle(Color.secondary.opacity(0.5))
                 }
+            }
 
+            // 元信息（来源 · hash · 字数）
+            HStack(spacing: 16) {
                 Label(skill.source.isEmpty ? "local" : skill.source, systemImage: skill.source == "git" ? "arrow.triangle.branch" : "externaldrive")
-                    .font(.caption)
-                    .foregroundStyle(Color.secondary)
-
                 Text(String(skill.hash.prefix(8)))
-                    .font(.caption.monospaced())
-                    .foregroundStyle(Color.secondary)
+                    .font(.callout.monospaced())
                     .padding(.horizontal, 5)
                     .padding(.vertical, 2)
                     .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 4))
+                if let body = details?.body {
+                    Label("\(body.count) 字符", systemImage: "textformat.size")
+                }
             }
+            .font(.callout)
+            .foregroundStyle(.secondary)
         }
     }
 
@@ -398,7 +397,7 @@ private struct AgentToggleCard: View {
 // MARK: - MarkdownBodyView
 
 /// Markdown 正文渲染组件 — 使用 SwiftUI 原生 AttributedString 解析渲染
-private struct MarkdownBodyView: View {
+struct MarkdownBodyView: View {
     let markdown: String
 
     var body: some View {

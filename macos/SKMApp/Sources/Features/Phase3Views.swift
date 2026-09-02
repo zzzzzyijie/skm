@@ -148,7 +148,6 @@ struct PromptRenderSheet: View {
         } detail: {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
-                    Text("渲染结果").font(.title2.bold())
                     Spacer()
                     Button("复制", systemImage: "doc.on.doc") { copyRendered() }
                         .disabled(rendered.isEmpty || !missing.isEmpty)

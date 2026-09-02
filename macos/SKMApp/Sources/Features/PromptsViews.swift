@@ -33,42 +33,21 @@ struct PromptsListView: View {
                     Button("新建 Prompt") { showsNewPrompt = true }
                         .buttonStyle(.borderedProminent)
                 }
-            } else if visiblePrompts.isEmpty {
-                ContentUnavailableView.search(text: search)
             } else {
                 List(selection: $model.selectedPromptID) {
-                    TagGroupHeader(
-                        title: String(localized: "全部"),
-                        systemImage: "text.bubble",
-                        count: visiblePrompts.count,
-                        isExpanded: isAllGroupExpanded
-                    ) {
-                        isAllGroupExpanded.toggle()
-                    }
-                    .accessibilityIdentifier("prompts-group-all")
-
-                    if isAllGroupExpanded {
-                        ForEach(visiblePrompts) { prompt in
-                            PromptSummaryRow(prompt: prompt)
-                                .padding(.leading, 28)
-                                .listRowInsets(EdgeInsets(top: 3, leading: 12, bottom: 3, trailing: 12))
-                                .accessibilityIdentifier("prompt-row-\(prompt.id)")
-                                .tag(prompt.id)
-                        }
-                    }
-
-                    ForEach(tagGroups, id: \.tag) { group in
+                    if !visiblePrompts.isEmpty {
                         TagGroupHeader(
-                            title: group.tag,
-                            count: group.items.count,
-                            isExpanded: expandedTags.contains(group.tag)
+                            title: String(localized: "全部"),
+                            systemImage: "text.bubble",
+                            count: visiblePrompts.count,
+                            isExpanded: isAllGroupExpanded
                         ) {
-                            toggleTag(group.tag)
+                            isAllGroupExpanded.toggle()
                         }
-                        .accessibilityIdentifier("prompts-group-\(group.tag)")
+                        .accessibilityIdentifier("prompts-group-all")
 
-                        if expandedTags.contains(group.tag) {
-                            ForEach(group.items) { prompt in
+                        if isAllGroupExpanded {
+                            ForEach(visiblePrompts) { prompt in
                                 PromptSummaryRow(prompt: prompt)
                                     .padding(.leading, 28)
                                     .listRowInsets(EdgeInsets(top: 3, leading: 12, bottom: 3, trailing: 12))
@@ -76,11 +55,62 @@ struct PromptsListView: View {
                                     .tag(prompt.id)
                             }
                         }
+
+                        ForEach(tagGroups, id: \.tag) { group in
+                            TagGroupHeader(
+                                title: group.tag,
+                                count: group.items.count,
+                                isExpanded: expandedTags.contains(group.tag)
+                            ) {
+                                toggleTag(group.tag)
+                            }
+                            .accessibilityIdentifier("prompts-group-\(group.tag)")
+
+                            if expandedTags.contains(group.tag) {
+                                ForEach(group.items) { prompt in
+                                    PromptSummaryRow(prompt: prompt)
+                                        .padding(.leading, 28)
+                                        .listRowInsets(EdgeInsets(top: 3, leading: 12, bottom: 3, trailing: 12))
+                                        .accessibilityIdentifier("prompt-row-\(prompt.id)")
+                                        .tag(prompt.id)
+                                }
+                            }
+                        }
                     }
                 }
             }
         }
-        .searchable(text: $search, prompt: "搜索 Prompt")
+        .safeAreaInset(edge: .top, spacing: 0) {
+            HStack(spacing: 6) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(.secondary)
+                    .font(.system(size: 12, weight: .medium))
+                TextField("搜索 Prompt", text: $search)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 13))
+                if !search.isEmpty {
+                    Button {
+                        search = ""
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(.secondary)
+                            .font(.system(size: 12))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 5)
+            .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .stroke(Color(nsColor: .separatorColor).opacity(0.6), lineWidth: 0.5)
+            )
+            .padding(.horizontal, 10)
+            .padding(.top, 8)
+            .padding(.bottom, 6)
+            .accessibilityIdentifier("prompt-search-field")
+        }
         .navigationTitle("Prompts")
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
@@ -128,14 +158,11 @@ struct PromptsListView: View {
 }
 
 /// PromptDetailView - 提示词详情视图
-/// 展示提示词变量列表与 Markdown 正文，提供“填写变量并渲染”（PromptRenderSheet）、
-/// QuickLook 预览、版本历史快照比对、一键复制与导出 .md 文件。
+/// 展示提示词变量列表与 Markdown 正文，提供 QuickLook 预览、一键复制与导出 .md 文件。
 struct PromptDetailView: View {
     @Bindable var model: AppModel
     @State private var details: PromptDetails?
     @State private var showsEditor = false
-    @State private var showsRenderer = false
-    @State private var showsHistory = false
     @State private var confirmsDelete = false
 
     var body: some View {
@@ -143,11 +170,27 @@ struct PromptDetailView: View {
             if let id = model.selectedPromptID, let prompt = model.prompts.first(where: { $0.id == id }) {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 22) {
+                        // ── 标题 & 描述 ──
                         VStack(alignment: .leading, spacing: 8) {
                             Text(prompt.name).font(.largeTitle.bold())
                             Text(prompt.description.isEmpty ? String(localized: "无描述") : prompt.description)
                                 .font(.title3).foregroundStyle(.secondary)
                         }
+
+                        // ── 元信息（来源 · 标签 · 字数） ──
+                        HStack(spacing: 16) {
+                            Label(prompt.source, systemImage: "archivebox")
+                            if !prompt.tags.isEmpty {
+                                Label(prompt.tags.joined(separator: " · "), systemImage: "tag")
+                            }
+                            if let body = details?.body {
+                                Label("\(body.count) 字符", systemImage: "textformat.size")
+                            }
+                        }
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+
+                        // ── 变量区 ──
                         if let variables = prompt.variables, !variables.isEmpty {
                             GroupBox("变量") {
                                 VStack(alignment: .leading, spacing: 10) {
@@ -161,12 +204,45 @@ struct PromptDetailView: View {
                                 }.padding(4)
                             }
                         }
-                        GroupBox("内容") {
-                            Text(details?.body ?? String(localized: "正在读取…"))
-                                .font(.system(.body, design: .monospaced))
-                                .textSelection(.enabled)
+
+                        // ── 内容区（Markdown 渲染 + 右上角复制） ──
+                        GroupBox {
+                            ZStack(alignment: .topTrailing) {
+                                Group {
+                                    if let body = details?.body {
+                                        if body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                            Text("此 Prompt 没有正文内容。")
+                                                .foregroundStyle(.secondary)
+                                                .italic()
+                                        } else {
+                                            MarkdownBodyView(markdown: body)
+                                        }
+                                    } else {
+                                        HStack(spacing: 8) {
+                                            ProgressView().controlSize(.small)
+                                            Text("正在读取…").foregroundStyle(.secondary)
+                                        }
+                                    }
+                                }
                                 .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(10)
+
+                                Button {
+                                    NSPasteboard.general.clearContents()
+                                    NSPasteboard.general.setString(details?.body ?? "", forType: .string)
+                                    model.announce(String(localized: "Prompt 已复制"))
+                                } label: {
+                                    Image(systemName: "doc.on.doc")
+                                        .font(.callout)
+                                        .foregroundStyle(.secondary)
+                                }
+                                .buttonStyle(.borderless)
+                                .help("复制 Prompt 内容")
                                 .padding(8)
+                                .disabled(details == nil)
+                            }
+                        } label: {
+                            Text("内容")
                         }
                     }
                     .padding(26)
@@ -176,9 +252,6 @@ struct PromptDetailView: View {
                 .toolbar {
                     ToolbarItemGroup(placement: .primaryAction) {
                         Button("快速查看", systemImage: "eye") { Task { await showQuickLook() } }
-                        Button("填写变量", systemImage: "text.badge.checkmark") { showsRenderer = true }
-                            .disabled(details == nil)
-                        Button("历史", systemImage: "clock.arrow.circlepath") { showsHistory = true }
                         Button("复制", systemImage: "doc.on.doc") {
                             NSPasteboard.general.clearContents()
                             NSPasteboard.general.setString(details?.body ?? "", forType: .string)
@@ -191,12 +264,6 @@ struct PromptDetailView: View {
                 }
                 .sheet(isPresented: $showsEditor, onDismiss: { Task { await loadDetails(id) } }) {
                     if let details { PromptEditorSheet(model: model, details: details) }
-                }
-                .sheet(isPresented: $showsRenderer) {
-                    if let details { PromptRenderSheet(model: model, details: details) }
-                }
-                .sheet(isPresented: $showsHistory, onDismiss: { Task { await loadDetails(id) } }) {
-                    HistorySheet(model: model, kind: "prompt", itemID: id, title: prompt.name)
                 }
                 .confirmationDialog("移除 \(prompt.name)？", isPresented: $confirmsDelete) {
                     Button("移除 Prompt", role: .destructive) { Task { await model.removePrompt(id: id) } }

@@ -728,7 +728,6 @@
       }
     },
     "内容" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2075,7 +2074,6 @@
 
     },
     "正在读取…" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2108,6 +2106,9 @@
           }
         }
       }
+    },
+    "此 Prompt 没有正文内容。" : {
+
     },
     "此 Skill 没有正文内容。" : {
 
@@ -2296,6 +2297,7 @@
       }
     },
     "渲染结果" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {

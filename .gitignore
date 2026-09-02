@@ -40,6 +40,7 @@ go.work.sum
 # Xcode user-local state and build products
 macos/**/xcuserdata/
 macos/.build/
+macos/build/
 macos/DerivedData/
 macos/Derived/
 *.xcuserstate

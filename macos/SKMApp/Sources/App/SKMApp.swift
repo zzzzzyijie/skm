@@ -32,13 +32,12 @@ struct SKMApp: App {
                     .keyboardShortcut("r", modifiers: .command)
                 Button("检查更新…") { Task { await model.checkForUpdates() } }
             }
-            // 快捷预览与删除（空格预览、Cmd+Delete 删除）
+            // 快捷预览与删除（空格预览）
             CommandGroup(after: .pasteboard) {
                 Button("快速查看") { Task { await showQuickLook() } }
                     .keyboardShortcut(.space, modifiers: [])
                     .disabled(model.section != .skills && model.section != .prompts)
                 Button("删除所选项目") { model.request(.deleteSelection) }
-                    .keyboardShortcut(.delete, modifiers: .command)
                     .disabled(!model.canDeleteSelection)
             }
             // 导航快捷键（Cmd+1/2/3 切换 Skills / Prompts / Projects）
