@@ -235,40 +235,6 @@ struct SettingsView: View {
         case .sources: SourcesSettingsView(model: model)
         case .gitSync: WorkspaceDetailView(model: model)
         case .updates: UpdatesSettingsView(model: model)
-        case .diagnostics: DiagnosticsDetailView(model: model)
         }
-    }
-}
-
-private struct GeneralSettingsView: View {
-    let model: AppModel
-
-    var body: some View {
-        Form {
-            Section("版本") {
-                LabeledContent("App", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev")
-                LabeledContent("Go Core", value: model.handshake?.coreVersion ?? String(localized: "未连接"))
-                LabeledContent("数据 Schema", value: model.handshake?.schemaVersion.description ?? "—")
-            }
-            Section("存储") {
-                LabeledContent("个人数据", value: "~/.skm")
-                Text("Skill、Prompt、部署状态继续与命令行共享；App 不直接修改 YAML。")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            Section("同步状态") {
-                LabeledContent("技能来源", value: String(model.sources.count))
-                LabeledContent(
-                    "个人 Git 同步",
-                    value: model.workspace?.configured == true ? String(localized: "已配置") : String(localized: "未配置")
-                )
-                LabeledContent(
-                    "已管理 Agent",
-                    value: String(model.agents.filter(\.configured).count)
-                )
-            }
-        }
-        .formStyle(.grouped)
-        .navigationTitle("通用")
     }
 }

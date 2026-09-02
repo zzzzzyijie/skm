@@ -153,6 +153,9 @@
         }
       }
     },
+    "Doctor 健康检查" : {
+
+    },
     "Git / 命令" : {
       "localizations" : {
         "en" : {
@@ -2562,6 +2565,7 @@
       }
     },
     "系统诊断" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {

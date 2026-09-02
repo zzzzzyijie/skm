@@ -1,82 +1,83 @@
 import SwiftUI
 
-/// 系统诊断侧栏列表
-struct DiagnosticsSidebarView: View {
-    let model: AppModel
-
-    var body: some View {
-        List(model.doctorChecks) { check in
-            DoctorSidebarRow(check: check)
-        }
-        .navigationTitle("Diagnostics")
-    }
-}
-
-private struct DoctorSidebarRow: View {
-    let check: DoctorCheck
-
-    var body: some View {
-        Label(check.name, systemImage: symbol)
-            .foregroundStyle(color)
-    }
-
-    private var symbol: String {
-        check.status == "ok" ? "checkmark.circle" : "exclamationmark.triangle"
-    }
-
-    private var color: Color {
-        check.status == "ok" ? .primary : .orange
-    }
-}
-
-/// DiagnosticsDetailView - 系统诊断详情视图
-/// 包含两大模块：
-/// 1. Doctor 健康检查：展示存储目录、Git 环境、Go Core 状态及各 Agent 安装状态；
-/// 2. 诊断报告导出：生成自动脱敏（隐藏家目录用户名及 URL Token）的系统报告并支持一键复制与导出。
-struct DiagnosticsDetailView: View {
+/// GeneralSettingsView - 通用设置与系统诊断视图
+/// 包含四大模块：
+/// 1. 版本与存储：App 版本与个人数据存储路径说明；
+/// 2. 同步状态：技能来源、Git 同步、已管理 Agent 等同步状态概览；
+/// 3. Doctor 健康检查：展示存储目录、Git 环境、Go Core 状态及各 Agent 安装状态，支持一键重新运行；
+/// 4. 诊断报告：生成自动脱敏的系统诊断报告并支持一键复制与导出。
+struct GeneralSettingsView: View {
     @Bindable var model: AppModel
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 22) {
+        Form {
+            Section("版本") {
+                LabeledContent("App", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev")
+            }
+
+            Section("存储") {
+                LabeledContent("个人数据", value: "~/.skm")
+                Text("Skill、Prompt、部署状态继续与命令行共享；App 不直接修改 YAML。")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Section("同步状态") {
+                LabeledContent("技能来源", value: String(model.sources.count))
+                LabeledContent(
+                    "个人 Git 同步",
+                    value: model.workspace?.configured == true ? String(localized: "已配置") : String(localized: "未配置")
+                )
+                LabeledContent(
+                    "已管理 Agent",
+                    value: String(model.agents.filter(\.configured).count)
+                )
+            }
+
+            Section {
+                ForEach(model.doctorChecks) { check in
+                    HStack(alignment: .top, spacing: 10) {
+                        Image(systemName: check.status == "ok" ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                            .foregroundStyle(check.status == "ok" ? .green : .orange)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(check.name)
+                                .fontWeight(.medium)
+                            Text(check.message)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .textSelection(.enabled)
+                        }
+                    }
+                    .padding(.vertical, 2)
+                }
+            } header: {
                 HStack {
-                    Text("系统诊断").font(.largeTitle.bold())
+                    Text("Doctor 健康检查")
                     Spacer()
-                    Button("重新运行", systemImage: "arrow.clockwise") { Task { await model.runDoctor() } }
-                }
-                GroupBox("Doctor") {
-                    VStack(alignment: .leading, spacing: 0) {
-                        ForEach(model.doctorChecks) { check in
-                            HStack(alignment: .top, spacing: 12) {
-                                Image(systemName: check.status == "ok" ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
-                                    .foregroundStyle(check.status == "ok" ? .green : .orange)
-                                VStack(alignment: .leading, spacing: 3) {
-                                    Text(check.name).fontWeight(.medium)
-                                    Text(check.message).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
-                                }
-                            }
-                            .padding(.vertical, 10)
-                            if check.id != model.doctorChecks.last?.id { Divider() }
-                        }
+                    Button("重新运行", systemImage: "arrow.clockwise") {
+                        Task { await model.runDoctor() }
                     }
-                    .padding(8)
-                }
-                GroupBox("诊断报告") {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("导出内容包含 App/Core 版本、系统架构和脱敏后的 Doctor 结果，不包含公证密钥或 Git 凭据。")
-                            .foregroundStyle(.secondary)
-                        HStack {
-                            Button("复制诊断信息", systemImage: "doc.on.doc") { model.copyDiagnostics() }
-                            Button("导出到文件…", systemImage: "square.and.arrow.down") { model.exportDiagnostics() }
-                        }
-                    }
-                    .padding(8)
+                    .buttonStyle(.borderless)
+                    .font(.caption)
                 }
             }
-            .padding(26)
-            .frame(maxWidth: 820, alignment: .leading)
+
+            Section("诊断报告") {
+                Text("导出内容包含 App/Core 版本、系统架构和脱敏后的 Doctor 结果，不包含公证密钥或 Git 凭据。")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                HStack(spacing: 12) {
+                    Button("复制诊断信息", systemImage: "doc.on.doc") {
+                        model.copyDiagnostics()
+                    }
+                    Button("导出到文件…", systemImage: "square.and.arrow.down") {
+                        model.exportDiagnostics()
+                    }
+                }
+            }
         }
-        .navigationTitle("系统诊断")
+        .formStyle(.grouped)
+        .navigationTitle("通用")
     }
 }
 

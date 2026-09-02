@@ -36,8 +36,6 @@ enum SettingsSection: String, CaseIterable, Identifiable {
     case gitSync
     /// 软件更新：Sparkle 签名升级与 GitHub Releases 版本检查
     case updates
-    /// 系统诊断：Doctor 健康检查与诊断报告导出
-    case diagnostics
 
     var id: String { rawValue }
 
@@ -49,7 +47,6 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .sources: String(localized: "技能来源")
         case .gitSync: String(localized: "Git 同步")
         case .updates: String(localized: "软件更新")
-        case .diagnostics: String(localized: "系统诊断")
         }
     }
 
@@ -61,7 +58,6 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .sources: "arrow.triangle.branch"
         case .gitSync: "arrow.triangle.2.circlepath.icloud"
         case .updates: "arrow.triangle.2.circlepath.circle"
-        case .diagnostics: "stethoscope"
         }
     }
 }

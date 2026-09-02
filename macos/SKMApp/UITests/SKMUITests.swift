@@ -61,7 +61,7 @@ final class SKMUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Agent Management"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Skill Sources"].exists)
         XCTAssertTrue(app.staticTexts["Git Sync"].exists)
-        XCTAssertTrue(app.staticTexts["Diagnostics & Updates"].exists)
+        XCTAssertTrue(app.staticTexts["Software Updates"].exists)
     }
 
     @MainActor
