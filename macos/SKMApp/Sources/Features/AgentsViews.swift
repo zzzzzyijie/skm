@@ -14,6 +14,18 @@ struct AgentsSettingsView: View {
         model.agents.filter(\.configured).count
     }
 
+    private var detectedCount: Int {
+        model.agents.filter(\.detected).count
+    }
+
+    private var configuredAgents: [AgentModel] {
+        sortedAgents.filter(\.configured)
+    }
+
+    private var availableAgents: [AgentModel] {
+        sortedAgents.filter { !$0.configured }
+    }
+
     private var sortedAgents: [AgentModel] {
         model.agents.sorted { lhs, rhs in
             if lhs.configured != rhs.configured {
@@ -28,12 +40,12 @@ struct AgentsSettingsView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 22) {
-                HStack(alignment: .firstTextBaseline) {
+            VStack(alignment: .leading, spacing: 26) {
+                HStack(alignment: .center, spacing: 20) {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text(String(format: String(localized: "Agent 管理 (%lld)"), locale: .current, configuredCount))
+                        Text("Agents")
                             .font(.largeTitle.bold())
-                        Text("选择 SKM 可以部署 Skill 的工具，并管理自定义 Agent 路径。已勾选启用的 Agent 会置顶显示。")
+                        Text("选择要由 SKM 管理的 AI 工具。启用后，你可以从 Skill 详情中一键部署。")
                             .foregroundStyle(.secondary)
                     }
                     Spacer()
@@ -44,6 +56,27 @@ struct AgentsSettingsView: View {
                     .buttonStyle(.borderedProminent)
                 }
 
+                HStack(spacing: 10) {
+                    AgentSummaryPill(
+                        title: String(localized: "已启用"),
+                        value: configuredCount,
+                        systemImage: "checkmark.circle.fill",
+                        tint: .accentColor
+                    )
+                    AgentSummaryPill(
+                        title: String(localized: "本机已检测"),
+                        value: detectedCount,
+                        systemImage: "desktopcomputer",
+                        tint: .green
+                    )
+                    AgentSummaryPill(
+                        title: String(localized: "全部 Agent"),
+                        value: model.agents.count,
+                        systemImage: "cpu",
+                        tint: .secondary
+                    )
+                }
+
                 if model.agents.isEmpty {
                     ContentUnavailableView(
                         "没有可用的 Agent",
@@ -52,21 +85,19 @@ struct AgentsSettingsView: View {
                     )
                     .frame(minHeight: 260)
                 } else {
-                    LazyVStack(spacing: 10) {
-                        ForEach(sortedAgents) { agent in
-                            AgentSettingsRow(
-                                agent: agent,
-                                onToggle: { enabled in
-                                    Task { await model.configureAgent(agent.id, enabled: enabled) }
-                                },
-                                onEdit: {
-                                    editingAgent = agent
-                                    showsEditor = true
-                                },
-                                onDelete: {
-                                    agentToDelete = agent
-                                    confirmsDelete = true
-                                }
+                    LazyVStack(alignment: .leading, spacing: 22) {
+                        if !configuredAgents.isEmpty {
+                            agentSection(
+                                title: String(localized: "已启用"),
+                                subtitle: String(localized: "这些 Agent 可以使用我的 Skill"),
+                                agents: configuredAgents
+                            )
+                        }
+                        if !availableAgents.isEmpty {
+                            agentSection(
+                                title: String(localized: "其他 Agent"),
+                                subtitle: String(localized: "启用后即可由 SKM 统一部署和更新"),
+                                agents: availableAgents
                             )
                         }
                     }
@@ -92,50 +123,129 @@ struct AgentsSettingsView: View {
             Text("如果仍有 Skill 在此 Agent 中启用，Core 会拒绝删除。")
         }
     }
+
+    private func agentSection(title: String, subtitle: String, agents: [AgentModel]) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(title).font(.title3.bold())
+                Text(agents.count.description)
+                    .font(.callout.monospacedDigit())
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Text(subtitle)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+
+            VStack(spacing: 10) {
+                ForEach(agents) { agent in
+                    AgentSettingsRow(
+                        agent: agent,
+                        isLoading: model.isLoading,
+                        onToggle: { enabled in
+                            Task { await model.configureAgent(agent.id, enabled: enabled) }
+                        },
+                        onEdit: {
+                            editingAgent = agent
+                            showsEditor = true
+                        },
+                        onDelete: {
+                            agentToDelete = agent
+                            confirmsDelete = true
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
+
+private struct AgentSummaryPill: View {
+    let title: String
+    let value: Int
+    let systemImage: String
+    let tint: Color
+
+    var body: some View {
+        Label {
+            Text("\(value) \(title)")
+                .monospacedDigit()
+        } icon: {
+            Image(systemName: systemImage)
+        }
+        .font(.callout)
+        .foregroundStyle(tint)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 7)
+        .background(tint.opacity(0.09), in: Capsule())
+        .accessibilityElement(children: .combine)
+    }
 }
 
 private struct AgentSettingsRow: View {
     let agent: AgentModel
+    let isLoading: Bool
     let onToggle: (Bool) -> Void
     let onEdit: () -> Void
     let onDelete: () -> Void
 
     var body: some View {
-        HStack(spacing: 14) {
-            Image(systemName: agent.custom ? "cpu.fill" : "cpu")
+        HStack(spacing: 16) {
+            Image(systemName: agentSymbol)
                 .font(.title3)
-                .foregroundStyle(agent.detected ? Color.accentColor : .secondary)
-                .frame(width: 38, height: 38)
-                .background(.quaternary, in: RoundedRectangle(cornerRadius: 9))
+                .foregroundStyle(agent.configured ? Color.accentColor : .secondary)
+                .frame(width: 44, height: 44)
+                .background(
+                    agent.configured ? Color.accentColor.opacity(0.1) : Color.primary.opacity(0.045),
+                    in: RoundedRectangle(cornerRadius: 11)
+                )
+                .accessibilityHidden(true)
 
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 7) {
-                    Text(agent.name).fontWeight(.semibold)
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 8) {
+                    Text(agent.name).font(.headline)
+                    AgentStateBadge(agent: agent)
                     if agent.custom {
                         Text("自定义")
-                            .font(.caption2)
+                            .font(.caption)
                             .foregroundStyle(.secondary)
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 2)
+                            .background(.quaternary, in: Capsule())
                     }
                 }
                 Text(agent.path ?? String(localized: "未提供 Skill 路径"))
                     .font(.caption.monospaced())
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
-                Text(agent.detected ? String(localized: "已检测") : String(localized: "未检测"))
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
+                    .truncationMode(.middle)
+                if let note = agent.note, !note.isEmpty {
+                    Text(note)
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                        .lineLimit(1)
+                }
             }
 
             Spacer(minLength: 12)
 
-            Toggle("允许 SKM 向此 Agent 部署 Skill", isOn: Binding(
-                get: { agent.configured },
-                set: onToggle
-            ))
-            .labelsHidden()
-            .accessibilityLabel("允许 SKM 向此 Agent 部署 Skill")
-            .accessibilityIdentifier("agent-management-\(agent.id)")
-            .disabled(!agent.supported)
+            VStack(alignment: .trailing, spacing: 4) {
+                Toggle("由 SKM 管理", isOn: Binding(
+                    get: { agent.configured },
+                    set: { value in onToggle(value) }
+                ))
+                .toggleStyle(.switch)
+                .controlSize(.small)
+                .accessibilityLabel("允许 SKM 向此 Agent 部署 Skill")
+                .accessibilityIdentifier("agent-management-\(agent.id)")
+                .disabled(!agent.supported || isLoading)
+
+                if !agent.detected && !agent.configured {
+                    Text("未检测到，也可预先启用")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
+            }
 
             if agent.custom {
                 Menu("更多", systemImage: "ellipsis.circle") {
@@ -146,8 +256,54 @@ private struct AgentSettingsRow: View {
                 .fixedSize()
             }
         }
-        .padding(14)
-        .background(.quaternary.opacity(0.45), in: RoundedRectangle(cornerRadius: 12))
+        .padding(16)
+        .background(.quaternary.opacity(0.38), in: RoundedRectangle(cornerRadius: 14))
+        .overlay {
+            if agent.configured {
+                RoundedRectangle(cornerRadius: 14)
+                    .stroke(Color.accentColor.opacity(0.22))
+            }
+        }
+    }
+
+    private var agentSymbol: String {
+        if agent.custom { return "cpu.fill" }
+        switch agent.id {
+        case "claude": return "sparkles"
+        case "codex": return "terminal"
+        case "cursor": return "cursorarrow.rays"
+        case "copilot": return "person.wave.2"
+        case "gemini": return "diamond"
+        default: return "cpu"
+        }
+    }
+}
+
+private struct AgentStateBadge: View {
+    let agent: AgentModel
+
+    var body: some View {
+        Label(title, systemImage: symbol)
+            .font(.caption)
+            .foregroundStyle(color)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 2)
+            .background(color.opacity(0.09), in: Capsule())
+    }
+
+    private var title: String {
+        if agent.configured { return String(localized: "已启用") }
+        return agent.detected ? String(localized: "已检测") : String(localized: "未检测")
+    }
+
+    private var symbol: String {
+        if agent.configured { return "checkmark.circle.fill" }
+        return agent.detected ? "circle.dotted.circle" : "circle.dashed"
+    }
+
+    private var color: Color {
+        if agent.configured { return .accentColor }
+        return agent.detected ? .green : .secondary
     }
 }
 

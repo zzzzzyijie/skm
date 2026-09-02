@@ -15,7 +15,7 @@ struct ProjectsListView: View {
                 ContentUnavailableView {
                     Label("没有已注册项目", systemImage: "folder")
                 } description: {
-                    Text("添加一个本机项目，扫描各 Agent 的 Skills，或把 Library Skill 部署到项目。")
+                    Text("添加一个本机项目，扫描各 Agent 的 Skills，或把我的 Skill 导入项目。")
                 } actions: {
                     Button("添加项目…") { showsAddProject = true }
                         .buttonStyle(.borderedProminent)
@@ -23,21 +23,35 @@ struct ProjectsListView: View {
             } else {
                 List(model.projects, selection: $model.selectedProjectID) { project in
                     let access = ProjectAccessStatus(project: project)
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack {
-                            Text(project.id).bold()
-                            Spacer()
-                            Image(systemName: access.symbol)
-                                .foregroundStyle(access.color)
-                                .accessibilityLabel(access.title)
+                    HStack(alignment: .top, spacing: 11) {
+                        Image(systemName: access.canRead ? "folder.fill" : access.symbol)
+                            .font(.title3)
+                            .foregroundStyle(access.canRead ? Color.accentColor : access.color)
+                            .frame(width: 32, height: 32)
+                            .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
+                            .accessibilityHidden(true)
+
+                        VStack(alignment: .leading, spacing: 5) {
+                            HStack(spacing: 8) {
+                                Text(project.id).bold()
+                                Spacer()
+                                Label(access.title, systemImage: access.symbol)
+                                    .font(.caption)
+                                    .foregroundStyle(access.color)
+                            }
+                            Text(project.path)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                            Text(String(format: String(localized: "%lld 个 Skills · %lld 个部署"), locale: .current, project.skillCount, project.activationCount))
+                                .font(.caption)
+                                .foregroundStyle(.tertiary)
                         }
-                        Text(project.path).font(.caption).foregroundStyle(.secondary).lineLimit(1)
-                        Text(String(format: String(localized: "%lld 个 Skills · %lld 个部署"), locale: .current, project.skillCount, project.activationCount))
-                            .font(.caption)
-                            .foregroundStyle(.tertiary)
                     }
-                    .padding(.vertical, 4)
+                    .padding(.vertical, 6)
                     .tag(project.id)
+                    .accessibilityElement(children: .combine)
                     .contextMenu {
                         Button("在 Finder 中显示") { NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: project.path) }
                         Divider()
@@ -128,15 +142,11 @@ struct AddProjectSheet: View {
 }
 
 /// ProjectDetailView - 项目技能详情与部署管理视图
-/// 包含项目全局扫描概览、Skill 部署（Symlink / Copy / Require / Vendor）、解绑、迁移与清单锁定管理。
+/// 包含项目扫描概览、从个人 Skill 库导入、解绑与迁移操作。
 struct ProjectDetailView: View {
     @Environment(\.openSettings) private var openSettings
     @Bindable var model: AppModel
-    @State private var selectedLibrarySkill = ""
-    @State private var selectedAgents = Set<String>()
-    @State private var mode = "symlink"
-    @State private var projectAction = "deploy"
-    @State private var entryToRemove: String?
+    @State private var showsSkillImporter = false
 
     var body: some View {
         if let id = model.selectedProjectID,
@@ -144,14 +154,14 @@ struct ProjectDetailView: View {
             let access = ProjectAccessStatus(project: project)
             if access.canRead {
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 22) {
-                        header(project)
+                    VStack(alignment: .leading, spacing: 24) {
                         if let details = model.projectDetails, details.project.id == id {
-                            deploymentSection(details)
+                            header(project, details: details)
+                            projectOverview(details)
                             planSection
-                            projectManifestSection(details)
                             scannedSkills(details)
                         } else {
+                            header(project, details: nil)
                             ProgressView("正在扫描项目…")
                                 .frame(maxWidth: .infinity, minHeight: 220)
                         }
@@ -160,9 +170,6 @@ struct ProjectDetailView: View {
                     .frame(maxWidth: 900, alignment: .leading)
                 }
                 .task(id: id) {
-                    selectedAgents = Set(model.agents.filter(\.configured).map(\.id))
-                    if selectedAgents.isEmpty { selectedAgents = ["codex"] }
-                    selectedLibrarySkill = model.skills.first?.id ?? ""
                     await model.loadProjectDetails(id)
                 }
             } else {
@@ -190,141 +197,53 @@ struct ProjectDetailView: View {
         openSettings()
     }
 
-    private func header(_ project: ProjectModel) -> some View {
-        HStack(alignment: .top) {
+    private func header(_ project: ProjectModel, details: ProjectDetails?) -> some View {
+        HStack(alignment: .center, spacing: 20) {
             VStack(alignment: .leading, spacing: 6) {
                 Text(project.id).font(.largeTitle.bold())
-                Text(project.path).foregroundStyle(.secondary).textSelection(.enabled)
+                Label(project.path, systemImage: "folder")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .textSelection(.enabled)
             }
             Spacer()
-            Button("重新扫描", systemImage: "arrow.clockwise") { Task { await model.loadProjectDetails(project.id) } }
+            Button("重新扫描", systemImage: "arrow.clockwise") {
+                Task { await model.loadProjectDetails(project.id) }
+            }
                 .disabled(model.isLoading)
+            Button("从我的 Skill 里导入", systemImage: "square.and.arrow.down") {
+                showsSkillImporter = true
+            }
+            .buttonStyle(.borderedProminent)
+            .disabled(details == nil)
+        }
+        .sheet(isPresented: $showsSkillImporter) {
+            if let details {
+                ProjectSkillImportSheet(model: model, project: details.project)
+            }
         }
     }
 
-    private func deploymentSection(_ details: ProjectDetails) -> some View {
-        GroupBox("从 Library 添加") {
-            VStack(alignment: .leading, spacing: 14) {
-                if model.skills.isEmpty {
-                    ContentUnavailableView("Library 中没有 Skill", systemImage: "square.stack.3d.up")
-                } else {
-                    Picker("添加方式", selection: $projectAction) {
-                        Text("直接部署").tag("deploy")
-                        Text("Require").tag("require")
-                        Text("Vendor").tag("vendor")
-                    }
-                    .pickerStyle(.segmented)
-                    Picker("Skill", selection: $selectedLibrarySkill) {
-                        ForEach(model.skills) { skill in Text(skill.name).tag(skill.id) }
-                    }
-                    Picker("模式", selection: $mode) {
-                        Text("Link（跟随 Library）").tag("symlink")
-                        Text("Copy（独立副本）").tag("copy")
-                    }
-                    .pickerStyle(.segmented)
-                    Text("目标 Agents").font(.headline)
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), alignment: .leading)], alignment: .leading) {
-                        ForEach(model.agents.filter(\.supported)) { agent in
-                            Toggle(agent.name, isOn: Binding(
-                                get: { selectedAgents.contains(agent.id) },
-                                set: { enabled in
-                                    if enabled { selectedAgents.insert(agent.id) }
-                                    else { selectedAgents.remove(agent.id) }
-                                }
-                            ))
-                        }
-                    }
-                    Text(projectActionHelp)
-                        .font(.caption).foregroundStyle(.secondary)
-                    HStack {
-                        Spacer()
-                        Button(projectAction == "deploy" ? String(localized: "预览部署") : String(localized: "写入项目清单")) {
-                            Task {
-                                if projectAction == "require" {
-                                    await model.requireProjectSkill(project: details.project.id, skill: selectedLibrarySkill, agents: selectedAgents.sorted(), mode: mode)
-                                } else if projectAction == "vendor" {
-                                    await model.vendorProjectSkill(project: details.project.id, skill: selectedLibrarySkill, agents: selectedAgents.sorted(), mode: mode)
-                                } else {
-                                    await model.deployProject(project: details.project.id, skill: selectedLibrarySkill, agents: selectedAgents.sorted(), mode: mode, dryRun: true)
-                                }
-                            }
-                        }
-                        .disabled(selectedLibrarySkill.isEmpty || selectedAgents.isEmpty)
-                    }
-                }
-            }
-            .padding(8)
+    private func projectOverview(_ details: ProjectDetails) -> some View {
+        HStack(spacing: 12) {
+            MetricCard(
+                title: String(localized: "项目 Skills"),
+                value: details.scan.skillCount.description,
+                symbol: "square.stack.3d.up"
+            )
+            MetricCard(
+                title: String(localized: "使用中的 Agent"),
+                value: details.scan.agents.filter { $0.skillCount > 0 }.count.description,
+                symbol: "cpu"
+            )
+            MetricCard(
+                title: String(localized: "受管 Skill"),
+                value: details.activations.count.description,
+                symbol: "checkmark.shield"
+            )
         }
-    }
-
-    private var projectActionHelp: String {
-        switch projectAction {
-        case "require": String(localized: "Require 将 Git 来源与 revision 固定到 .skm/catalog.yaml，适合团队共享。")
-        case "vendor": String(localized: "Vendor 将不可变副本写入项目 .skm/skills，适合本地或不可共享来源。")
-        default: String(localized: "直接部署只更新本机状态；空白项目也可选择 Agent 并创建目标目录。")
-        }
-    }
-
-    private func projectManifestSection(_ details: ProjectDetails) -> some View {
-        let dependencies = details.manifest.dependencies ?? []
-        return GroupBox("项目清单") {
-            VStack(alignment: .leading, spacing: 12) {
-                if details.manifest.skills.isEmpty && dependencies.isEmpty {
-                    ContentUnavailableView("项目清单为空", systemImage: "list.bullet.rectangle")
-                        .frame(minHeight: 110)
-                } else {
-                    ForEach(dependencies) { dependency in
-                        manifestRow(
-                            id: dependency.id,
-                            name: dependency.name,
-                            detail: String(
-                                format: String(localized: "Require · %1$@ @ %2$@"),
-                                locale: .current,
-                                dependency.source,
-                                String(dependency.revision.prefix(10))
-                            )
-                        )
-                    }
-                    ForEach(details.manifest.skills) { skill in
-                        manifestRow(id: skill.id, name: skill.name, detail: "Vendor")
-                    }
-                    HStack {
-                        Text("应用会校验锁文件、冲突和用户级已满足项，再原子更新所有 Agent。")
-                            .font(.caption).foregroundStyle(.secondary)
-                        Spacer()
-                        Button("应用项目清单", systemImage: "checkmark.circle") {
-                            Task { await model.applyProjectManifest(project: details.project.id) }
-                        }
-                        .buttonStyle(.borderedProminent)
-                    }
-                }
-            }
-            .padding(8)
-        }
-        .confirmationDialog("移除项目清单条目？", isPresented: Binding(
-            get: { entryToRemove != nil },
-            set: { if !$0 { entryToRemove = nil } }
-        )) {
-            Button("移除并重新应用", role: .destructive) {
-                guard let entryToRemove else { return }
-                Task { await model.removeProjectEntry(project: details.project.id, entry: entryToRemove) }
-            }
-        } message: {
-            Text("Vendor 文件和受管部署会安全清理；未知文件不会被覆盖。")
-        }
-    }
-
-    private func manifestRow(id: String, name: String, detail: String) -> some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 3) {
-                Text(name).fontWeight(.medium)
-                Text(detail).font(.caption).foregroundStyle(.secondary)
-            }
-            Spacer()
-            Button("移除", systemImage: "minus.circle", role: .destructive) { entryToRemove = id }
-                .labelStyle(.iconOnly)
-        }
-        .padding(.vertical, 4)
     }
 
     @ViewBuilder
@@ -372,19 +291,50 @@ struct ProjectDetailView: View {
     }
 
     private func scannedSkills(_ details: ProjectDetails) -> some View {
-        GroupBox("项目扫描") {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Label("项目 Skills", systemImage: "shippingbox")
+                    .font(.title2.bold())
+                Text(details.scan.skillCount.description)
+                    .font(.callout.monospacedDigit())
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(.quaternary, in: Capsule())
+                Spacer()
+                Text("自动扫描各 Agent 的项目目录")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+
             VStack(alignment: .leading, spacing: 0) {
                 if details.scan.skills.isEmpty {
-                    ContentUnavailableView("项目中没有 Agent Skill", systemImage: "doc.text.magnifyingglass")
+                    ContentUnavailableView {
+                        Label("项目中还没有 Skill", systemImage: "shippingbox")
+                    } description: {
+                        Text("从我的 Skill 中导入，或重新扫描项目里的 Agent 目录。")
+                    } actions: {
+                        Button("从我的 Skill 里导入", systemImage: "square.and.arrow.down") {
+                            showsSkillImporter = true
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
                         .frame(minHeight: 150)
                 } else {
                     ForEach(details.scan.skills) { skill in
-                        ProjectSkillRow(model: model, project: details.project, skill: skill, activations: details.activations)
+                        ProjectSkillRow(
+                            model: model,
+                            project: details.project,
+                            skill: skill,
+                            agents: details.scan.agents,
+                            activations: details.activations
+                        )
                         if skill.id != details.scan.skills.last?.id { Divider() }
                     }
                 }
             }
-            .padding(8)
+            .padding(.horizontal, 16)
+            .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 14))
         }
     }
 }
@@ -393,31 +343,54 @@ private struct ProjectSkillRow: View {
     let model: AppModel
     let project: RegisteredProject
     let skill: ProjectScanSkill
+    let agents: [ProjectScanAgent]
     let activations: [ActivationModel]
     @State private var showsMigration = false
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            Image(systemName: skill.status == "ok" ? "checkmark.circle" : "exclamationmark.triangle")
+            Image(systemName: skill.status == "ok" ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
                 .foregroundStyle(skill.status == "ok" ? .green : .orange)
-            VStack(alignment: .leading, spacing: 4) {
-                Text(skill.name).fontWeight(.medium)
-                if let description = skill.description, !description.isEmpty { Text(description).foregroundStyle(.secondary) }
-                Text(skill.agents.joined(separator: ", ")).font(.caption).foregroundStyle(.secondary)
+                .font(.title3)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 7) {
+                Text(skill.name).font(.headline)
+                if let description = skill.description, !description.isEmpty {
+                    Text(description)
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+                HStack(spacing: 6) {
+                    ForEach(skill.agents, id: \.self) { agentID in
+                        Label(agentName(agentID), systemImage: "cpu")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(.quaternary, in: Capsule())
+                    }
+                }
             }
             Spacer()
             if let activation = activations.first(where: { $0.name == skill.id || $0.skillId == skill.librarySkillId }) {
-                Button("解绑") { Task { await model.unlinkProject(project: project.id, skill: activation.skillId, agents: activation.agents) } }
+                Button("从项目移除") {
+                    Task { await model.unlinkProject(project: project.id, skill: activation.skillId, agents: activation.agents) }
+                }
             } else if skill.librarySkillId == nil {
-                Button("迁移到 Library") { showsMigration = true }
+                Button("存到我的 Skill") { showsMigration = true }
             } else {
-                Label("已在 Library", systemImage: "checkmark")
+                Label("已在我的 Skill", systemImage: "checkmark")
                     .font(.caption).foregroundStyle(.secondary)
             }
         }
         .padding(.vertical, 10)
         .sheet(isPresented: $showsMigration) { ProjectMigrationSheet(model: model, project: project, skill: skill) }
         .accessibilityElement(children: .contain)
+    }
+
+    private func agentName(_ id: String) -> String {
+        agents.first(where: { $0.id == id })?.label ?? id
     }
 }
 
@@ -479,11 +452,13 @@ struct MetricCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label(title, systemImage: symbol).foregroundStyle(.secondary)
+            Label(title, systemImage: symbol)
+                .font(.callout)
+                .foregroundStyle(.secondary)
             Text(value).font(.title.bold()).monospacedDigit()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
-        .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 12))
+        .background(.quaternary.opacity(0.45), in: RoundedRectangle(cornerRadius: 12))
     }
 }

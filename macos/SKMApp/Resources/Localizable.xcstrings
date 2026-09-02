@@ -28,6 +28,16 @@
         }
       }
     },
+    "%@ %@" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ %2$@"
+          }
+        }
+      }
+    },
     "%@/%@" : {
       "localizations" : {
         "zh-Hans" : {
@@ -99,6 +109,9 @@
         }
       }
     },
+    "Agents" : {
+
+    },
     "App 中缺少 skm-core，请重新构建或安装 SKM。" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -122,6 +135,7 @@
       }
     },
     "Copy（独立副本）" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -200,6 +214,7 @@
       }
     },
     "Link（跟随 Library）" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -279,6 +294,7 @@
       }
     },
     "Require" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -464,6 +480,7 @@
       }
     },
     "Vendor" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -485,6 +502,7 @@
       }
     },
     "Vendor 文件和受管部署会安全清理；未知文件不会被覆盖。" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -606,12 +624,67 @@
         }
       }
     },
+    "从我的 Skill 中导入，或重新扫描项目里的 Agent 目录。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import from My Skills, or scan the Agent folders in this project again."
+          }
+        }
+      }
+    },
+    "从我的 Skill 里导入" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import from My Skills"
+          }
+        }
+      }
+    },
     "从本地目录、ZIP 或 Git Source 导入第一个 Skill。" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Import your first Skill from a local folder, ZIP archive, or Git source."
+          }
+        }
+      }
+    },
+    "从项目移除" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove from Project"
+          }
+        }
+      }
+    },
+    "使用中的 Agent" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agents in Use"
+          }
+        }
+      }
+    },
+    "使用此 Skill 的 Agent" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agents Using This Skill"
           }
         }
       }
@@ -661,6 +734,28 @@
     },
     "保存时校验 baseHash 防止并发冲突。" : {
 
+    },
+    "保持同步" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keep in Sync"
+          }
+        }
+      }
+    },
+    "保持同步会链接到我的 Skill，后续更新会自动反映到项目。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keep in Sync links to My Skills, so future updates appear in the project automatically."
+          }
+        }
+      }
     },
     "保留本地" : {
       "localizations" : {
@@ -723,6 +818,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "All"
+          }
+        }
+      }
+    },
+    "全部 Agent" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All Agents"
+          }
+        }
+      }
+    },
+    "其他 Agent" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Other Agents"
           }
         }
       }
@@ -932,6 +1049,17 @@
         }
       }
     },
+    "受管 Skill" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Managed Skills"
+          }
+        }
+      }
+    },
     "变量" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1115,6 +1243,17 @@
         }
       }
     },
+    "启用后即可由 SKM 统一部署和更新" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enable these to deploy and update them with SKM"
+          }
+        }
+      }
+    },
     "回滚前" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1214,6 +1353,17 @@
         }
       }
     },
+    "存到我的 Skill" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save to My Skills"
+          }
+        }
+      }
+    },
     "密码" : {
       "localizations" : {
         "en" : {
@@ -1268,6 +1418,17 @@
         }
       }
     },
+    "导入方式" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import Method"
+          }
+        }
+      }
+    },
     "导出" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1296,6 +1457,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Navigation"
+          }
+        }
+      }
+    },
+    "将导入到 %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Will import into %@"
           }
         }
       }
@@ -1329,6 +1501,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Changed"
+          }
+        }
+      }
+    },
+    "已启用" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enabled"
+          }
+        }
+      }
+    },
+    "已在我的 Skill" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In My Skills"
           }
         }
       }
@@ -1429,6 +1623,17 @@
         }
       }
     },
+    "已选择" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Selected"
+          }
+        }
+      }
+    },
     "已配置" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1439,9 +1644,6 @@
           }
         }
       }
-    },
-    "应用会校验锁文件、冲突和用户级已满足项，再原子更新所有 Agent。" : {
-
     },
     "应用项目清单" : {
       "extractionState" : "stale",
@@ -1588,6 +1790,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%1$lld succeeded · %2$lld failed · %3$lld Skills updated"
+          }
+        }
+      }
+    },
+    "我的 Skill 为空" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No Skills in My Skills"
           }
         }
       }
@@ -1843,6 +2056,17 @@
         }
       }
     },
+    "未检测到，也可预先启用" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not detected; you can still enable it"
+          }
+        }
+      }
+    },
     "未知错误" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1861,6 +2085,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Not connected"
+          }
+        }
+      }
+    },
+    "未选择" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not Selected"
           }
         }
       }
@@ -1892,6 +2127,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Local content is validated and stored in SKM's immutable object library."
+          }
+        }
+      }
+    },
+    "本机已检测" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Detected on This Mac"
           }
         }
       }
@@ -2135,6 +2381,17 @@
         }
       }
     },
+    "没有可用的 Agent，请先在设置中配置。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No Agents are available. Configure one in Settings first."
+          }
+        }
+      }
+    },
     "没有已注册项目" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -2212,11 +2469,23 @@
       }
     },
     "添加一个本机项目，扫描各 Agent 的 Skills，或把 Library Skill 部署到项目。" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Add a local project to scan Agent Skills or deploy a Library Skill into it."
+          }
+        }
+      }
+    },
+    "添加一个本机项目，扫描各 Agent 的 Skills，或把我的 Skill 导入项目。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add a local project to scan Agent Skills or import one of My Skills."
           }
         }
       }
@@ -2340,6 +2609,28 @@
         }
       }
     },
+    "独立副本" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Standalone Copy"
+          }
+        }
+      }
+    },
+    "独立副本会复制到项目中，之后不再跟随我的 Skill 更新。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A standalone copy is stored in the project and will no longer follow updates from My Skills."
+          }
+        }
+      }
+    },
     "生成同步预览" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -2351,7 +2642,19 @@
         }
       }
     },
+    "由 SKM 管理" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Managed by SKM"
+          }
+        }
+      }
+    },
     "目标 Agents" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2362,6 +2665,7 @@
       }
     },
     "直接部署" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2664,6 +2968,17 @@
         }
       }
     },
+    "自动扫描各 Agent 的项目目录" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatically scans each Agent folder"
+          }
+        }
+      }
+    },
     "自定义" : {
       "localizations" : {
         "en" : {
@@ -2736,6 +3051,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Description (Optional)"
+          }
+        }
+      }
+    },
+    "请先在 Skills 中添加内容，再返回项目导入。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add something in Skills first, then return here to import it into the project."
           }
         }
       }
@@ -2840,6 +3166,17 @@
     "还没有已管理的 Agent，请先在设置中启用。" : {
 
     },
+    "这些 Agent 可以使用我的 Skill" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "These Agents can use My Skills"
+          }
+        }
+      }
+    },
     "连接" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -2847,6 +3184,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Connection"
+          }
+        }
+      }
+    },
+    "选择 Skill" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose a Skill"
           }
         }
       }
@@ -2861,9 +3209,6 @@
           }
         }
       }
-    },
-    "选择 SKM 可以部署 Skill 的工具，并管理自定义 Agent 路径。已勾选启用的 Agent 会置顶显示。" : {
-
     },
     "选择…" : {
       "extractionState" : "stale",
@@ -2909,6 +3254,17 @@
         }
       }
     },
+    "选择一个 Skill 和要使用它的 Agent。提交前会先展示文件变更预览。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose a Skill and the Agents that will use it. You will preview file changes before importing."
+          }
+        }
+      }
+    },
     "选择一个项目" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -2937,6 +3293,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Choose the Agents that should load this Skill. Changes are validated by the Go planner and applied atomically."
+          }
+        }
+      }
+    },
+    "选择要由 SKM 管理的 AI 工具。启用后，你可以从 Skill 详情中一键部署。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose the AI tools SKM should manage. Once enabled, you can deploy to them from any Skill."
           }
         }
       }
@@ -3037,6 +3404,28 @@
         }
       }
     },
+    "项目 Skills" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Project Skills"
+          }
+        }
+      }
+    },
+    "项目中还没有 Skill" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No Skills in This Project"
+          }
+        }
+      }
+    },
     "项目依赖已固定" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -3099,6 +3488,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Preview Personal Git Sync…"
+          }
+        }
+      }
+    },
+    "预览导入" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Preview Import"
           }
         }
       }

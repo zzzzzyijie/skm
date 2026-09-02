@@ -94,9 +94,13 @@ final class SKMUITests: XCTestCase {
         let agentsSettings = app.descendants(matching: .any)["settings-agents"]
         XCTAssertTrue(agentsSettings.waitForExistence(timeout: 5))
         agentsSettings.click()
-        let managementToggle = app.checkBoxes["agent-management-codex"]
+        XCTAssertTrue(app.staticTexts["Agents"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["其他 Agent"].exists)
+        let managementToggle = app.descendants(matching: .any)["agent-management-codex"]
         XCTAssertTrue(managementToggle.waitForExistence(timeout: 5))
-        if managementToggle.value as? Int == 0 { managementToggle.click() }
+        let toggleValue = String(describing: managementToggle.value ?? "").lowercased()
+        let toggleIsOn = toggleValue == "1" || toggleValue == "on" || toggleValue == "true"
+        if !toggleIsOn { managementToggle.click() }
         app.typeKey("w", modifierFlags: .command)
 
         app.descendants(matching: .any)["navigation-prompts"].click()
@@ -114,12 +118,9 @@ final class SKMUITests: XCTestCase {
         editor.typeText("Review this isolated fixture.")
         app.buttons["保存"].click()
         XCTAssertTrue(app.staticTexts["ui-smoke-prompt"].waitForExistence(timeout: 8))
-        let renderButton = app.buttons["填写变量"]
-        XCTAssertTrue(renderButton.waitForExistence(timeout: 5))
-        renderButton.click()
-        XCTAssertTrue(app.staticTexts["没有变量"].waitForExistence(timeout: 5))
-        app.buttons["关闭"].click()
-        XCTAssertTrue(app.buttons["历史"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["快速查看"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["编辑"].exists)
+        XCTAssertTrue(app.buttons["导出"].exists)
     }
 
     @MainActor
@@ -195,6 +196,12 @@ final class SKMUITests: XCTestCase {
         paste(registeredProject.path, into: projectField)
         app.buttons["添加"].click()
         XCTAssertTrue(app.staticTexts["registered-project"].waitForExistence(timeout: 8))
+        let importButton = app.buttons["从我的 Skill 里导入"].firstMatch
+        XCTAssertTrue(importButton.waitForExistence(timeout: 8))
+        XCTAssertFalse(app.staticTexts["项目清单"].exists)
+        importButton.click()
+        XCTAssertTrue(app.staticTexts["我的 Skill 为空"].waitForExistence(timeout: 5))
+        app.buttons["取消"].click()
 
         let settingsEntry = app.descendants(matching: .any)["open-settings"]
         XCTAssertTrue(settingsEntry.waitForExistence(timeout: 5))

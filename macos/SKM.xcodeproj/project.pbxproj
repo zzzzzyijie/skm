@@ -10,6 +10,7 @@
 		1106670EBC61298B38943484 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D56DEEB6D28F2D9D5398609B /* Assets.xcassets */; };
 		1C0F2792556C4FB4B69120B1 /* SKMUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 925BF8832F4F69FCAB6ECE74 /* SKMUITests.swift */; };
 		3BD30DBC41B24FDF9CA5E7E0 /* DiagnosticsViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBA02051547FBD0A3CAF0EAF /* DiagnosticsViews.swift */; };
+		4D8B9384A3049702862DF2C4 /* ProjectSkillImportSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9585417417B2663EA125A498 /* ProjectSkillImportSheet.swift */; };
 		5AB7331AA5DD7E18A9FF5E9E /* SourcesViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B79C9520FC49E3978FE9DCA /* SourcesViews.swift */; };
 		5CB541B83F2903AF41D137DF /* FileChangeMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AF2FD5D032C459EDF8129F9 /* FileChangeMonitor.swift */; };
 		6E990A3952BFAE9AD9669E5C /* SkillsViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A3742F40E78420077C423A6 /* SkillsViews.swift */; };
@@ -110,6 +111,7 @@
 		82654FEC2F213C35924EBDFB /* SKMUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SKMUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		8A3742F40E78420077C423A6 /* SkillsViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillsViews.swift; sourceTree = "<group>"; };
 		925BF8832F4F69FCAB6ECE74 /* SKMUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SKMUITests.swift; sourceTree = "<group>"; };
+		9585417417B2663EA125A498 /* ProjectSkillImportSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectSkillImportSheet.swift; sourceTree = "<group>"; };
 		A31D5DC3D0B1C74CA854A593 /* PromptsViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptsViews.swift; sourceTree = "<group>"; };
 		AA350D100C89E308AB417EA4 /* SparkleUpdater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SparkleUpdater.swift; sourceTree = "<group>"; };
 		B8F0C11B6F7742B093A51E02 /* TagGroupHeader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagGroupHeader.swift; sourceTree = "<group>"; };
@@ -218,6 +220,7 @@
 				EBA02051547FBD0A3CAF0EAF /* DiagnosticsViews.swift */,
 				3A58F83E890D35697F62B82B /* Phase3Views.swift */,
 				C1A55E560000000000000002 /* ProjectAccessSettingsView.swift */,
+				9585417417B2663EA125A498 /* ProjectSkillImportSheet.swift */,
 				6BCD029EDC835D56BCC8D2FF /* ProjectsViews.swift */,
 				A31D5DC3D0B1C74CA854A593 /* PromptsViews.swift */,
 				C2A55E580000000000000002 /* PromptSummaryRow.swift */,
@@ -478,6 +481,7 @@
 				3BD30DBC41B24FDF9CA5E7E0 /* DiagnosticsViews.swift in Sources */,
 				721F009D1D6F5C349F5E6D6E /* Phase3Views.swift in Sources */,
 				C1A55E560000000000000001 /* ProjectAccessSettingsView.swift in Sources */,
+				4D8B9384A3049702862DF2C4 /* ProjectSkillImportSheet.swift in Sources */,
 				D5BD2C26163524C81996F417 /* ProjectsViews.swift in Sources */,
 				E2A97B6A3F3445B3C7C92E68 /* PromptsViews.swift in Sources */,
 				C2A55E580000000000000001 /* PromptSummaryRow.swift in Sources */,
