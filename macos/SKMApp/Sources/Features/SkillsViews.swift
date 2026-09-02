@@ -38,42 +38,21 @@ struct SkillsListView: View {
                     }
                     .buttonStyle(.borderedProminent)
                 }
-            } else if visibleSkills.isEmpty {
-                ContentUnavailableView.search(text: search)
             } else {
                 List(selection: $model.selectedSkillID) {
-                    TagGroupHeader(
-                        title: String(localized: "全部"),
-                        systemImage: "square.stack.3d.up",
-                        count: visibleSkills.count,
-                        isExpanded: isAllGroupExpanded
-                    ) {
-                        isAllGroupExpanded.toggle()
-                    }
-                    .accessibilityIdentifier("skills-group-all")
-
-                    if isAllGroupExpanded {
-                        ForEach(visibleSkills) { skill in
-                            SkillSummaryRow(skill: skill)
-                                .padding(.leading, 28)
-                                .listRowInsets(EdgeInsets(top: 3, leading: 12, bottom: 3, trailing: 12))
-                                .accessibilityIdentifier("skill-row-\(skill.id)")
-                                .tag(skill.id)
-                        }
-                    }
-
-                    ForEach(tagGroups, id: \.tag) { group in
+                    if !visibleSkills.isEmpty {
                         TagGroupHeader(
-                            title: group.tag,
-                            count: group.items.count,
-                            isExpanded: expandedTags.contains(group.tag)
+                            title: String(localized: "全部"),
+                            systemImage: "square.stack.3d.up",
+                            count: visibleSkills.count,
+                            isExpanded: isAllGroupExpanded
                         ) {
-                            toggleTag(group.tag)
+                            isAllGroupExpanded.toggle()
                         }
-                        .accessibilityIdentifier("skills-group-\(group.tag)")
+                        .accessibilityIdentifier("skills-group-all")
 
-                        if expandedTags.contains(group.tag) {
-                            ForEach(group.items) { skill in
+                        if isAllGroupExpanded {
+                            ForEach(visibleSkills) { skill in
                                 SkillSummaryRow(skill: skill)
                                     .padding(.leading, 28)
                                     .listRowInsets(EdgeInsets(top: 3, leading: 12, bottom: 3, trailing: 12))
@@ -81,11 +60,62 @@ struct SkillsListView: View {
                                     .tag(skill.id)
                             }
                         }
+
+                        ForEach(tagGroups, id: \.tag) { group in
+                            TagGroupHeader(
+                                title: group.tag,
+                                count: group.items.count,
+                                isExpanded: expandedTags.contains(group.tag)
+                            ) {
+                                toggleTag(group.tag)
+                            }
+                            .accessibilityIdentifier("skills-group-\(group.tag)")
+
+                            if expandedTags.contains(group.tag) {
+                                ForEach(group.items) { skill in
+                                    SkillSummaryRow(skill: skill)
+                                        .padding(.leading, 28)
+                                        .listRowInsets(EdgeInsets(top: 3, leading: 12, bottom: 3, trailing: 12))
+                                        .accessibilityIdentifier("skill-row-\(skill.id)")
+                                        .tag(skill.id)
+                                }
+                            }
+                        }
                     }
                 }
             }
         }
-        .searchable(text: $search, prompt: "搜索名称、描述或标签")
+        .safeAreaInset(edge: .top, spacing: 0) {
+            HStack(spacing: 6) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(.secondary)
+                    .font(.system(size: 12, weight: .medium))
+                TextField("搜索 Skill", text: $search)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 13))
+                if !search.isEmpty {
+                    Button {
+                        search = ""
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(.secondary)
+                            .font(.system(size: 12))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 5)
+            .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .stroke(Color(nsColor: .separatorColor).opacity(0.6), lineWidth: 0.5)
+            )
+            .padding(.horizontal, 10)
+            .padding(.top, 8)
+            .padding(.bottom, 6)
+            .accessibilityIdentifier("skills-search-field")
+        }
         .navigationTitle("Skills")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
