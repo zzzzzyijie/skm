@@ -2167,17 +2167,6 @@
         }
       }
     },
-    "添加 Git Source" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Add Git Source"
-          }
-        }
-      }
-    },
     "添加 Git 仓库后，可以统一更新其中的 Skills。" : {
       "localizations" : {
         "en" : {
@@ -2195,6 +2184,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Add Skill"
+          }
+        }
+      }
+    },
+    "添加 Skill Source" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add Skill Source"
           }
         }
       }

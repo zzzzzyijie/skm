@@ -299,7 +299,7 @@ struct AddSourceSheet: View {
 
     private var headerView: some View {
         HStack {
-            Text(wizardStep == 0 ? String(localized: "添加 Git Source") : String(localized: "选择要导入的 Skill"))
+            Text(wizardStep == 0 ? String(localized: "添加 Skill Source") : String(localized: "选择要导入的 Skill"))
                 .font(.title2.bold())
             Spacer()
             Text(wizardStep == 0 ? "1/2 步：输入仓库" : "2/2 步：勾选技能")

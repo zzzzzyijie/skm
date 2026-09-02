@@ -153,8 +153,9 @@ struct SkillDetailView: View {
                 .toolbar {
                     ToolbarItemGroup(placement: .primaryAction) {
                         Button("快速查看", systemImage: "eye") { Task { await showQuickLook() } }
-                        Button("编辑", systemImage: "pencil") { showsEditor = true }
-                            .disabled(details?.editable != true)
+                        if details?.editable ?? summary.editable {
+                            Button("编辑", systemImage: "pencil") { showsEditor = true }
+                        }
                         Button("在 Finder 中显示", systemImage: "folder") { revealInFinder(summary) }
                         Button("删除", systemImage: "trash", role: .destructive) { confirmsDelete = true }
                     }
