@@ -162,24 +162,24 @@
 - [x] **【添加 Skill】同步 Web 端的两步式扫描预览与勾选导入能力**：
   - 现状：macOS 端原为旧版一步式直接导入，无法在导入前识别仓库内的多子技能；
   - 完成：Core Bridge 接入 `sources.preview` 能力，App 端升级为两步式导入向导（第 1 步输入仓库 URL/简写 -> 异步扫描多子技能与有效性 -> 第 2 步展示候选技能列表与错误 Badge -> 支持全选/反选与多选 -> 确认按需批量导入）。
-- [ ] **【Skill 标签管理】集中式标签管理与维护入口**：
+- [x] **【Skill 标签管理】集中式标签管理与维护入口**：
   - 现状：当前 Skill 标签仅能在单条 Skill 的编辑弹窗中修改，缺乏全局/集中式的标签管理视图；
-  - 待办优化：提供统一的 Skill 标签管理面板/入口，支持集中查看全部标签列表、标签重命名/合并（自动更新所关联 Skill）、清理无引用的孤立标签，并探索列表多选批量打标能力。
-- [ ] **【Prompt 标签管理】集中式标签管理与维护入口**：
+  - 完成：在 Skills 工具栏及列表右键菜单中提供「标签管理」入口，开发通用 `TagManagementSheet` 面板，支持查看全局标签与关联引用数、标签重命名/合并（自动批量更新关联的全部 Skills）以及批量移除解绑。
+- [x] **【Prompt 标签管理】集中式标签管理与维护入口**：
   - 现状：Prompt 标签目前同样仅散落在单条 Prompt 编辑表单中，缺乏统一的标签池管理；
-  - 待办优化：对齐 Skill 标签管理能力，提供 Prompt 标签集中管理面板，支持查看全局标签统计、重命名/合并、清理无用标签及批量管理。
-- [ ] **【添加 Skill / Prompt】新建与导入入口流程优化**：
+  - 完成：对齐 Skill 标签管理架构，在 Prompts 工具栏和右键菜单中集成 `TagManagementSheet` 面板，支持查看 Prompt 标签全局统计、批量重命名/合并与解绑。
+- [x] **【添加 Skill / Prompt】新建与导入入口流程优化**：
   - 现状：当前新建/添加操作主要依赖工具栏右上角 `＋` 按钮或快捷键（`⌘N` / `⌘O`），入口层级深且引导不够直观；
-  - 待办优化：在侧栏分组、列表空状态及右键菜单中增加更显眼的「添加 Skill」/「新建 Prompt」快捷入口；统合本地创建、模板新建、外部导入（Git / 本地目录 / ZIP / 剪贴板）的引导向导流程。
-- [ ] **【一键同步】主窗口左下角常驻一键同步与状态展示**：
+  - 完成：在主侧边栏 Skills 与 Prompts 分组项常驻/悬停快捷「＋」添加入口，并在 Skills 与 Prompts 列表项的右键菜单中追加「添加/新建」与「导入」快捷动作，链路全面打通。
+- [x] **【一键同步】主窗口左下角常驻一键同步与状态展示**：
   - 现状：个人 Git 同步与来源更新入口目前分散在设置窗口（Settings -> Git 同步 / 技能来源）及工具栏菜单中，日常高频同步操作路径长；
-  - 待办优化：将「一键同步」快捷按钮与实时同步状态（如上次同步时间、同步中旋转指示、待同步变更计数）常驻置于主侧栏左下角（设置按钮上方/同栏），点击即可直接触发一键同步或快速唤起差异审阅弹窗。
-- [ ] **【Projects 列表】修复项目项选中时高亮背景遮盖项目图标问题**：
+  - 完成：在主侧边栏左下角（设置按钮上方）嵌入常驻的 `SidebarSyncButton` 控件，实时展示同步状态与 Revision，点击可直接触发一键全量同步或差异审阅。
+- [x] **【Projects 列表】修复项目项选中时高亮背景遮盖项目图标问题**：
   - 现状：列表项选中时的高亮色与项目图标颜色相近，导致选中后图标被背景色吞没、辨识度降低；
-  - 待办优化：调整选中态下的图标颜色与背景对比（如选中时动态切换为高对比度白/浅色或使用自适应容器底色），确保选中状态下图标清晰可见。
-- [ ] **【Project 详情】重构项目 Skills 列表中 Agent 标识 UI 样式**：
+  - 完成：在 `ProjectsListView` 项中监听选中态，动态切换图标前景色为高对比度纯白（`Color.white`），容器底色切换为自适应半透明高光白（`Color.white.opacity(0.22)`），确保在系统强调色下清晰明亮。
+- [x] **【Project 详情】重构项目 Skills 列表中 Agent 标识 UI 样式**：
   - 现状：Project 详情中 Skill 行下的 Agent 标识带有通用 cpu 图标，排列稍显凌乱；
-  - 待办优化：精简移除冗余小图标，重构 Agent 胶囊（Pill Badge）样式与字阶排版，使展示更加轻量、整洁、美观。
+  - 完成：精简移除冗余无语义的 `cpu` 图标，重构为微型轻量 Agent 胶囊（Pill Badge），应用 `.system(size: 11, weight: .medium)` 字阶、浅底色与 `0.5pt` 细微描边，展示整洁紧凑。
 - [x] **【Projects 列表】优化「添加项目」按钮位置**：
   - 现状：添加项目按钮原使用 `folder.badge.plus` 图标且未显式指定 placement；
   - 完成：已将「添加项目」按钮对齐 Skills / Prompts 规范，统一使用 `ToolbarItem(placement: .primaryAction)` 与 `plus` 图标紧邻 Projects 标题右侧，保持整体界面布局一致。
@@ -213,6 +213,7 @@
 截至 2026-09-03，已通过：
 
 - `xcodebuild -workspace macos/SKM.xcworkspace -scheme SKM -configuration Debug -derivedDataPath /tmp/skm-macos-derived -only-testing:SKMTests test`：17 个 Swift 单元测试全量通过（包含 AppModelTests、CoreClientResilienceTests、ModelsTests）；
+- `xcodebuild build & test`：集中式标签管理面板（Skill/Prompt）、侧边栏常驻一键同步控件、新建/导入快捷菜单与项目列表高对比选中/Agent微胶囊样式重构验证通过，编译与单元测试全绿；
 - `xcodebuild -workspace macos/SKM.xcworkspace -scheme SKM -configuration Debug -derivedDataPath /tmp/skm-macos-derived -only-testing:SKMUITests test`：5 个中英文 UI 测试全量通过（包含中英文空库与快捷键、项目登记与工作区同步、多标签分组渲染与技能 Agent / Prompt 写入流）；
 - `go test ./...`：全量 Go 单元测试与工作区同步集成测试通过；
 - `0.5.3 (Build 3)` Universal 2 ad-hoc 预览打包，包含 Sparkle 2.9.6；

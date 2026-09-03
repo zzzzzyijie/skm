@@ -84,17 +84,11 @@ struct RootView: View {
                 .tag(section)
         }
         .safeAreaInset(edge: .bottom) {
-            VStack(alignment: .leading, spacing: 0) {
+            VStack(spacing: 0) {
                 Divider()
-                SettingsLink {
-                    Label("设置", systemImage: "gearshape")
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("open-settings")
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
+                SidebarBottomToolbar(model: model)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
             }
         }
         .navigationTitle("SKM")
@@ -238,3 +232,71 @@ struct SettingsView: View {
         }
     }
 }
+
+/// 主侧边栏左下角常驻操作栏（设置与一键同步纯图标按钮）
+private struct SidebarBottomToolbar: View {
+    @Environment(\.openSettings) private var openSettings
+    @Bindable var model: AppModel
+
+    var body: some View {
+        HStack(spacing: 12) {
+            // 一键同步纯图标按钮
+            Button {
+                if model.workspace?.configured == true {
+                    Task { await model.oneClickSync() }
+                } else {
+                    model.settingsSection = .gitSync
+                    openSettings()
+                }
+            } label: {
+                Group {
+                    if model.isLoading {
+                        ProgressView()
+                            .controlSize(.mini)
+                            .frame(width: 16, height: 16)
+                    } else {
+                        Image(systemName: "arrow.triangle.2.circlepath")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(model.workspace?.configured == true ? Color.accentColor : Color.secondary)
+                            .frame(width: 16, height: 16)
+                    }
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("sidebar-sync-button")
+            .help(syncHelpText)
+
+            // 设置纯图标按钮
+            SettingsLink {
+                Image(systemName: "gearshape")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 16, height: 16)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("open-settings")
+            .help(String(localized: "偏好设置 (⌘,)"))
+
+            Spacer()
+        }
+        .padding(.horizontal, 4)
+        .padding(.vertical, 4)
+    }
+
+    private var syncHelpText: String {
+        if model.isLoading {
+            return String(localized: "正在同步…")
+        }
+        if model.workspace?.configured == true {
+            if let revision = model.workspace?.state?.revision, !revision.isEmpty {
+                return String(format: String(localized: "一键同步 (Rev: %@)"), String(revision.prefix(7)))
+            }
+            return String(localized: "一键同步个人工作区")
+        }
+        return String(localized: "未配置 Git 同步，点击前往设置")
+    }
+}
+
+

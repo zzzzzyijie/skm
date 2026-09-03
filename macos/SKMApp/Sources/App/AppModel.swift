@@ -619,6 +619,216 @@ final class AppModel {
         }
     }
 
+    /// 一键全量同步：根据已配置的个人工作区与技能来源，执行一键拉取推演或批量同步
+    func oneClickSync() async {
+        if workspace?.configured == true {
+            await previewWorkspace()
+            if let preview = workspacePreview {
+                if preview.changes.isEmpty {
+                    announce(String(localized: "已与远端保持完全同步"))
+                } else if preview.conflicts == 0 {
+                    await syncWorkspace()
+                } else {
+                    self.settingsSection = .gitSync
+                }
+            }
+        } else if !sources.isEmpty {
+            await syncSources()
+        } else {
+            self.settingsSection = .gitSync
+        }
+    }
+
+    /// 批量重命名或合并 Skill 标签
+    func renameSkillTag(from oldTag: String, to newTag: String) async {
+        let trimmedNew = newTag.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedNew.isEmpty, trimmedNew != oldTag else { return }
+        let affected = skills.filter { $0.tags.contains(oldTag) }
+        guard !affected.isEmpty else { return }
+
+        await perform(String(format: String(localized: "正在更新 %lld 个 Skill 的标签…"), affected.count)) {
+            for summary in affected {
+                if let details: SkillDetails = try? await self.core.call("skills.get", params: IDParams(id: summary.id)) {
+                    var newTags = details.tags.map { $0 == oldTag ? trimmedNew : $0 }
+                    newTags = Array(NSOrderedSet(array: newTags)).compactMap { $0 as? String }
+                    let _: SkillUpdateResponse = try await self.core.call(
+                        "skills.update",
+                        params: UpdateSkillParams(id: summary.id, content: details.content, baseHash: details.hash, tags: newTags)
+                    )
+                }
+            }
+            await self.refresh()
+        }
+        announce(String(localized: "标签已更新"))
+    }
+
+    /// 批量从所有 Skill 中移除指定标签
+    func removeSkillTag(_ tag: String) async {
+        let affected = skills.filter { $0.tags.contains(tag) }
+        guard !affected.isEmpty else { return }
+
+        await perform(String(format: String(localized: "正在从 %lld 个 Skill 中移除标签…"), affected.count)) {
+            for summary in affected {
+                if let details: SkillDetails = try? await self.core.call("skills.get", params: IDParams(id: summary.id)) {
+                    let newTags = details.tags.filter { $0 != tag }
+                    let _: SkillUpdateResponse = try await self.core.call(
+                        "skills.update",
+                        params: UpdateSkillParams(id: summary.id, content: details.content, baseHash: details.hash, tags: newTags)
+                    )
+                }
+            }
+            await self.refresh()
+        }
+        announce(String(localized: "标签已移除"))
+    }
+
+    /// 批量重命名或合并 Prompt 标签
+    func renamePromptTag(from oldTag: String, to newTag: String) async {
+        let trimmedNew = newTag.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedNew.isEmpty, trimmedNew != oldTag else { return }
+        let affected = prompts.filter { $0.tags.contains(oldTag) }
+        guard !affected.isEmpty else { return }
+
+        await perform(String(format: String(localized: "正在更新 %lld 个 Prompt 的标签…"), affected.count)) {
+            for summary in affected {
+                if let details: PromptDetails = try? await self.core.call("prompts.get", params: IDParams(id: summary.id)) {
+                    var newTags = details.tags.map { $0 == oldTag ? trimmedNew : $0 }
+                    newTags = Array(NSOrderedSet(array: newTags)).compactMap { $0 as? String }
+                    let _: PromptSummary = try await self.core.call(
+                        "prompts.update",
+                        params: PromptWriteParams(
+                            id: summary.id,
+                            content: nil,
+                            name: details.name,
+                            description: details.description,
+                            tags: newTags,
+                            body: details.body,
+                            variables: details.variables ?? [],
+                            source: "local",
+                            baseHash: details.hash
+                        )
+                    )
+                }
+            }
+            await self.refresh()
+        }
+        announce(String(localized: "标签已更新"))
+    }
+
+    /// 批量从所有 Prompt 中移除指定标签
+    func removePromptTag(_ tag: String) async {
+        let affected = prompts.filter { $0.tags.contains(tag) }
+        guard !affected.isEmpty else { return }
+
+        await perform(String(format: String(localized: "正在从 %lld 个 Prompt 中移除标签…"), affected.count)) {
+            for summary in affected {
+                if let details: PromptDetails = try? await self.core.call("prompts.get", params: IDParams(id: summary.id)) {
+                    let newTags = details.tags.filter { $0 != tag }
+                    let _: PromptSummary = try await self.core.call(
+                        "prompts.update",
+                        params: PromptWriteParams(
+                            id: summary.id,
+                            content: nil,
+                            name: details.name,
+                            description: details.description,
+                            tags: newTags,
+                            body: details.body,
+                            variables: details.variables ?? [],
+                            source: "local",
+                            baseHash: details.hash
+                        )
+                    )
+                }
+            }
+            await self.refresh()
+        }
+        announce(String(localized: "标签已移除"))
+    }
+
+    private static let customTagsStorageKey = "skm.custom.tags"
+
+    /// 用户主动添加并持久化的标签集合
+    var customTags: Set<String> {
+        get {
+            let list = preferences.stringArray(forKey: Self.customTagsStorageKey) ?? []
+            return Set(list)
+        }
+        set {
+            preferences.set(Array(newValue).sorted(), forKey: Self.customTagsStorageKey)
+        }
+    }
+
+    /// 注册一个自定义标签（即便尚未绑定任何条目）
+    func registerCustomTag(_ tag: String) {
+        let trimmed = tag.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        var current = customTags
+        current.insert(trimmed)
+        customTags = current
+    }
+
+    /// 批量为指定 Skill 打上标签
+    func addTagToSkills(_ tag: String, skillIDs: Set<String>) async {
+        let trimmed = tag.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        registerCustomTag(trimmed)
+        guard !skillIDs.isEmpty else { return }
+
+        await perform(String(format: String(localized: "正在为 %lld 个 Skill 添加标签…"), skillIDs.count)) {
+            for id in skillIDs {
+                if let details: SkillDetails = try? await self.core.call("skills.get", params: IDParams(id: id)) {
+                    var newTags = details.tags
+                    if !newTags.contains(trimmed) {
+                        newTags.append(trimmed)
+                    }
+                    newTags = Array(NSOrderedSet(array: newTags)).compactMap { $0 as? String }
+                    let _: SkillUpdateResponse = try await self.core.call(
+                        "skills.update",
+                        params: UpdateSkillParams(id: id, content: details.content, baseHash: details.hash, tags: newTags)
+                    )
+                }
+            }
+            await self.refresh()
+        }
+        announce(String(localized: "标签已添加并应用"))
+    }
+
+    /// 批量为指定 Prompt 打上标签
+    func addTagToPrompts(_ tag: String, promptIDs: Set<String>) async {
+        let trimmed = tag.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        registerCustomTag(trimmed)
+        guard !promptIDs.isEmpty else { return }
+
+        await perform(String(format: String(localized: "正在为 %lld 个 Prompt 添加标签…"), promptIDs.count)) {
+            for id in promptIDs {
+                if let details: PromptDetails = try? await self.core.call("prompts.get", params: IDParams(id: id)) {
+                    var newTags = details.tags
+                    if !newTags.contains(trimmed) {
+                        newTags.append(trimmed)
+                    }
+                    newTags = Array(NSOrderedSet(array: newTags)).compactMap { $0 as? String }
+                    let _: PromptSummary = try await self.core.call(
+                        "prompts.update",
+                        params: PromptWriteParams(
+                            id: id,
+                            content: nil,
+                            name: details.name,
+                            description: details.description,
+                            tags: newTags,
+                            body: details.body,
+                            variables: details.variables ?? [],
+                            source: "local",
+                            baseHash: details.hash
+                        )
+                    )
+                }
+            }
+            await self.refresh()
+        }
+        announce(String(localized: "标签已添加并应用"))
+    }
+
     /// 运行系统 Doctor 健康诊断
     func runDoctor() async {
         await perform(String(localized: "正在运行诊断…")) {

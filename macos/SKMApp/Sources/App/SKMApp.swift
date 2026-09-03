@@ -7,6 +7,10 @@ struct SKMApp: App {
     /// 全局应用状态 ViewModel
     @State private var model = AppModel()
 
+    init() {
+        ToolbarMenuFilter.install()
+    }
+
     var body: some Scene {
         // 主应用程序窗口
         Window("SKM", id: "main") {
@@ -82,3 +86,46 @@ struct SKMApp: App {
         } catch { model.errorMessage = error.localizedDescription }
     }
 }
+
+/// 过滤 macOS 窗口工具栏右键上下文菜单，仅允许【图标和文本】与【仅图标】，彻底屏蔽【仅文本】
+@MainActor
+private final class ToolbarMenuFilter: NSObject {
+    static let shared = ToolbarMenuFilter()
+
+    static func install() {
+        NotificationCenter.default.addObserver(
+            shared,
+            selector: #selector(shared.handleMenuTracking(_:)),
+            name: NSMenu.didBeginTrackingNotification,
+            object: nil
+        )
+    }
+
+    @objc private func handleMenuTracking(_ notification: Notification) {
+        guard let menu = notification.object as? NSMenu else { return }
+        let textOnlyKeywords = ["仅文本", "Text Only", "文本"]
+        let itemsToRemove = menu.items.filter { item in
+            let title = item.title.trimmingCharacters(in: .whitespacesAndNewlines)
+            if textOnlyKeywords.contains(title) {
+                return true
+            }
+            if let action = item.action, NSStringFromSelector(action).contains("DisplayMode"), item.tag == NSToolbar.DisplayMode.labelOnly.rawValue {
+                return true
+            }
+            return false
+        }
+        for item in itemsToRemove {
+            menu.removeItem(item)
+        }
+
+        // 如果当前任何窗口处于 labelOnly，自动调整为 iconOnly
+        DispatchQueue.main.async {
+            for window in NSApplication.shared.windows {
+                if let toolbar = window.toolbar, toolbar.displayMode == .labelOnly {
+                    toolbar.displayMode = .iconOnly
+                }
+            }
+        }
+    }
+}
+

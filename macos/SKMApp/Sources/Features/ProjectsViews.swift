@@ -23,12 +23,16 @@ struct ProjectsListView: View {
             } else {
                 List(model.projects, selection: $model.selectedProjectID) { project in
                     let access = ProjectAccessStatus(project: project)
+                    let isSelected = model.selectedProjectID == project.id
                     HStack(alignment: .top, spacing: 11) {
                         Image(systemName: access.canRead ? "folder.fill" : access.symbol)
                             .font(.title3)
-                            .foregroundStyle(access.canRead ? Color.accentColor : access.color)
+                            .foregroundStyle(isSelected ? Color.white : (access.canRead ? Color.accentColor : access.color))
                             .frame(width: 32, height: 32)
-                            .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
+                            .background(
+                                isSelected ? Color.white.opacity(0.22) : (access.canRead ? Color.accentColor.opacity(0.1) : Color.primary.opacity(0.06)),
+                                in: RoundedRectangle(cornerRadius: 8)
+                            )
                             .accessibilityHidden(true)
 
                         VStack(alignment: .leading, spacing: 5) {
@@ -387,12 +391,16 @@ private struct ProjectSkillRow: View {
                 }
                 HStack(spacing: 6) {
                     ForEach(skill.agents, id: \.self) { agentID in
-                        Label(agentName(agentID), systemImage: "cpu")
-                            .font(.caption)
+                        Text(agentName(agentID))
+                            .font(.system(size: 11, weight: .medium))
                             .foregroundStyle(.secondary)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(.quaternary, in: Capsule())
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 2.5)
+                            .background(Color.primary.opacity(0.05), in: Capsule())
+                            .overlay(
+                                Capsule()
+                                    .stroke(Color.primary.opacity(0.08), lineWidth: 0.5)
+                            )
                     }
                 }
             }

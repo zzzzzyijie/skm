@@ -9,6 +9,7 @@ struct PromptsListView: View {
     @State private var showsNewPrompt = false
     @State private var isAllGroupExpanded = true
     @State private var expandedTags: Set<String> = []
+    @State private var showsTagManager = false
 
     private var filtered: [PromptSummary] {
         return model.prompts.filter {
@@ -53,6 +54,18 @@ struct PromptsListView: View {
                                     .listRowInsets(EdgeInsets(top: 3, leading: 12, bottom: 3, trailing: 12))
                                     .accessibilityIdentifier("prompt-row-\(prompt.id)")
                                     .tag(prompt.id)
+                                    .contextMenu {
+                                        Button("新建 Prompt…") {
+                                            showsNewPrompt = true
+                                        }
+                                        Button("导入 Prompt…") {
+                                            importPrompt()
+                                        }
+                                        Divider()
+                                        Button("管理 Prompt 标签…") {
+                                            showsTagManager = true
+                                        }
+                                    }
                             }
                         }
 
@@ -73,6 +86,18 @@ struct PromptsListView: View {
                                         .listRowInsets(EdgeInsets(top: 3, leading: 12, bottom: 3, trailing: 12))
                                         .accessibilityIdentifier("prompt-row-\(prompt.id)")
                                         .tag(prompt.id)
+                                        .contextMenu {
+                                            Button("新建 Prompt…") {
+                                                showsNewPrompt = true
+                                            }
+                                            Button("导入 Prompt…") {
+                                                importPrompt()
+                                            }
+                                            Divider()
+                                            Button("管理 Prompt 标签…") {
+                                                showsTagManager = true
+                                            }
+                                        }
                                 }
                             }
                         }
@@ -99,26 +124,33 @@ struct PromptsListView: View {
                     .buttonStyle(.plain)
                 }
             }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 5)
-            .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+            .padding(.horizontal, 9)
+            .padding(.vertical, 6)
+            .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                    .stroke(Color(nsColor: .separatorColor).opacity(0.6), lineWidth: 0.5)
+                RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    .stroke(Color(nsColor: .separatorColor).opacity(0.5), lineWidth: 0.5)
             )
-            .padding(.horizontal, 10)
-            .padding(.top, 8)
-            .padding(.bottom, 6)
+            .padding(.horizontal, 12)
+            .padding(.top, 10)
+            .padding(.bottom, 8)
             .accessibilityIdentifier("prompt-search-field")
         }
         .navigationTitle("Prompts")
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
+                Button("标签管理", systemImage: "tag") {
+                    showsTagManager = true
+                }
+                .help("集中管理 Prompt 标签")
+                .accessibilityIdentifier("prompts-manage-tags-button")
+
                 Button("导入 Prompt", systemImage: "square.and.arrow.down") { importPrompt() }
                 Button("新建 Prompt", systemImage: "plus") { showsNewPrompt = true }
             }
         }
         .sheet(isPresented: $showsNewPrompt) { PromptEditorSheet(model: model, details: nil) }
+        .sheet(isPresented: $showsTagManager) { TagManagementSheet(model: model, target: .prompts) }
         .onChange(of: model.pendingCommand?.id) { _, _ in
             guard let command = model.pendingCommand, command.section == .prompts else { return }
             switch command.kind {

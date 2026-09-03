@@ -11,6 +11,7 @@ struct SkillsListView: View {
     @State private var addMode = 0
     @State private var isAllGroupExpanded = true
     @State private var expandedTags: Set<String> = []
+    @State private var showsTagManager = false
 
     private var filtered: [SkillSummary] {
         return model.skills.filter {
@@ -58,6 +59,20 @@ struct SkillsListView: View {
                                     .listRowInsets(EdgeInsets(top: 3, leading: 12, bottom: 3, trailing: 12))
                                     .accessibilityIdentifier("skill-row-\(skill.id)")
                                     .tag(skill.id)
+                                    .contextMenu {
+                                        Button("添加 Skill…") {
+                                            addMode = 0
+                                            showsAdd = true
+                                        }
+                                        Button("导入外部 Skill…") {
+                                            addMode = 1
+                                            showsAdd = true
+                                        }
+                                        Divider()
+                                        Button("管理 Skill 标签…") {
+                                            showsTagManager = true
+                                        }
+                                    }
                             }
                         }
 
@@ -78,6 +93,20 @@ struct SkillsListView: View {
                                         .listRowInsets(EdgeInsets(top: 3, leading: 12, bottom: 3, trailing: 12))
                                         .accessibilityIdentifier("skill-row-\(skill.id)")
                                         .tag(skill.id)
+                                        .contextMenu {
+                                            Button("添加 Skill…") {
+                                                addMode = 0
+                                                showsAdd = true
+                                            }
+                                            Button("导入外部 Skill…") {
+                                                addMode = 1
+                                                showsAdd = true
+                                            }
+                                            Divider()
+                                            Button("管理 Skill 标签…") {
+                                                showsTagManager = true
+                                            }
+                                        }
                                 }
                             }
                         }
@@ -104,28 +133,36 @@ struct SkillsListView: View {
                     .buttonStyle(.plain)
                 }
             }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 5)
-            .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+            .padding(.horizontal, 9)
+            .padding(.vertical, 6)
+            .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                    .stroke(Color(nsColor: .separatorColor).opacity(0.6), lineWidth: 0.5)
+                RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    .stroke(Color(nsColor: .separatorColor).opacity(0.5), lineWidth: 0.5)
             )
-            .padding(.horizontal, 10)
-            .padding(.top, 8)
-            .padding(.bottom, 6)
+            .padding(.horizontal, 12)
+            .padding(.top, 10)
+            .padding(.bottom, 8)
             .accessibilityIdentifier("skills-search-field")
         }
         .navigationTitle("Skills")
         .toolbar {
-            ToolbarItem(placement: .primaryAction) {
+            ToolbarItemGroup(placement: .primaryAction) {
+                Button("标签管理", systemImage: "tag") {
+                    showsTagManager = true
+                }
+                .help("集中管理 Skill 标签")
+                .accessibilityIdentifier("skills-manage-tags-button")
+
                 Button("添加 Skill", systemImage: "plus") {
                     addMode = 0
                     showsAdd = true
                 }
+                .help("添加或导入 Skill")
             }
         }
         .sheet(isPresented: $showsAdd) { AddSkillSheet(model: model, initialMode: addMode) }
+        .sheet(isPresented: $showsTagManager) { TagManagementSheet(model: model, target: .skills) }
         .onChange(of: model.pendingCommand?.id) { _, _ in
             guard let command = model.pendingCommand, command.section == .skills else { return }
             if command.kind == .create || command.kind == .importItem {
