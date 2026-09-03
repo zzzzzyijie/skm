@@ -1,5 +1,53 @@
 import SwiftUI
 
+/// AgentIconView - 展示 Agent 对应的品牌图标，支持内置 Agent 真实 SVG 资产及自定义 Agent 的优雅降级。
+struct AgentIconView: View {
+    let agentId: String
+    let isCustom: Bool
+    let size: CGFloat
+
+    private var assetName: String {
+        "agent-\(agentId.lowercased())"
+    }
+
+    private var hasImageAsset: Bool {
+        !isCustom && NSImage(named: NSImage.Name(assetName)) != nil
+    }
+
+    var body: some View {
+        if hasImageAsset {
+            Image(assetName)
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: size, height: size)
+                .clipShape(RoundedRectangle(cornerRadius: max(3, size * 0.22), style: .continuous))
+                .shadow(color: .black.opacity(0.06), radius: 1, y: 0.5)
+        } else {
+            Image(systemName: fallbackSymbol)
+                .font(.system(size: size * 0.46, weight: .medium))
+                .frame(width: size, height: size)
+                .foregroundStyle(isCustom ? Color.accentColor : Color.secondary)
+                .background(
+                    isCustom ? Color.accentColor.opacity(0.1) : Color.primary.opacity(0.04),
+                    in: RoundedRectangle(cornerRadius: max(3, size * 0.22), style: .continuous)
+                )
+        }
+    }
+
+    private var fallbackSymbol: String {
+        if isCustom { return "cpu.fill" }
+        switch agentId.lowercased() {
+        case "claude": return "sparkles"
+        case "codex": return "terminal"
+        case "cursor": return "cursorarrow.rays"
+        case "copilot": return "person.wave.2"
+        case "gemini": return "diamond"
+        case "windsurf": return "wind"
+        default: return "cpu"
+        }
+    }
+}
+
 /// AgentsSettingsView - Agent 管理设置页面
 /// 控制允许 SKM 部署 Skills 的 AI 客户端（如 Claude Desktop、Codex、Cursor、Windsurf 等），
 /// 并支持添加、编辑与删除指向特定目录的自定义 Agent 适配器。
@@ -45,7 +93,7 @@ struct AgentsSettingsView: View {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Agents")
                             .font(.largeTitle.bold())
-                        Text("选择要由 SKM 管理的 AI 工具。启用后，你可以从 Skill 详情中一键部署。")
+                        Text("管理支持的 AI 工具。启用后，你可以从 Skill 详情中一键部署。")
                             .foregroundStyle(.secondary)
                     }
                     Spacer()
@@ -96,7 +144,7 @@ struct AgentsSettingsView: View {
                         if !availableAgents.isEmpty {
                             agentSection(
                                 title: String(localized: "其他 Agent"),
-                                subtitle: String(localized: "启用后即可由 SKM 统一部署和更新"),
+                                subtitle: String(localized: "启用后即可统一部署和更新"),
                                 agents: availableAgents
                             )
                         }
@@ -191,14 +239,7 @@ private struct AgentSettingsRow: View {
 
     var body: some View {
         HStack(spacing: 16) {
-            Image(systemName: agentSymbol)
-                .font(.title3)
-                .foregroundStyle(agent.configured ? Color.accentColor : .secondary)
-                .frame(width: 44, height: 44)
-                .background(
-                    agent.configured ? Color.accentColor.opacity(0.1) : Color.primary.opacity(0.045),
-                    in: RoundedRectangle(cornerRadius: 11)
-                )
+            AgentIconView(agentId: agent.id, isCustom: agent.custom, size: 44)
                 .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 6) {
@@ -230,13 +271,16 @@ private struct AgentSettingsRow: View {
             Spacer(minLength: 12)
 
             VStack(alignment: .trailing, spacing: 4) {
-                Toggle("由 SKM 管理", isOn: Binding(
+                Toggle(isOn: Binding(
                     get: { agent.configured },
                     set: { value in onToggle(value) }
-                ))
+                )) {
+                    Text("启用")
+                }
+                .labelsHidden()
                 .toggleStyle(.switch)
                 .controlSize(.small)
-                .accessibilityLabel("允许 SKM 向此 Agent 部署 Skill")
+                .accessibilityLabel("允许向此 Agent 部署 Skill")
                 .accessibilityIdentifier("agent-management-\(agent.id)")
                 .disabled(!agent.supported || isLoading)
 
@@ -263,18 +307,6 @@ private struct AgentSettingsRow: View {
                 RoundedRectangle(cornerRadius: 14)
                     .stroke(Color.accentColor.opacity(0.22))
             }
-        }
-    }
-
-    private var agentSymbol: String {
-        if agent.custom { return "cpu.fill" }
-        switch agent.id {
-        case "claude": return "sparkles"
-        case "codex": return "terminal"
-        case "cursor": return "cursorarrow.rays"
-        case "copilot": return "person.wave.2"
-        case "gemini": return "diamond"
-        default: return "cpu"
         }
     }
 }
@@ -326,13 +358,11 @@ struct AgentsListView: View {
     var body: some View {
         List(sortedAgents, selection: $model.selectedAgentID) { agent in
             HStack(spacing: 10) {
-                Image(systemName: agent.custom ? "cpu.fill" : "cpu")
-                    .foregroundStyle(agent.detected ? Color.accentColor : .secondary)
-                    .frame(width: 20)
+                AgentIconView(agentId: agent.id, isCustom: agent.custom, size: 24)
                 VStack(alignment: .leading, spacing: 3) {
                     Text(agent.name).fontWeight(.medium)
                     Text(agent.configured
-                         ? String(localized: "已管理")
+                         ? String(localized: "已启用")
                          : (agent.detected ? String(localized: "已检测") : String(localized: "未检测")))
                         .font(.caption).foregroundStyle(.secondary)
                 }
@@ -364,11 +394,7 @@ struct AgentDetailView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
                     HStack(spacing: 16) {
-                        Image(systemName: agent.custom ? "cpu.fill" : "cpu")
-                            .font(.system(size: 42, weight: .medium))
-                            .foregroundStyle(Color.accentColor)
-                            .frame(width: 64, height: 64)
-                            .background(.quaternary, in: RoundedRectangle(cornerRadius: 14))
+                        AgentIconView(agentId: agent.id, isCustom: agent.custom, size: 64)
                         VStack(alignment: .leading, spacing: 5) {
                             Text(agent.name).font(.largeTitle.bold())
                             Text(agent.custom ? String(localized: "自定义 Agent") : String(localized: "内置 Agent"))
@@ -471,8 +497,8 @@ struct CustomAgentSheet: View {
 private func agentAccessibilityLabel(_ agent: AgentModel) -> String {
     let kind = agent.custom ? String(localized: "自定义 Agent") : String(localized: "内置 Agent")
     let status = agent.configured
-        ? String(localized: "已管理")
-        : (agent.detected ? String(localized: "已检测但未管理") : String(localized: "未检测"))
+        ? String(localized: "已启用")
+        : (agent.detected ? String(localized: "已检测未启用") : String(localized: "未检测"))
     return String(
         format: String(localized: "%1$@，%2$@，%3$@"),
         locale: .current,

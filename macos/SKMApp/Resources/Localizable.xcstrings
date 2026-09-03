@@ -1243,6 +1243,9 @@
         }
       }
     },
+    "启用" : {
+
+    },
     "启用后即可由 SKM 统一部署和更新" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1277,7 +1280,6 @@
       }
     },
     "复制" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2848,6 +2850,9 @@
         }
       }
     },
+    "管理支持的 AI 工具。启用后，你可以从 Skill 详情中一键部署。" : {
+
+    },
     "管理本机的 Skills、Prompts 和 Agent 部署。SKM 不会自动启用任何 Agent。" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -3130,6 +3135,9 @@
           }
         }
       }
+    },
+    "软链接" : {
+
     },
     "迁移 %@" : {
       "localizations" : {

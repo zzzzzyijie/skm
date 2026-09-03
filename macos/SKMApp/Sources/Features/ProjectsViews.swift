@@ -62,8 +62,13 @@ struct ProjectsListView: View {
         }
         .navigationTitle("Projects")
         .toolbar {
-            Button("添加项目", systemImage: "folder.badge.plus") { showsAddProject = true }
+            ToolbarItem(placement: .primaryAction) {
+                Button("添加项目", systemImage: "plus") {
+                    showsAddProject = true
+                }
                 .help("登记本机项目目录")
+                .accessibilityIdentifier("add-project-button")
+            }
         }
         .sheet(isPresented: $showsAddProject) { AddProjectSheet(model: model) }
         .confirmationDialog("注销项目？", isPresented: Binding(
@@ -149,46 +154,65 @@ struct ProjectDetailView: View {
     @State private var showsSkillImporter = false
 
     var body: some View {
-        if let id = model.selectedProjectID,
-           let project = model.projects.first(where: { $0.id == id }) {
-            let access = ProjectAccessStatus(project: project)
-            if access.canRead {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 24) {
-                        if let details = model.projectDetails, details.project.id == id {
-                            header(project, details: details)
-                            projectOverview(details)
-                            planSection
-                            scannedSkills(details)
-                        } else {
-                            header(project, details: nil)
-                            ProgressView("正在扫描项目…")
-                                .frame(maxWidth: .infinity, minHeight: 220)
+        Group {
+            if let id = model.selectedProjectID,
+               let project = model.projects.first(where: { $0.id == id }) {
+                let access = ProjectAccessStatus(project: project)
+                if access.canRead {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 24) {
+                            if let details = model.projectDetails, details.project.id == id {
+                                header(project, details: details)
+                                projectOverview(details)
+                                planSection
+                                scannedSkills(details)
+                            } else {
+                                header(project, details: nil)
+                                ProgressView("正在扫描项目…")
+                                    .frame(maxWidth: .infinity, minHeight: 220)
+                            }
+                        }
+                        .padding(26)
+                        .frame(maxWidth: 900, alignment: .leading)
+                    }
+                    .task(id: id) {
+                        await model.loadProjectDetails(id)
+                    }
+                } else {
+                    ContentUnavailableView {
+                        Label(access.title, systemImage: access.symbol)
+                    } description: {
+                        Text(access.detail)
+                    } actions: {
+                        Button("打开权限访问设置…", systemImage: "folder.badge.gearshape", action: openFileAccessSettings)
+                            .buttonStyle(.borderedProminent)
+                        if project.exists {
+                            Button("在 Finder 中显示") {
+                                NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: project.path)
+                            }
                         }
                     }
-                    .padding(26)
-                    .frame(maxWidth: 900, alignment: .leading)
-                }
-                .task(id: id) {
-                    await model.loadProjectDetails(id)
                 }
             } else {
-                ContentUnavailableView {
-                    Label(access.title, systemImage: access.symbol)
-                } description: {
-                    Text(access.detail)
-                } actions: {
-                    Button("打开权限访问设置…", systemImage: "folder.badge.gearshape", action: openFileAccessSettings)
-                        .buttonStyle(.borderedProminent)
-                    if project.exists {
-                        Button("在 Finder 中显示") {
-                            NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: project.path)
-                        }
+                ContentUnavailableView("选择一个项目", systemImage: "folder")
+            }
+        }
+        .toolbar {
+            ToolbarItemGroup(placement: .primaryAction) {
+                if let id = model.selectedProjectID,
+                   let project = model.projects.first(where: { $0.id == id }) {
+                    Button("重新扫描", systemImage: "arrow.clockwise") {
+                        Task { await model.loadProjectDetails(project.id) }
                     }
+                    .help("重新扫描项目目录中的 Skills")
+                    .disabled(model.isLoading)
+
+                    Button("在 Finder 中显示", systemImage: "folder") {
+                        NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: project.path)
+                    }
+                    .help("在 Finder 中查看此项目目录")
                 }
             }
-        } else {
-            ContentUnavailableView("选择一个项目", systemImage: "folder")
         }
     }
 

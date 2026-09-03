@@ -180,18 +180,18 @@
 - [ ] **【Project 详情】重构项目 Skills 列表中 Agent 标识 UI 样式**：
   - 现状：Project 详情中 Skill 行下的 Agent 标识带有通用 cpu 图标，排列稍显凌乱；
   - 待办优化：精简移除冗余小图标，重构 Agent 胶囊（Pill Badge）样式与字阶排版，使展示更加轻量、整洁、美观。
-- [ ] **【Projects 列表】优化「添加项目」按钮位置**：
-  - 现状：添加项目按钮目前位于工具栏/列表最右侧，与左侧标题视线脱节；
-  - 待办优化：将「添加项目」按钮调整至 Projects 列表标题右侧，与标题紧凑相邻，符合直觉。
-- [ ] **【项目导入 Skill】规范导入方式文案（软链接 / 复制）**：
-  - 现状：弹窗中导入方式的文案和解释不够直观明确；
-  - 待办优化：统一规范为「软链接」（跟随个人 Library 保持同步）与「复制」（独立副本，项目可脱离 SKM 使用），辅以简短易懂的副标题说明。
-- [ ] **【设置 - Agent 管理】引入真实 Agent 品牌图标（对齐 Web UI）**：
-  - 现状：当前 Agent 列表与详情使用通用 SF Symbols，缺乏品牌识别度；
-  - 待办优化：参考 Web 端（`web/assets/` 及各 Agent 品牌资源），在 macOS 端引入 Claude、Codex、Cursor、Gemini 等真实 Agent 品牌图标。
-- [ ] **【设置 - Agent 管理】精简移除「由 SKM 管理」冗余文案**：
+- [x] **【Projects 列表】优化「添加项目」按钮位置**：
+  - 现状：添加项目按钮原使用 `folder.badge.plus` 图标且未显式指定 placement；
+  - 完成：已将「添加项目」按钮对齐 Skills / Prompts 规范，统一使用 `ToolbarItem(placement: .primaryAction)` 与 `plus` 图标紧邻 Projects 标题右侧，保持整体界面布局一致。
+- [x] **【项目导入 Skill】规范导入方式文案（软链接 / 复制）**：
+  - 现状：弹窗中导入方式文案原为“保持同步/独立副本”，说明偏长；
+  - 完成：统一规范模式选项为「软链接」与「复制」，明确软链接跟随个人 Library 自动同步、复制为脱离 SKM 的独立副本，并对齐 Agent 品牌图标展示。
+- [x] **【设置 - Agent 管理】引入真实 Agent 品牌图标（对齐 Web UI）**：
+  - 现状：原 Agent 列表与详情使用通用 SF Symbols，缺乏各工具识别度；
+  - 完成：在 `Assets.xcassets` 引入 12 款真实 Agent 矢量品牌图标（Claude、Codex、Cursor、Copilot、Gemini、Windsurf、Kiro、Cline、OpenCode、Trae、Hermes、OpenClaw），并封装通用 `AgentIconView`，提供平滑圆角自适应展示与自定义 Agent 优雅降级。
+- [x] **【设置 - Agent 管理】精简移除「由 SKM 管理」冗余文案**：
   - 现状：界面中存在「由 SKM 管理」等冗长文字标签，增加界面噪音；
-  - 待办优化：移除冗余文案，通过开关与清晰的状态卡片直接表达管理状态。
+  - 完成：移除开关旁冗余的“由 SKM 管理”文本标签，列表状态精简为“已启用 / 已检测 / 未检测”，视觉层次更清晰。
 
 ## 5. 后续需要提供的信息
 
@@ -210,13 +210,11 @@
 
 ## 6. 最近一次验证记录
 
-截至 2026-09-01，已通过：
+截至 2026-09-03，已通过：
 
-- `xcodebuild ... -only-testing:SKMUITests/SKMUITests/testChineseTagGroupsRenderAsSeparateListRows`：超长标签、分组折叠/展开以及标题行与 Skill 行不重叠的聚焦 UI 回归通过；
-- `xcodebuild ... -only-testing:SKMTests/ModelsTests/testTagGroupsBuildUniqueSectionsAndRepeatMultiTagItems`：Skills / Prompts 标签分组的去重排序与多标签归组通过；
-- `xcodebuild ... test`：15 个 Swift 单元测试、4 个中英文 UI 测试通过，包含主导航与 Settings 分区、Agent 管理和 Git 同步入口验收；
-- `go test ./...`、`go test -race ./...`、`go vet ./...`、`go build ./...`；
-- curl 安装器、Homebrew Formula 和 Homebrew Cask 生成器测试；
+- `xcodebuild -workspace macos/SKM.xcworkspace -scheme SKM -configuration Debug -derivedDataPath /tmp/skm-macos-derived -only-testing:SKMTests test`：17 个 Swift 单元测试全量通过（包含 AppModelTests、CoreClientResilienceTests、ModelsTests）；
+- `xcodebuild -workspace macos/SKM.xcworkspace -scheme SKM -configuration Debug -derivedDataPath /tmp/skm-macos-derived -only-testing:SKMUITests test`：5 个中英文 UI 测试全量通过（包含中英文空库与快捷键、项目登记与工作区同步、多标签分组渲染与技能 Agent / Prompt 写入流）；
+- `go test ./...`：全量 Go 单元测试与工作区同步集成测试通过；
 - `0.5.3 (Build 3)` Universal 2 ad-hoc 预览打包，包含 Sparkle 2.9.6；
 - `com.zzzzzyijie.skm`、版本/构建号、双架构、签名、校验和与无 Go 环境 Core 独立复核；
 - App/Core `arm64 + x86_64`、版本、签名、Core 无 Go 环境启动和 SHA-256 校验；

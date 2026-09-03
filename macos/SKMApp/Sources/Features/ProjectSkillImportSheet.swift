@@ -72,8 +72,8 @@ struct ProjectSkillImportSheet: View {
 
                     Section("导入方式") {
                         Picker("导入方式", selection: $deploymentMode) {
-                            Text("保持同步").tag("symlink")
-                            Text("独立副本").tag("copy")
+                            Text("软链接").tag("symlink")
+                            Text("复制").tag("copy")
                         }
                         .pickerStyle(.segmented)
 
@@ -122,9 +122,9 @@ struct ProjectSkillImportSheet: View {
 
     private var deploymentHelp: String {
         if deploymentMode == "symlink" {
-            return String(localized: "保持同步会链接到我的 Skill，后续更新会自动反映到项目。")
+            return String(localized: "软链接：跟随个人 Library 保持同步，库中改动会自动反映到项目中。")
         }
-        return String(localized: "独立副本会复制到项目中，之后不再跟随我的 Skill 更新。")
+        return String(localized: "复制：创建独立副本，项目可脱离 SKM 单独使用，后续不随 Library 自动更新。")
     }
 
     private func toggleAgent(_ id: String) {
@@ -162,6 +162,7 @@ private struct AgentSelectionButton: View {
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                     .foregroundStyle(isSelected ? Color.accentColor : .secondary)
                     .font(.title3)
+                AgentIconView(agentId: agent.id, isCustom: agent.custom, size: 24)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(agent.name)
                         .foregroundStyle(.primary)
