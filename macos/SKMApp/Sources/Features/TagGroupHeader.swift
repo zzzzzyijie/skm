@@ -44,7 +44,8 @@ struct TagGroupHeader: View {
                     .accessibilityHidden(true)
 
                 Text(title)
-                    .font(.headline)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .truncationMode(.middle)
                     .layoutPriority(1)
@@ -61,7 +62,6 @@ struct TagGroupHeader: View {
             .padding(.horizontal, 10)
             .padding(.vertical, 7)
             .contentShape(Rectangle())
-            .background(Color.secondary.opacity(0.07), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
         .buttonStyle(.plain)
         .listRowInsets(EdgeInsets(top: 6, leading: 8, bottom: 3, trailing: 8))
@@ -417,5 +417,4 @@ struct TagManagementSheet: View {
         .frame(width: 400)
     }
 }
-
 

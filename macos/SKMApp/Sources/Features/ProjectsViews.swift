@@ -8,61 +8,75 @@ struct ProjectsListView: View {
     @Bindable var model: AppModel
     @State private var showsAddProject = false
     @State private var projectToRemove: ProjectModel?
+    @State private var search = ""
+
+    private var filteredProjects: [ProjectModel] {
+        model.projects.filter {
+            search.isEmpty || $0.id.localizedStandardContains(search) || $0.path.localizedStandardContains(search)
+        }
+    }
 
     var body: some View {
-        Group {
-            if model.projects.isEmpty {
-                ContentUnavailableView {
-                    Label("没有已注册项目", systemImage: "folder")
-                } description: {
-                    Text("添加一个本机项目，扫描各 Agent 的 Skills，或把我的 Skill 导入项目。")
-                } actions: {
-                    Button("添加项目…") { showsAddProject = true }
-                        .buttonStyle(.borderedProminent)
-                }
-            } else {
-                List(model.projects, selection: $model.selectedProjectID) { project in
-                    let access = ProjectAccessStatus(project: project)
-                    let isSelected = model.selectedProjectID == project.id
-                    HStack(alignment: .top, spacing: 11) {
-                        Image(systemName: access.canRead ? "folder.fill" : access.symbol)
-                            .font(.title3)
-                            .foregroundStyle(isSelected ? Color.white : (access.canRead ? Color.accentColor : access.color))
-                            .frame(width: 32, height: 32)
-                            .background(
-                                isSelected ? Color.white.opacity(0.22) : (access.canRead ? Color.accentColor.opacity(0.1) : Color.primary.opacity(0.06)),
-                                in: RoundedRectangle(cornerRadius: 8)
-                            )
-                            .accessibilityHidden(true)
-
-                        VStack(alignment: .leading, spacing: 5) {
-                            HStack(spacing: 8) {
-                                Text(project.id).bold()
-                                Spacer()
-                                Label(access.title, systemImage: access.symbol)
-                                    .font(.caption)
-                                    .foregroundStyle(access.color)
-                            }
-                            Text(project.path)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
-                                .truncationMode(.middle)
-                            Text(String(format: String(localized: "%lld 个 Skills · %lld 个部署"), locale: .current, project.skillCount, project.activationCount))
-                                .font(.caption)
-                                .foregroundStyle(.tertiary)
-                        }
+        VStack(spacing: 0) {
+            CollectionSearchField(title: "搜索项目", text: $search)
+                .accessibilityIdentifier("projects-search-field")
+            Group {
+                if model.projects.isEmpty {
+                    ContentUnavailableView {
+                        Label("没有已注册项目", systemImage: "folder")
+                    } description: {
+                        Text("添加一个本机项目，扫描各 Agent 的 Skills，或把我的 Skill 导入项目。")
+                    } actions: {
+                        Button("添加项目…") { showsAddProject = true }
+                            .buttonStyle(.borderedProminent)
                     }
-                    .padding(.vertical, 6)
-                    .tag(project.id)
-                    .accessibilityElement(children: .combine)
-                    .contextMenu {
-                        Button("在 Finder 中显示") { NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: project.path) }
-                        Divider()
-                        Button("注销项目", role: .destructive) { projectToRemove = project }
+                } else if filteredProjects.isEmpty {
+                    ContentUnavailableView.search(text: search)
+                } else {
+                    List(filteredProjects, selection: $model.selectedProjectID) { project in
+                        let access = ProjectAccessStatus(project: project)
+                        let isSelected = model.selectedProjectID == project.id
+                        HStack(alignment: .top, spacing: 11) {
+                            Image(systemName: access.canRead ? "folder.fill" : access.symbol)
+                                .font(.title3)
+                                .foregroundStyle(isSelected ? Color.white : (access.canRead ? Color.accentColor : access.color))
+                                .frame(width: 32, height: 32)
+                                .background(
+                                    isSelected ? Color.white.opacity(0.22) : (access.canRead ? Color.accentColor.opacity(0.1) : Color.primary.opacity(0.06)),
+                                    in: RoundedRectangle(cornerRadius: 8)
+                                )
+                                .accessibilityHidden(true)
+
+                            VStack(alignment: .leading, spacing: 5) {
+                                HStack(spacing: 8) {
+                                    Text(project.id).bold()
+                                    Spacer()
+                                    Label(access.title, systemImage: access.symbol)
+                                        .font(.caption)
+                                        .foregroundStyle(access.color)
+                                }
+                                Text(project.path)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                                    .truncationMode(.middle)
+                                Text(String(format: String(localized: "%lld 个 Skills · %lld 个部署"), locale: .current, project.skillCount, project.activationCount))
+                                    .font(.caption)
+                                    .foregroundStyle(.tertiary)
+                            }
+                        }
+                        .padding(.vertical, 6)
+                        .tag(project.id)
+                        .accessibilityElement(children: .combine)
+                        .contextMenu {
+                            Button("在 Finder 中显示") { NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: project.path) }
+                            Divider()
+                            Button("注销项目", role: .destructive) { projectToRemove = project }
+                        }
                     }
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .navigationTitle("Projects")
         .toolbar {

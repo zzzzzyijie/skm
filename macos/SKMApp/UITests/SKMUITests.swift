@@ -90,6 +90,22 @@ final class SKMUITests: XCTestCase {
         app.buttons["导入"].click()
         XCTAssertTrue(app.staticTexts["ui-smoke-skill"].waitForExistence(timeout: 8))
 
+        // Search is keyboard-first and Escape restores the collection without losing data.
+        app.typeKey("f", modifierFlags: .command)
+        app.typeText("no-matching-skill")
+        let clearSearch = app.buttons["清除搜索"]
+        XCTAssertTrue(clearSearch.waitForExistence(timeout: 3))
+        XCTAssertFalse(app.descendants(matching: .any)["skill-row-local/ui-smoke-skill"].exists)
+        app.typeKey(.escape, modifierFlags: [])
+        XCTAssertTrue(app.descendants(matching: .any)["skill-row-local/ui-smoke-skill"].waitForExistence(timeout: 3))
+        XCTAssertFalse(clearSearch.exists)
+
+        app.descendants(matching: .any)["skill-row-local/ui-smoke-skill"].click()
+        let collectionScreenshot = XCTAttachment(screenshot: app.screenshot())
+        collectionScreenshot.name = "Skills — native layout"
+        collectionScreenshot.lifetime = .keepAlways
+        add(collectionScreenshot)
+
         app.descendants(matching: .any)["open-settings"].click()
         let agentsSettings = app.descendants(matching: .any)["settings-agents"]
         XCTAssertTrue(agentsSettings.waitForExistence(timeout: 5))
@@ -109,13 +125,13 @@ final class SKMUITests: XCTestCase {
         let nameField = app.textFields["prompt-name-field"]
         XCTAssertTrue(nameField.waitForExistence(timeout: 3))
         nameField.click()
-        nameField.typeText("ui-smoke-prompt")
+        paste("ui-smoke-prompt", into: nameField)
         let descriptionField = app.textFields["prompt-description-field"]
         descriptionField.click()
-        descriptionField.typeText("UI smoke Prompt")
+        paste("UI smoke Prompt", into: descriptionField)
         let editor = app.textViews["prompt-body-editor"]
         editor.click()
-        editor.typeText("Review this isolated fixture.")
+        paste("Review this isolated fixture.", into: editor)
         app.buttons["保存"].click()
         XCTAssertTrue(app.staticTexts["ui-smoke-prompt"].waitForExistence(timeout: 8))
         XCTAssertTrue(app.buttons["快速查看"].waitForExistence(timeout: 5))
@@ -176,8 +192,16 @@ final class SKMUITests: XCTestCase {
         let registeredProject = temporaryRoot.appendingPathComponent("registered-project", isDirectory: true)
         let workspaceRemote = temporaryRoot.appendingPathComponent("workspace.git", isDirectory: true)
         try FileManager.default.createDirectory(at: registeredProject, withIntermediateDirectories: true)
+        let applications = try FileManager.default.contentsOfDirectory(
+            at: URL(fileURLWithPath: "/Applications", isDirectory: true),
+            includingPropertiesForKeys: nil
+        )
+        let gitExecutable = try XCTUnwrap(applications.lazy
+            .filter { $0.lastPathComponent.hasPrefix("Xcode") && $0.pathExtension == "app" }
+            .map { $0.appendingPathComponent("Contents/Developer/usr/bin/git").path }
+            .first(where: FileManager.default.fileExists(atPath:)))
         try run(
-            "/Applications/Xcode.app/Contents/Developer/usr/bin/git",
+            gitExecutable,
             arguments: ["init", "--bare", workspaceRemote.path]
         )
 

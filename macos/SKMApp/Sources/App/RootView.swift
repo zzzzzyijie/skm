@@ -47,7 +47,9 @@ struct RootView: View {
         } detail: {
             detail
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Color(nsColor: .textBackgroundColor))
         }
+        .navigationSplitViewStyle(.balanced)
     }
 
     /// Core 启动连接状态视图：加载中旋转菊花 或 启动失败诊断重试视图
@@ -79,10 +81,26 @@ struct RootView: View {
 
     private var sidebar: some View {
         List(AppSection.allCases, selection: $model.section) { section in
-            Label(section.rawValue, systemImage: section.symbol)
+            HStack(spacing: 10) {
+                Image(systemName: section.symbol)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 26, height: 26)
+                    .background(sectionColor(section).gradient, in: RoundedRectangle(cornerRadius: 7))
+                    .accessibilityHidden(true)
+                Text(section.rawValue)
+                    .font(.body.weight(.medium))
+                Spacer(minLength: 4)
+                Text(sectionCount(section), format: .number)
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+            }
+                .padding(.vertical, 4)
+                .accessibilityElement(children: .combine)
                 .accessibilityIdentifier("navigation-\(section.rawValue.lowercased())")
                 .tag(section)
         }
+        .listStyle(.sidebar)
         .safeAreaInset(edge: .bottom) {
             VStack(spacing: 0) {
                 Divider()
@@ -92,6 +110,22 @@ struct RootView: View {
             }
         }
         .navigationTitle("SKM")
+    }
+
+    private func sectionColor(_ section: AppSection) -> Color {
+        switch section {
+        case .skills: .blue
+        case .prompts: .purple
+        case .projects: .orange
+        }
+    }
+
+    private func sectionCount(_ section: AppSection) -> Int {
+        switch section {
+        case .skills: model.skills.count
+        case .prompts: model.prompts.count
+        case .projects: model.projects.count
+        }
     }
 
     @ViewBuilder
@@ -110,6 +144,57 @@ struct RootView: View {
         case .prompts: PromptDetailView(model: model)
         case .projects: ProjectDetailView(model: model)
         }
+    }
+}
+
+/// Shared search chrome keeps keyboard and accessibility behavior consistent across collections.
+struct CollectionSearchField: View {
+    let title: LocalizedStringKey
+    @Binding var text: String
+    @FocusState private var isFocused: Bool
+
+    var body: some View {
+        HStack(spacing: 7) {
+            Button { isFocused = true } label: {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+            .keyboardShortcut("f", modifiers: .command)
+            .accessibilityLabel(title)
+            .help("⌘F")
+
+            TextField(title, text: $text)
+                .textFieldStyle(.plain)
+                .focused($isFocused)
+                .onExitCommand {
+                    if text.isEmpty { isFocused = false } else { text = "" }
+                }
+
+            if !text.isEmpty {
+                Button { text = ""; isFocused = true } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("清除搜索")
+            } else if !isFocused {
+                Text("⌘F")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                    .accessibilityHidden(true)
+            }
+        }
+        .font(.callout)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
+        .overlay {
+            RoundedRectangle(cornerRadius: 8)
+                .strokeBorder(isFocused ? Color.accentColor : Color.primary.opacity(0.1), lineWidth: isFocused ? 2 : 0.5)
+        }
+        .padding(12)
+        .background(.bar)
     }
 }
 
@@ -253,17 +338,19 @@ private struct SidebarBottomToolbar: View {
                     if model.isLoading {
                         ProgressView()
                             .controlSize(.mini)
-                            .frame(width: 16, height: 16)
+                            .frame(width: 28, height: 28)
                     } else {
                         Image(systemName: "arrow.triangle.2.circlepath")
                             .font(.system(size: 13, weight: .medium))
                             .foregroundStyle(model.workspace?.configured == true ? Color.accentColor : Color.secondary)
-                            .frame(width: 16, height: 16)
+                            .frame(width: 28, height: 28)
                     }
                 }
                 .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.borderless)
+            .disabled(model.isLoading)
+            .accessibilityLabel(syncHelpText)
             .accessibilityIdentifier("sidebar-sync-button")
             .help(syncHelpText)
 
@@ -272,10 +359,11 @@ private struct SidebarBottomToolbar: View {
                 Image(systemName: "gearshape")
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(.secondary)
-                    .frame(width: 16, height: 16)
+                    .frame(width: 28, height: 28)
                     .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.borderless)
+            .accessibilityLabel(String(localized: "偏好设置 (⌘,)"))
             .accessibilityIdentifier("open-settings")
             .help(String(localized: "偏好设置 (⌘,)"))
 
@@ -298,5 +386,3 @@ private struct SidebarBottomToolbar: View {
         return String(localized: "未配置 Git 同步，点击前往设置")
     }
 }
-
-

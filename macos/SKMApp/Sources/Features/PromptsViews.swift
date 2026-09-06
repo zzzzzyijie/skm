@@ -24,63 +24,36 @@ struct PromptsListView: View {
         let visiblePrompts = filtered
         let tagGroups = itemsGroupedByTag(visiblePrompts, tags: \.tags)
 
-        Group {
-            if model.prompts.isEmpty && !model.isLoading {
-                ContentUnavailableView {
-                    Label("还没有 Prompt", systemImage: "text.bubble")
-                } description: {
-                    Text("创建可复用、带变量定义的提示词。")
-                } actions: {
-                    Button("新建 Prompt") { showsNewPrompt = true }
-                        .buttonStyle(.borderedProminent)
-                }
-            } else {
-                List(selection: $model.selectedPromptID) {
-                    if !visiblePrompts.isEmpty {
-                        TagGroupHeader(
-                            title: String(localized: "全部"),
-                            systemImage: "text.bubble",
-                            count: visiblePrompts.count,
-                            isExpanded: isAllGroupExpanded
-                        ) {
-                            isAllGroupExpanded.toggle()
-                        }
-                        .accessibilityIdentifier("prompts-group-all")
-
-                        if isAllGroupExpanded {
-                            ForEach(visiblePrompts) { prompt in
-                                PromptSummaryRow(prompt: prompt)
-                                    .padding(.leading, 28)
-                                    .listRowInsets(EdgeInsets(top: 3, leading: 12, bottom: 3, trailing: 12))
-                                    .accessibilityIdentifier("prompt-row-\(prompt.id)")
-                                    .tag(prompt.id)
-                                    .contextMenu {
-                                        Button("新建 Prompt…") {
-                                            showsNewPrompt = true
-                                        }
-                                        Button("导入 Prompt…") {
-                                            importPrompt()
-                                        }
-                                        Divider()
-                                        Button("管理 Prompt 标签…") {
-                                            showsTagManager = true
-                                        }
-                                    }
-                            }
-                        }
-
-                        ForEach(tagGroups, id: \.tag) { group in
+        VStack(spacing: 0) {
+            CollectionSearchField(title: "搜索 Prompt", text: $search)
+                .accessibilityIdentifier("prompt-search-field")
+            Group {
+                if model.prompts.isEmpty && !model.isLoading {
+                    ContentUnavailableView {
+                        Label("还没有 Prompt", systemImage: "text.bubble")
+                    } description: {
+                        Text("创建可复用、带变量定义的提示词。")
+                    } actions: {
+                        Button("新建 Prompt") { showsNewPrompt = true }
+                            .buttonStyle(.borderedProminent)
+                    }
+                } else if visiblePrompts.isEmpty && !search.isEmpty {
+                    ContentUnavailableView.search(text: search)
+                } else {
+                    List(selection: $model.selectedPromptID) {
+                        if !visiblePrompts.isEmpty {
                             TagGroupHeader(
-                                title: group.tag,
-                                count: group.items.count,
-                                isExpanded: expandedTags.contains(group.tag)
+                                title: String(localized: "全部"),
+                                systemImage: "text.bubble",
+                                count: visiblePrompts.count,
+                                isExpanded: isAllGroupExpanded
                             ) {
-                                toggleTag(group.tag)
+                                isAllGroupExpanded.toggle()
                             }
-                            .accessibilityIdentifier("prompts-group-\(group.tag)")
+                            .accessibilityIdentifier("prompts-group-all")
 
-                            if expandedTags.contains(group.tag) {
-                                ForEach(group.items) { prompt in
+                            if isAllGroupExpanded {
+                                ForEach(visiblePrompts) { prompt in
                                     PromptSummaryRow(prompt: prompt)
                                         .padding(.leading, 28)
                                         .listRowInsets(EdgeInsets(top: 3, leading: 12, bottom: 3, trailing: 12))
@@ -100,41 +73,44 @@ struct PromptsListView: View {
                                         }
                                 }
                             }
+
+                            ForEach(tagGroups, id: \.tag) { group in
+                                TagGroupHeader(
+                                    title: group.tag,
+                                    count: group.items.count,
+                                    isExpanded: expandedTags.contains(group.tag)
+                                ) {
+                                    toggleTag(group.tag)
+                                }
+                                .accessibilityIdentifier("prompts-group-\(group.tag)")
+
+                                if expandedTags.contains(group.tag) {
+                                    ForEach(group.items) { prompt in
+                                        PromptSummaryRow(prompt: prompt)
+                                            .padding(.leading, 28)
+                                            .listRowInsets(EdgeInsets(top: 3, leading: 12, bottom: 3, trailing: 12))
+                                            .accessibilityIdentifier("prompt-row-\(prompt.id)")
+                                            .tag(prompt.id)
+                                            .contextMenu {
+                                                Button("新建 Prompt…") {
+                                                    showsNewPrompt = true
+                                                }
+                                                Button("导入 Prompt…") {
+                                                    importPrompt()
+                                                }
+                                                Divider()
+                                                Button("管理 Prompt 标签…") {
+                                                    showsTagManager = true
+                                                }
+                                            }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
             }
-        }
-        .safeAreaInset(edge: .top, spacing: 0) {
-            HStack(spacing: 6) {
-                Image(systemName: "magnifyingglass")
-                    .foregroundStyle(.secondary)
-                    .font(.system(size: 12, weight: .medium))
-                TextField("搜索 Prompt", text: $search)
-                    .textFieldStyle(.plain)
-                    .font(.system(size: 13))
-                if !search.isEmpty {
-                    Button {
-                        search = ""
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(.secondary)
-                            .font(.system(size: 12))
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(.horizontal, 9)
-            .padding(.vertical, 6)
-            .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 7, style: .continuous)
-                    .stroke(Color(nsColor: .separatorColor).opacity(0.5), lineWidth: 0.5)
-            )
-            .padding(.horizontal, 12)
-            .padding(.top, 10)
-            .padding(.bottom, 8)
-            .accessibilityIdentifier("prompt-search-field")
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .navigationTitle("Prompts")
         .toolbar {
@@ -204,7 +180,16 @@ struct PromptDetailView: View {
                     VStack(alignment: .leading, spacing: 22) {
                         // ── 标题 & 描述 ──
                         VStack(alignment: .leading, spacing: 8) {
-                            Text(prompt.name).font(.largeTitle.bold())
+                            HStack(spacing: 12) {
+                                Image(systemName: "text.bubble.fill")
+                                    .font(.title2)
+                                    .foregroundStyle(.purple)
+                                    .frame(width: 48, height: 48)
+                                    .background(Color.purple.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
+                                    .accessibilityHidden(true)
+                                Text(prompt.name).font(.system(size: 26, weight: .bold))
+                                    .textSelection(.enabled)
+                            }
                             Text(prompt.description.isEmpty ? String(localized: "无描述") : prompt.description)
                                 .font(.title3).foregroundStyle(.secondary)
                         }
@@ -279,6 +264,7 @@ struct PromptDetailView: View {
                     }
                     .padding(26)
                     .frame(maxWidth: 820, alignment: .leading)
+                    .frame(maxWidth: .infinity, alignment: .center)
                 }
                 .task(id: "\(id):\(prompt.hash)") { await loadDetails(id) }
                 .toolbar {

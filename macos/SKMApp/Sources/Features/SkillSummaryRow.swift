@@ -8,7 +8,7 @@ struct SkillSummaryRow: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(skill.name)
-                    .font(.body.bold())
+                    .font(.system(size: 13, weight: .semibold))
                     .lineLimit(1)
                     .truncationMode(.middle)
                     .layoutPriority(1)
@@ -20,7 +20,7 @@ struct SkillSummaryRow: View {
             }
 
             Text(skill.description.isEmpty ? String(localized: "无描述") : skill.description)
-                .font(.callout)
+                .font(.system(size: 12))
                 .foregroundStyle(.secondary)
                 .lineLimit(2)
 
@@ -32,7 +32,7 @@ struct SkillSummaryRow: View {
                     .truncationMode(.tail)
             }
         }
-        .padding(.vertical, 5)
+        .padding(.vertical, 8)
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
         .accessibilityElement(children: .ignore)

@@ -24,6 +24,10 @@ Developer ID、Apple 公证、stapling 与 Gatekeeper 的完整实操见
 
 ## 打开与生成工程
 
+主界面采用系统三栏布局与侧栏材质，导航显示各资料库数量；Skill / Prompt 详情使用独立阅读区域，Agent 激活按钮显示品牌图标与启用状态。配色跟随系统浅色与深色外观。
+
+Skills、Prompts 和 Projects 均支持 `⌘F` 聚焦搜索。搜索框内按 `Esc` 清空搜索，再按一次移出焦点；项目可按名称或路径查找。同步执行期间会禁用侧栏同步按钮，避免重复触发。
+
 仓库提交了可直接打开的 Xcode workspace：
 
 ```bash

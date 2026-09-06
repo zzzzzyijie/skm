@@ -26,68 +26,39 @@ struct SkillsListView: View {
         let visibleSkills = filtered
         let tagGroups = itemsGroupedByTag(visibleSkills, tags: \.tags)
 
-        Group {
-            if model.skills.isEmpty && !model.isLoading {
-                ContentUnavailableView {
-                    Label("还没有 Skill", systemImage: "square.stack.3d.up")
-                } description: {
-                    Text("从本地目录、ZIP 或 Git Source 导入第一个 Skill。")
-                } actions: {
-                    Button("添加 Skill") {
-                        addMode = 0
-                        showsAdd = true
+        VStack(spacing: 0) {
+            CollectionSearchField(title: "搜索 Skill", text: $search)
+                .accessibilityIdentifier("skills-search-field")
+            Group {
+                if model.skills.isEmpty && !model.isLoading {
+                    ContentUnavailableView {
+                        Label("还没有 Skill", systemImage: "square.stack.3d.up")
+                    } description: {
+                        Text("从本地目录、ZIP 或 Git Source 导入第一个 Skill。")
+                    } actions: {
+                        Button("添加 Skill") {
+                            addMode = 0
+                            showsAdd = true
+                        }
+                        .buttonStyle(.borderedProminent)
                     }
-                    .buttonStyle(.borderedProminent)
-                }
-            } else {
-                List(selection: $model.selectedSkillID) {
-                    if !visibleSkills.isEmpty {
-                        TagGroupHeader(
-                            title: String(localized: "全部"),
-                            systemImage: "square.stack.3d.up",
-                            count: visibleSkills.count,
-                            isExpanded: isAllGroupExpanded
-                        ) {
-                            isAllGroupExpanded.toggle()
-                        }
-                        .accessibilityIdentifier("skills-group-all")
-
-                        if isAllGroupExpanded {
-                            ForEach(visibleSkills) { skill in
-                                SkillSummaryRow(skill: skill)
-                                    .padding(.leading, 28)
-                                    .listRowInsets(EdgeInsets(top: 3, leading: 12, bottom: 3, trailing: 12))
-                                    .accessibilityIdentifier("skill-row-\(skill.id)")
-                                    .tag(skill.id)
-                                    .contextMenu {
-                                        Button("添加 Skill…") {
-                                            addMode = 0
-                                            showsAdd = true
-                                        }
-                                        Button("导入外部 Skill…") {
-                                            addMode = 1
-                                            showsAdd = true
-                                        }
-                                        Divider()
-                                        Button("管理 Skill 标签…") {
-                                            showsTagManager = true
-                                        }
-                                    }
-                            }
-                        }
-
-                        ForEach(tagGroups, id: \.tag) { group in
+                } else if visibleSkills.isEmpty && !search.isEmpty {
+                    ContentUnavailableView.search(text: search)
+                } else {
+                    List(selection: $model.selectedSkillID) {
+                        if !visibleSkills.isEmpty {
                             TagGroupHeader(
-                                title: group.tag,
-                                count: group.items.count,
-                                isExpanded: expandedTags.contains(group.tag)
+                                title: String(localized: "全部"),
+                                systemImage: "square.stack.3d.up",
+                                count: visibleSkills.count,
+                                isExpanded: isAllGroupExpanded
                             ) {
-                                toggleTag(group.tag)
+                                isAllGroupExpanded.toggle()
                             }
-                            .accessibilityIdentifier("skills-group-\(group.tag)")
+                            .accessibilityIdentifier("skills-group-all")
 
-                            if expandedTags.contains(group.tag) {
-                                ForEach(group.items) { skill in
+                            if isAllGroupExpanded {
+                                ForEach(visibleSkills) { skill in
                                     SkillSummaryRow(skill: skill)
                                         .padding(.leading, 28)
                                         .listRowInsets(EdgeInsets(top: 3, leading: 12, bottom: 3, trailing: 12))
@@ -109,41 +80,46 @@ struct SkillsListView: View {
                                         }
                                 }
                             }
+
+                            ForEach(tagGroups, id: \.tag) { group in
+                                TagGroupHeader(
+                                    title: group.tag,
+                                    count: group.items.count,
+                                    isExpanded: expandedTags.contains(group.tag)
+                                ) {
+                                    toggleTag(group.tag)
+                                }
+                                .accessibilityIdentifier("skills-group-\(group.tag)")
+
+                                if expandedTags.contains(group.tag) {
+                                    ForEach(group.items) { skill in
+                                        SkillSummaryRow(skill: skill)
+                                            .padding(.leading, 28)
+                                            .listRowInsets(EdgeInsets(top: 3, leading: 12, bottom: 3, trailing: 12))
+                                            .accessibilityIdentifier("skill-row-\(skill.id)")
+                                            .tag(skill.id)
+                                            .contextMenu {
+                                                Button("添加 Skill…") {
+                                                    addMode = 0
+                                                    showsAdd = true
+                                                }
+                                                Button("导入外部 Skill…") {
+                                                    addMode = 1
+                                                    showsAdd = true
+                                                }
+                                                Divider()
+                                                Button("管理 Skill 标签…") {
+                                                    showsTagManager = true
+                                                }
+                                            }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
             }
-        }
-        .safeAreaInset(edge: .top, spacing: 0) {
-            HStack(spacing: 6) {
-                Image(systemName: "magnifyingglass")
-                    .foregroundStyle(.secondary)
-                    .font(.system(size: 12, weight: .medium))
-                TextField("搜索 Skill", text: $search)
-                    .textFieldStyle(.plain)
-                    .font(.system(size: 13))
-                if !search.isEmpty {
-                    Button {
-                        search = ""
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(.secondary)
-                            .font(.system(size: 12))
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(.horizontal, 9)
-            .padding(.vertical, 6)
-            .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 7, style: .continuous)
-                    .stroke(Color(nsColor: .separatorColor).opacity(0.5), lineWidth: 0.5)
-            )
-            .padding(.horizontal, 12)
-            .padding(.top, 10)
-            .padding(.bottom, 8)
-            .accessibilityIdentifier("skills-search-field")
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .navigationTitle("Skills")
         .toolbar {
@@ -208,6 +184,13 @@ struct SkillDetailView: View {
 
                         // ── Markdown 正文 ──
                         markdownSection
+                            .padding(20)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 12))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 12)
+                                    .strokeBorder(Color.primary.opacity(0.07), lineWidth: 0.5)
+                            }
 
                         // ── 底部元数据 ──
                         footerSection(summary)
@@ -215,6 +198,7 @@ struct SkillDetailView: View {
                     }
                     .padding(26)
                     .frame(maxWidth: 820, alignment: .leading)
+                    .frame(maxWidth: .infinity, alignment: .center)
                 }
                 .task(id: "\(id):\(summary.hash)") { await loadDetails(id) }
                 .toolbar {
@@ -253,8 +237,15 @@ struct SkillDetailView: View {
     private func headerSection(_ skill: SkillSummary) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             // 标题行
-            HStack(alignment: .firstTextBaseline) {
-                Text(skill.name).font(.largeTitle.bold())
+            HStack(alignment: .center, spacing: 12) {
+                Image(systemName: "square.stack.3d.up.fill")
+                    .font(.title2)
+                    .foregroundStyle(Color.accentColor)
+                    .frame(width: 48, height: 48)
+                    .background(Color.accentColor.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
+                    .accessibilityHidden(true)
+                Text(skill.name).font(.system(size: 26, weight: .bold))
+                    .textSelection(.enabled)
                 HealthBadge(health: skill.health)
             }
 
@@ -272,7 +263,7 @@ struct SkillDetailView: View {
 
             // 标签（capsule 样式）
             if !skill.tags.isEmpty {
-                HStack(spacing: 5) {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), alignment: .leading)], alignment: .leading, spacing: 6) {
                     ForEach(skill.tags, id: \.self) { tag in
                         Text(tag)
                             .font(.caption)
@@ -424,10 +415,8 @@ private struct AgentToggleCard: View {
             onToggle(!isEnabled)
         } label: {
             HStack(spacing: 10) {
-                Image(systemName: isEnabled ? "checkmark.circle.fill" : "circle")
-                    .font(.title3)
-                    .foregroundStyle(isEnabled ? Color.accentColor : Color.secondary.opacity(0.5))
-                    .symbolEffect(.bounce, value: isEnabled)
+                AgentIconView(agentId: agent.id, isCustom: agent.custom, size: 28)
+                    .accessibilityHidden(true)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(agent.name)
@@ -445,6 +434,10 @@ private struct AgentToggleCard: View {
                 }
 
                 Spacer()
+                Image(systemName: isEnabled ? "checkmark.circle.fill" : "circle")
+                    .font(.title3)
+                    .foregroundStyle(isEnabled ? Color.accentColor : Color.secondary)
+                    .accessibilityHidden(true)
             }
             .padding(12)
             .background(
@@ -458,6 +451,7 @@ private struct AgentToggleCard: View {
         }
         .buttonStyle(.plain)
         .disabled(isLoading)
+        .accessibilityValue(isEnabled ? Text("已启用") : Text("未启用"))
     }
 }
 

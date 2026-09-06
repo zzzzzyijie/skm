@@ -84,6 +84,9 @@
     "~/.agent/skills" : {
 
     },
+    "⌘F" : {
+
+    },
     "Agent 激活" : {
 
     },
@@ -1861,6 +1864,17 @@
         }
       }
     },
+    "搜索项目" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Search Projects"
+          }
+        }
+      }
+    },
     "数字" : {
       "localizations" : {
         "en" : {
@@ -2021,6 +2035,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Effective Path"
+          }
+        }
+      }
+    },
+    "未启用" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Disabled"
           }
         }
       }
@@ -2558,6 +2582,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Add Project (Phase 2)"
+          }
+        }
+      }
+    },
+    "清除搜索" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clear Search"
           }
         }
       }
