@@ -204,6 +204,21 @@
 - [x] **【通用 / 设置】优化左侧栏展开收起图标布局**：
   - 现状：设置窗口（`SettingsView`，默认展示“通用”页）采用 `NavigationSplitView`，macOS 默认生成的侧边栏展开/收起图标位置突兀或对齐不协调；
   - 完成：在设置窗口的 `NavigationSplitView` 上移除系统 `.sidebarToggle` 工具栏项，避免多余图标干扰偏好设置布局。
+- [ ] **【Skills / Prompts 详情】移除大标题前置图标**：
+  - 现状：`SkillsViews.swift`（`square.stack.3d.up.fill`）与 `PromptsViews.swift`（`text.bubble.fill`）详情页顶部大标题前方带有 48x48 的彩色背景大图标；
+  - 规划：移除标题前的大图标，直接展示标题文本与状态 Badge，减少视觉冗余，风格更加利落通透。
+- [ ] **【项目导入 Skill 弹窗】文案修正**：
+  - 现状：`ProjectSkillImportSheet.swift` 底部操作栏展示“将导入到 %@”（当当前项目名为 skm 时显示为“将导入到 skm”）；
+  - 规划：将该文案优化为明确的「导入到项目」，避免给用户造成“导入回全局 SKM 库”的歧义认知。
+- [ ] **【设置】左侧导航栏图标对齐优化**：
+  - 现状：`SettingsView` 侧边栏使用原生 `Label`，因各 SF Symbols（齿轮、文件夹、双人、箱子、循环箭头等）固有宽度不一，导致图标未居中、文字左边缘不齐整；
+  - 规划：为各设置项图标设定统一的固定宽度与居中对齐容器（如 `frame(width: 20, alignment: .center)`），使整列图标与文字垂向严格对齐，提升原生质感。
+- [ ] **【Projects 列表】调整内容左右边距**：
+  - 现状：精简移除图标与右侧 Badge 后，项目卡片文本紧贴列表单元格最左侧，在选中高亮态下显得拥挤局促；
+  - 规划：优化列表项内容的水平间距（适当增加 leading / horizontal padding），改善呼吸感与整体对齐。
+- [ ] **【顶部工具栏】优化「图标和文本」模式下的垂直间距与对称性**：
+  - 现状：当 macOS 工具栏切换为【图标和文本】（Icon and Text）展示模式时，系统按钮的图标与文本上下间距局促、垂直分布不够对称；
+  - 规划：排查并调整工具栏按钮的尺寸、边距与排布（`ToolbarItemGroup`、`controlSize`、`buttonStyle`），确保在不同工具栏显示模式下均保持舒适协调的垂直居中节奏。
 
 ## 5. 后续需要提供的信息
 
