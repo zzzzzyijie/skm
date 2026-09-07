@@ -1973,6 +1973,16 @@
         }
       }
     },
+    "暂无可用标签，可在下方创建。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No tags available. Create one below."
+          }
+        }
+      }
+    },
     "暂无技能来源" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -2201,7 +2211,6 @@
       }
     },
     "标签" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2240,6 +2249,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tags, separated by commas (optional)"
+          }
+        }
+      }
+    },
+    "标签名称" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tag Name"
           }
         }
       }
@@ -2540,8 +2560,26 @@
         }
       }
     },
+    "添加并选中" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add and Select"
+          }
+        }
+      }
+    },
     "添加新标签" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add New Tag"
+          }
+        }
+      }
     },
     "添加方式" : {
       "extractionState" : "stale",
@@ -3090,6 +3128,27 @@
         }
       }
     },
+    "该标签已存在，可直接在上方选择。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This tag already exists. Select it above."
+          }
+        }
+      }
+    },
+    "该标签已存在，无需重复添加。" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This tag already exists."
+          }
+        }
+      }
+    },
     "说明（可选）" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -3179,6 +3238,27 @@
     },
     "软链接" : {
 
+    },
+    "输入新标签" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enter a new tag"
+          }
+        }
+      }
+    },
+    "输入标签名称。添加后将进入全局标签池，可在录入或编辑条目时选择使用。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enter a tag name. It will be added to the global tag pool for use when creating or editing items."
+          }
+        }
+      }
     },
     "迁移 %@" : {
       "localizations" : {

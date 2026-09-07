@@ -81,26 +81,10 @@ struct RootView: View {
 
     private var sidebar: some View {
         List(AppSection.allCases, selection: $model.section) { section in
-            HStack(spacing: 10) {
-                Image(systemName: section.symbol)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .frame(width: 26, height: 26)
-                    .background(sectionColor(section).gradient, in: RoundedRectangle(cornerRadius: 7))
-                    .accessibilityHidden(true)
-                Text(section.rawValue)
-                    .font(.body.weight(.medium))
-                Spacer(minLength: 4)
-                Text(sectionCount(section), format: .number)
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(.secondary)
-            }
-                .padding(.vertical, 4)
-                .accessibilityElement(children: .combine)
+            Label(section.rawValue, systemImage: section.symbol)
                 .accessibilityIdentifier("navigation-\(section.rawValue.lowercased())")
                 .tag(section)
         }
-        .listStyle(.sidebar)
         .safeAreaInset(edge: .bottom) {
             VStack(spacing: 0) {
                 Divider()
@@ -110,22 +94,6 @@ struct RootView: View {
             }
         }
         .navigationTitle("SKM")
-    }
-
-    private func sectionColor(_ section: AppSection) -> Color {
-        switch section {
-        case .skills: .blue
-        case .prompts: .purple
-        case .projects: .orange
-        }
-    }
-
-    private func sectionCount(_ section: AppSection) -> Int {
-        switch section {
-        case .skills: model.skills.count
-        case .prompts: model.prompts.count
-        case .projects: model.projects.count
-        }
     }
 
     @ViewBuilder
@@ -303,6 +271,7 @@ struct SettingsView: View {
             detail
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+        .toolbar(removing: .sidebarToggle)
     }
 
     @ViewBuilder
@@ -338,17 +307,17 @@ private struct SidebarBottomToolbar: View {
                     if model.isLoading {
                         ProgressView()
                             .controlSize(.mini)
-                            .frame(width: 28, height: 28)
+                            .frame(width: 16, height: 16)
                     } else {
                         Image(systemName: "arrow.triangle.2.circlepath")
                             .font(.system(size: 13, weight: .medium))
                             .foregroundStyle(model.workspace?.configured == true ? Color.accentColor : Color.secondary)
-                            .frame(width: 28, height: 28)
+                            .frame(width: 16, height: 16)
                     }
                 }
                 .contentShape(Rectangle())
             }
-            .buttonStyle(.borderless)
+            .buttonStyle(.plain)
             .disabled(model.isLoading)
             .accessibilityLabel(syncHelpText)
             .accessibilityIdentifier("sidebar-sync-button")
@@ -359,10 +328,10 @@ private struct SidebarBottomToolbar: View {
                 Image(systemName: "gearshape")
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(.secondary)
-                    .frame(width: 28, height: 28)
+                    .frame(width: 16, height: 16)
                     .contentShape(Rectangle())
             }
-            .buttonStyle(.borderless)
+            .buttonStyle(.plain)
             .accessibilityLabel(String(localized: "偏好设置 (⌘,)"))
             .accessibilityIdentifier("open-settings")
             .help(String(localized: "偏好设置 (⌘,)"))

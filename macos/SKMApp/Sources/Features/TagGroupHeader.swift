@@ -121,7 +121,6 @@ struct TagManagementSheet: View {
     @State private var tagToDelete: String?
     @State private var showsAddTagSheet = false
     @State private var newCreatedTag = ""
-    @State private var selectedItemIDs: Set<String> = []
 
     private var allTagCounts: [(tag: String, count: Int)] {
         let activeTags: [String]
@@ -202,7 +201,6 @@ struct TagManagementSheet: View {
             Spacer()
             Button("添加标签", systemImage: "plus") {
                 newCreatedTag = ""
-                selectedItemIDs = []
                 showsAddTagSheet = true
             }
             .buttonStyle(.bordered)
@@ -342,7 +340,7 @@ struct TagManagementSheet: View {
     private var addTagSheet: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("添加新标签").font(.headline)
-            Text(String(localized: "输入标签名称。添加后将进入全局标签池，并可选择性立即应用到条目："))
+            Text("输入标签名称。添加后将进入全局标签池，可在录入或编辑条目时选择使用。")
                 .font(.callout).foregroundStyle(.secondary)
 
             TextField("标签名称", text: $newCreatedTag)
@@ -357,64 +355,145 @@ struct TagManagementSheet: View {
                     .foregroundStyle(.orange)
             }
 
-            let candidateItems: [(id: String, name: String)] = {
-                switch target {
-                case .skills:
-                    return model.skills.map { ($0.id, $0.name) }
-                case .prompts:
-                    return model.prompts.map { ($0.id, $0.name) }
-                }
-            }()
-
-            if !candidateItems.isEmpty {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(String(format: String(localized: "可选：同时应用到以下条目（已选 %lld 项）"), selectedItemIDs.count))
-                        .font(.caption.bold())
-                        .foregroundStyle(.secondary)
-
-                    ScrollView {
-                        LazyVStack(alignment: .leading, spacing: 4) {
-                            ForEach(candidateItems, id: \.id) { item in
-                                Toggle(isOn: Binding(
-                                    get: { selectedItemIDs.contains(item.id) },
-                                    set: { isChecked in
-                                        if isChecked { selectedItemIDs.insert(item.id) }
-                                        else { selectedItemIDs.remove(item.id) }
-                                    }
-                                )) {
-                                    Text(item.name).font(.callout).lineLimit(1)
-                                }
-                                .toggleStyle(.checkbox)
-                            }
-                        }
-                        .padding(6)
-                    }
-                    .frame(height: 120)
-                    .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 6))
-                    .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color(nsColor: .separatorColor).opacity(0.6), lineWidth: 0.5))
-                }
-            }
-
             HStack {
                 Spacer()
                 Button("取消") { showsAddTagSheet = false }
                 Button("确认添加") {
-                    let tag = trimmed
+                    model.registerCustomTag(trimmed)
                     showsAddTagSheet = false
-                    Task {
-                        if target == .skills {
-                            await model.addTagToSkills(tag, skillIDs: selectedItemIDs)
-                        } else {
-                            await model.addTagToPrompts(tag, promptIDs: selectedItemIDs)
-                        }
-                    }
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(trimmed.isEmpty || isDuplicate)
             }
         }
         .padding(20)
-        .frame(width: 400)
+        .frame(width: 360)
     }
 }
 
+/// Skills 与 Prompts 共用的标签选择器：可多选标签池中的已有标签，也可即时创建并选中新标签。
+struct TagSelector: View {
+    let model: AppModel
+    @Binding var selectedTags: [String]
+    let accessibilityIdentifier: String
+
+    @State private var newTagName = ""
+
+    private var availableTags: [String] {
+        mergedTagPool(
+            customTags: model.customTags,
+            tagGroups: model.skills.map(\.tags) + model.prompts.map(\.tags),
+            selectedTags: selectedTags
+        )
+    }
+
+    private var trimmedNewTag: String {
+        newTagName.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var isDuplicate: Bool {
+        availableTags.contains(trimmedNewTag)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("标签")
+                .font(.callout.weight(.medium))
+
+            if availableTags.isEmpty {
+                Text("暂无可用标签，可在下方创建。")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                ScrollView {
+                    LazyVGrid(
+                        columns: [GridItem(.adaptive(minimum: 92), spacing: 8)],
+                        alignment: .leading,
+                        spacing: 8
+                    ) {
+                        ForEach(availableTags, id: \.self) { tag in
+                            let isSelected = selectedTags.contains(tag)
+                            Button {
+                                toggle(tag)
+                            } label: {
+                                HStack(spacing: 5) {
+                                    Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                                        .accessibilityHidden(true)
+                                    Text(tag)
+                                        .lineLimit(1)
+                                        .truncationMode(.middle)
+                                }
+                                .font(.caption)
+                                .foregroundStyle(isSelected ? Color.accentColor : Color.primary)
+                                .padding(.horizontal, 9)
+                                .padding(.vertical, 6)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .background(
+                                    isSelected ? Color.accentColor.opacity(0.12) : Color.primary.opacity(0.05),
+                                    in: Capsule()
+                                )
+                                .overlay {
+                                    Capsule()
+                                        .strokeBorder(
+                                            isSelected ? Color.accentColor.opacity(0.45) : Color.primary.opacity(0.1),
+                                            lineWidth: 0.5
+                                        )
+                                }
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel(tag)
+                            .accessibilityValue(isSelected ? Text("已选择") : Text("未选择"))
+                            .accessibilityIdentifier("\(accessibilityIdentifier)-option-\(tag)")
+                        }
+                    }
+                    .padding(8)
+                }
+                .frame(maxHeight: 112)
+                .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 8)
+                        .strokeBorder(Color(nsColor: .separatorColor).opacity(0.6), lineWidth: 0.5)
+                }
+            }
+
+            HStack(spacing: 8) {
+                TextField("输入新标签", text: $newTagName)
+                    .textFieldStyle(.roundedBorder)
+                    .onSubmit(addNewTag)
+                    .accessibilityIdentifier("\(accessibilityIdentifier)-new-field")
+                Button("添加并选中", systemImage: "plus", action: addNewTag)
+                    .disabled(trimmedNewTag.isEmpty || isDuplicate)
+                    .accessibilityIdentifier("\(accessibilityIdentifier)-add-button")
+            }
+
+            if !trimmedNewTag.isEmpty && isDuplicate {
+                Text("该标签已存在，可直接在上方选择。")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+            }
+        }
+    }
+
+    private func toggle(_ tag: String) {
+        if let index = selectedTags.firstIndex(of: tag) {
+            selectedTags.remove(at: index)
+        } else {
+            selectedTags.append(tag)
+        }
+    }
+
+    private func addNewTag() {
+        guard !trimmedNewTag.isEmpty, !isDuplicate else { return }
+        model.registerCustomTag(trimmedNewTag)
+        selectedTags.append(trimmedNewTag)
+        newTagName = ""
+    }
+}
+
+/// 合并自定义标签、已有条目标签和当前选择，去重后按本地化顺序排序。
+func mergedTagPool(customTags: Set<String>, tagGroups: [[String]], selectedTags: [String]) -> [String] {
+    Set(tagGroups.flatMap { $0 } + selectedTags)
+        .union(customTags)
+        .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        .sorted { $0.localizedStandardCompare($1) == .orderedAscending }
+}

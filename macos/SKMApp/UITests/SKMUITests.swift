@@ -164,9 +164,13 @@ final class SKMUITests: XCTestCase {
         pathField.click()
         paste(skillDirectory.path, into: pathField)
 
-        let tagsField = app.textFields["标签，以逗号分隔（可选）"]
+        let tagsField = app.textFields["add-skill-tags-new-field"]
         tagsField.click()
-        paste("开发, 这是一个用于验证窄窗口截断表现的超长标签名称", into: tagsField)
+        paste("开发", into: tagsField)
+        app.buttons["add-skill-tags-add-button"].click()
+        tagsField.click()
+        paste("这是一个用于验证窄窗口截断表现的超长标签名称", into: tagsField)
+        app.buttons["add-skill-tags-add-button"].click()
         app.buttons["导入"].click()
 
         let allHeader = app.descendants(matching: .any)["skills-group-all"]

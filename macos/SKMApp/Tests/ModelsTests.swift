@@ -41,6 +41,17 @@ final class ModelsTests: XCTestCase {
         XCTAssertEqual(groups[2].items.map { $0.name }, ["A"])
     }
 
+    func testMergedTagPoolIncludesCustomUsedAndSelectedTags() {
+        XCTAssertEqual(
+            mergedTagPool(
+                customTags: ["design", "general"],
+                tagGroups: [["swift", "general"], ["review"]],
+                selectedTags: ["draft", "swift"]
+            ),
+            ["design", "draft", "general", "review", "swift"]
+        )
+    }
+
     func testProjectAccessStatusDecodesCoreStateAndLegacyFallback() throws {
         let denied = try JSONDecoder().decode(
             ProjectModel.self,

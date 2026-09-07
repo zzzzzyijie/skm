@@ -34,38 +34,15 @@ struct ProjectsListView: View {
                     ContentUnavailableView.search(text: search)
                 } else {
                     List(filteredProjects, selection: $model.selectedProjectID) { project in
-                        let access = ProjectAccessStatus(project: project)
-                        let isSelected = model.selectedProjectID == project.id
-                        HStack(alignment: .top, spacing: 11) {
-                            Image(systemName: access.canRead ? "folder.fill" : access.symbol)
-                                .font(.title3)
-                                .foregroundStyle(isSelected ? Color.white : (access.canRead ? Color.accentColor : access.color))
-                                .frame(width: 32, height: 32)
-                                .background(
-                                    isSelected ? Color.white.opacity(0.22) : (access.canRead ? Color.accentColor.opacity(0.1) : Color.primary.opacity(0.06)),
-                                    in: RoundedRectangle(cornerRadius: 8)
-                                )
-                                .accessibilityHidden(true)
-
-                            VStack(alignment: .leading, spacing: 5) {
-                                HStack(spacing: 8) {
-                                    Text(project.id).bold()
-                                    Spacer()
-                                    Label(access.title, systemImage: access.symbol)
-                                        .font(.caption)
-                                        .foregroundStyle(access.color)
-                                }
-                                Text(project.path)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                    .lineLimit(1)
-                                    .truncationMode(.middle)
-                                Text(String(format: String(localized: "%lld 个 Skills · %lld 个部署"), locale: .current, project.skillCount, project.activationCount))
-                                    .font(.caption)
-                                    .foregroundStyle(.tertiary)
-                            }
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(project.id).bold()
+                            Text(project.path)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
                         }
-                        .padding(.vertical, 6)
+                        .padding(.vertical, 4)
                         .tag(project.id)
                         .accessibilityElement(children: .combine)
                         .contextMenu {

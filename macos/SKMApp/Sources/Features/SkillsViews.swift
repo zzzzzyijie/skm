@@ -589,7 +589,7 @@ struct AddSkillSheet: View {
     @State private var path = ""
     @State private var remote = ""
     @State private var sourceName = ""
-    @State private var tags = ""
+    @State private var tags: [String] = []
 
     // Git 两步向导状态
     @State private var wizardStep = 0
@@ -619,7 +619,7 @@ struct AddSkillSheet: View {
         .padding(24)
         .frame(
             minWidth: mode == 1 && wizardStep == 1 ? 660 : 560,
-            minHeight: mode == 1 && wizardStep == 1 ? 480 : 300
+            minHeight: mode == 1 && wizardStep == 1 ? 480 : 400
         )
     }
 
@@ -655,7 +655,7 @@ struct AddSkillSheet: View {
                 TextField("Skill 目录或 ZIP", text: $path)
                 Button("选择…") { chooseLocalSkill() }
             }
-            TextField("标签，以逗号分隔（可选）", text: $tags)
+            TagSelector(model: model, selectedTags: $tags, accessibilityIdentifier: "add-skill-tags")
             Text("本地内容会被验证并写入 SKM 的不可变对象库。")
                 .font(.caption).foregroundStyle(.secondary)
 
@@ -666,7 +666,7 @@ struct AddSkillSheet: View {
                 Button("取消", role: .cancel) { dismiss() }
                 Button("导入") {
                     Task {
-                        await model.addLocalSkill(path: path, tags: parseTags(tags))
+                        await model.addLocalSkill(path: path, tags: tags)
                         if model.errorMessage == nil { dismiss() }
                     }
                 }
@@ -680,7 +680,7 @@ struct AddSkillSheet: View {
         VStack(alignment: .leading, spacing: 14) {
             TextField("Git URL、owner/repo 或 npx skills add …", text: $remote)
             TextField("来源名称（可选，留空自动提取）", text: $sourceName)
-            TextField("标签，以逗号分隔（可选）", text: $tags)
+            TagSelector(model: model, selectedTags: $tags, accessibilityIdentifier: "add-skill-tags")
             Text("凭据由系统 Git、SSH Agent 或 Credential Helper 管理，SKM 不保存 Token。")
                 .font(.caption).foregroundStyle(.secondary)
 
@@ -836,7 +836,7 @@ struct AddSkillSheet: View {
             name: preview.source.name,
             ref: preview.source.ref,
             paths: Array(selectedPaths),
-            tags: parseTags(tags)
+            tags: tags
         )
         if success {
             dismiss()
@@ -912,7 +912,7 @@ struct SkillEditorSheet: View {
     let model: AppModel
     let details: SkillDetails
     @State private var content: String
-    @State private var tags: String
+    @State private var tags: [String]
     @State private var baseHash: String
     @State private var latest: SkillDetails?
     @State private var showsHistory = false
@@ -921,7 +921,7 @@ struct SkillEditorSheet: View {
         self.model = model
         self.details = details
         _content = State(initialValue: details.content)
-        _tags = State(initialValue: details.tags.joined(separator: ", "))
+        _tags = State(initialValue: details.tags)
         _baseHash = State(initialValue: details.hash)
     }
 
@@ -931,7 +931,7 @@ struct SkillEditorSheet: View {
             TextEditor(text: $content)
                 .font(.system(.body, design: .monospaced))
                 .border(.separator)
-            TextField("标签，以逗号分隔", text: $tags)
+            TagSelector(model: model, selectedTags: $tags, accessibilityIdentifier: "edit-skill-tags")
             if let latest {
                 GroupBox("检测到并发修改") {
                     VStack(alignment: .leading, spacing: 10) {
@@ -944,7 +944,7 @@ struct SkillEditorSheet: View {
                         HStack {
                             Button("使用磁盘版本") {
                                 content = latest.content
-                                tags = latest.tags.joined(separator: ", ")
+                                tags = latest.tags
                                 baseHash = latest.hash
                                 self.latest = nil
                             }
@@ -985,7 +985,7 @@ struct SkillEditorSheet: View {
     }
 
     private func save() async {
-        let saved = await model.updateSkill(id: details.id, content: content, baseHash: baseHash, tags: parseTags(tags))
+        let saved = await model.updateSkill(id: details.id, content: content, baseHash: baseHash, tags: tags)
         if saved {
             dismiss()
         } else if model.lastErrorKind == "conflict" {
@@ -998,7 +998,7 @@ struct SkillEditorSheet: View {
         do {
             let refreshed = try await model.skillDetails(details.id)
             content = refreshed.content
-            tags = refreshed.tags.joined(separator: ", ")
+            tags = refreshed.tags
             baseHash = refreshed.hash
             latest = nil
         } catch {

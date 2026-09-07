@@ -336,7 +336,7 @@ struct PromptEditorSheet: View {
     @State private var name: String
     @State private var description: String
     @State private var promptBody: String
-    @State private var tags: String
+    @State private var tags: [String]
     @State private var baseHash: String?
     @State private var latest: PromptDetails?
     @State private var variables: [PromptVariableDraft]
@@ -347,7 +347,7 @@ struct PromptEditorSheet: View {
         _name = State(initialValue: details?.name ?? "")
         _description = State(initialValue: details?.description ?? "")
         _promptBody = State(initialValue: details?.body ?? "")
-        _tags = State(initialValue: details?.tags.joined(separator: ", ") ?? "general")
+        _tags = State(initialValue: details?.tags ?? ["general"])
         _baseHash = State(initialValue: details?.hash)
         _variables = State(initialValue: (details?.variables ?? []).map(PromptVariableDraft.init))
     }
@@ -361,10 +361,9 @@ struct PromptEditorSheet: View {
                     .accessibilityIdentifier("prompt-name-field")
                 TextField("描述", text: $description)
                     .accessibilityIdentifier("prompt-description-field")
-                TextField("标签，以逗号分隔", text: $tags)
-                    .accessibilityIdentifier("prompt-tags-field")
             }
             .formStyle(.columns)
+            TagSelector(model: model, selectedTags: $tags, accessibilityIdentifier: "prompt-tags")
             TextEditor(text: $promptBody)
                 .font(.system(.body, design: .monospaced))
                 .border(.separator)
@@ -397,7 +396,7 @@ struct PromptEditorSheet: View {
                                 name = latest.name
                                 description = latest.description
                                 promptBody = latest.body
-                                tags = latest.tags.joined(separator: ", ")
+                                tags = latest.tags
                                 variables = (latest.variables ?? []).map(PromptVariableDraft.init)
                                 baseHash = latest.hash
                                 self.latest = nil
@@ -440,7 +439,7 @@ struct PromptEditorSheet: View {
             name: asCopy ? "\(name)-copy" : name,
             description: description,
             body: promptBody,
-            tags: parseTags(tags),
+            tags: tags,
             variables: variables.map(\.model),
             baseHash: asCopy ? nil : baseHash
         )

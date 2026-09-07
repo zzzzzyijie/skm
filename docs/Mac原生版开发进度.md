@@ -192,18 +192,18 @@
 - [x] **【设置 - Agent 管理】精简移除「由 SKM 管理」冗余文案**：
   - 现状：界面中存在「由 SKM 管理」等冗长文字标签，增加界面噪音；
   - 完成：移除开关旁冗余的“由 SKM 管理”文本标签，列表状态精简为“已启用 / 已检测 / 未检测”，视觉层次更清晰。
-- [ ] **【添加标签】精简为纯标签录入，移除条目关联（Skills）**：
+- [x] **【添加标签】精简为纯标签录入，移除条目关联（Skills）**：
   - 现状：在 `TagGroupHeader.swift` 的 `addTagSheet` 中包含“可选：同时应用到以下条目”的列表及勾选逻辑；
-  - 规划：仅保留标签名称输入框及重复校验，确认添加后直接调用 `registerCustomTag` 注册到全局池，不再展示条目关联勾选列表。
-- [ ] **【添加 Skill / Prompt】标签选择器优化（选择已有或即时新增）**：
+  - 完成：添加标签弹窗仅保留标签名称录入与重复校验，确认后直接调用 `registerCustomTag` 写入全局标签池，不再承担条目关联操作。
+- [x] **【添加 Skill / Prompt】标签选择器优化（选择已有或即时新增）**：
   - 现状：当前在 `AddSkillSheet` 与 `PromptEditorSheet` 中仅提供普通的逗号分隔文本输入框，输入繁琐且无法直观选用已存在标签；
-  - 规划：重构为统一的标签选择器组件，支持从现有标签池多选已有标签，也支持输入新标签名称即时创建并选中，并在 Skills 与 Prompts 录入/编辑中统一接入。
-- [ ] **【Projects 列表】精简列表项信息**：
+  - 完成：新增统一 `TagSelector`，合并自定义标签及 Skills / Prompts 已用标签供多选，支持即时创建并自动选中，已接入 Skill 本地/Git 导入、Skill 编辑及 Prompt 新建/编辑流程。
+- [x] **【Projects 列表】精简列表项信息**：
   - 现状：项目列表项中展示了右侧【读取状态】Badge（`Label(access.title, ...)`）以及底部的【skills部署数量】（`Text("%lld 个 Skills · %lld 个部署")`），视觉元素偏杂；
-  - 规划：从列表项中精简移除读取状态与技能部署数量，每行仅保留核心的项目名称与路径，保持列表紧凑整洁。
-- [ ] **【通用 / 设置】优化左侧栏展开收起图标布局**：
+  - 完成：移除列表项读取状态、Skills / 部署数量及装饰图标，每行仅展示项目名称与路径，并收紧垂直间距。
+- [x] **【通用 / 设置】优化左侧栏展开收起图标布局**：
   - 现状：设置窗口（`SettingsView`，默认展示“通用”页）采用 `NavigationSplitView`，macOS 默认生成的侧边栏展开/收起图标位置突兀或对齐不协调；
-  - 规划：对齐标准 macOS 偏好设置规范，禁用/移除多余的侧边栏收起图标（使用 `.toolbar(removing: .sidebarToggle)`），或规范调整其工具栏定位与间距。
+  - 完成：在设置窗口的 `NavigationSplitView` 上移除系统 `.sidebarToggle` 工具栏项，避免多余图标干扰偏好设置布局。
 
 ## 5. 后续需要提供的信息
 
@@ -222,9 +222,10 @@
 
 ## 6. 最近一次验证记录
 
-截至 2026-09-03，已通过：
+截至 2026-09-07，已通过：
 
-- `xcodebuild -workspace macos/SKM.xcworkspace -scheme SKM -configuration Debug -derivedDataPath /tmp/skm-macos-derived -only-testing:SKMTests test`：17 个 Swift 单元测试全量通过（包含 AppModelTests、CoreClientResilienceTests、ModelsTests）；
+- `xcodebuild -workspace macos/SKM.xcworkspace -scheme SKM -configuration Debug -derivedDataPath /tmp/skm-macos-derived -destination 'platform=macOS' -only-testing:SKMTests test`：19 个 Swift 单元测试全量通过（包含自定义标签池持久化去重及统一标签池合并测试）；
+- `xcodebuild -workspace macos/SKM.xcworkspace -scheme SKM -configuration Debug -derivedDataPath /tmp/skm-macos-derived -destination 'platform=macOS' -only-testing:SKMUITests/SKMUITests/testChineseTagGroupsRenderAsSeparateListRows test`：标签即时新增、选中、Skill 导入及标签分组展示链路通过；
 - `xcodebuild build & test`：集中式标签管理面板（Skill/Prompt）、侧边栏常驻一键同步控件、新建/导入快捷菜单与项目列表高对比选中/Agent微胶囊样式重构验证通过，编译与单元测试全绿；
 - `xcodebuild -workspace macos/SKM.xcworkspace -scheme SKM -configuration Debug -derivedDataPath /tmp/skm-macos-derived -only-testing:SKMUITests test`：5 个中英文 UI 测试全量通过（包含中英文空库与快捷键、项目登记与工作区同步、多标签分组渲染与技能 Agent / Prompt 写入流）；
 - `go test ./...`：全量 Go 单元测试与工作区同步集成测试通过；

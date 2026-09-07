@@ -767,68 +767,6 @@ final class AppModel {
         customTags = current
     }
 
-    /// 批量为指定 Skill 打上标签
-    func addTagToSkills(_ tag: String, skillIDs: Set<String>) async {
-        let trimmed = tag.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
-        registerCustomTag(trimmed)
-        guard !skillIDs.isEmpty else { return }
-
-        await perform(String(format: String(localized: "正在为 %lld 个 Skill 添加标签…"), skillIDs.count)) {
-            for id in skillIDs {
-                if let details: SkillDetails = try? await self.core.call("skills.get", params: IDParams(id: id)) {
-                    var newTags = details.tags
-                    if !newTags.contains(trimmed) {
-                        newTags.append(trimmed)
-                    }
-                    newTags = Array(NSOrderedSet(array: newTags)).compactMap { $0 as? String }
-                    let _: SkillUpdateResponse = try await self.core.call(
-                        "skills.update",
-                        params: UpdateSkillParams(id: id, content: details.content, baseHash: details.hash, tags: newTags)
-                    )
-                }
-            }
-            await self.refresh()
-        }
-        announce(String(localized: "标签已添加并应用"))
-    }
-
-    /// 批量为指定 Prompt 打上标签
-    func addTagToPrompts(_ tag: String, promptIDs: Set<String>) async {
-        let trimmed = tag.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
-        registerCustomTag(trimmed)
-        guard !promptIDs.isEmpty else { return }
-
-        await perform(String(format: String(localized: "正在为 %lld 个 Prompt 添加标签…"), promptIDs.count)) {
-            for id in promptIDs {
-                if let details: PromptDetails = try? await self.core.call("prompts.get", params: IDParams(id: id)) {
-                    var newTags = details.tags
-                    if !newTags.contains(trimmed) {
-                        newTags.append(trimmed)
-                    }
-                    newTags = Array(NSOrderedSet(array: newTags)).compactMap { $0 as? String }
-                    let _: PromptSummary = try await self.core.call(
-                        "prompts.update",
-                        params: PromptWriteParams(
-                            id: id,
-                            content: nil,
-                            name: details.name,
-                            description: details.description,
-                            tags: newTags,
-                            body: details.body,
-                            variables: details.variables ?? [],
-                            source: "local",
-                            baseHash: details.hash
-                        )
-                    )
-                }
-            }
-            await self.refresh()
-        }
-        announce(String(localized: "标签已添加并应用"))
-    }
-
     /// 运行系统 Doctor 健康诊断
     func runDoctor() async {
         await perform(String(localized: "正在运行诊断…")) {

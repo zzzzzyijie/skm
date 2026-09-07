@@ -76,6 +76,16 @@ final class AppModelTests: XCTestCase {
         )
     }
 
+    func testRegisterCustomTagTrimsAndDeduplicatesGlobalPool() {
+        let preferences = isolatedPreferences()
+        let model = AppModel(core: StubCore(), preferences: preferences, monitorsFiles: false)
+
+        model.registerCustomTag("  review  ")
+        model.registerCustomTag("review")
+
+        XCTAssertEqual(model.customTags, ["review"])
+    }
+
     func testReadOnlyMethodsAreTheOnlyAutomaticallyRetryableCalls() {
         XCTAssertTrue(CoreClient.isSafeToRetry("skills.list"))
         XCTAssertTrue(CoreClient.isSafeToRetry("system.doctor"))
