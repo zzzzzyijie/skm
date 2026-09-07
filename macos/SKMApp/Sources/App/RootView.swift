@@ -181,6 +181,25 @@ struct StatusPill: View {
     }
 }
 
+/// 主窗口顶部工具栏按钮的统一尺寸与对称留白。
+///
+/// 保留原生 `Label` 语义，让 macOS 仍可在“仅图标”和“图标和文本”之间切换；
+/// regular 控件尺寸与上下等量留白可避免图标和文本模式显得局促。
+private struct TopToolbarActionModifier: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .buttonStyle(.borderless)
+            .controlSize(.regular)
+            .padding(.vertical, 2)
+    }
+}
+
+extension View {
+    func topToolbarActionStyle() -> some View {
+        modifier(TopToolbarActionModifier())
+    }
+}
+
 struct WelcomeView: View {
     @Environment(\.openSettings) private var openSettings
     @Bindable var model: AppModel
@@ -261,8 +280,14 @@ struct SettingsView: View {
     var body: some View {
         NavigationSplitView {
             List(SettingsSection.allCases, selection: $model.settingsSection) { section in
-                Label(section.title, systemImage: section.symbol)
+                HStack(spacing: 10) {
+                    Image(systemName: section.symbol)
+                        .frame(width: 20, alignment: .center)
+                        .accessibilityHidden(true)
+                    Text(section.title)
+                }
                     .tag(section)
+                    .accessibilityElement(children: .combine)
                     .accessibilityIdentifier("settings-\(section.rawValue)")
             }
             .navigationTitle("设置")

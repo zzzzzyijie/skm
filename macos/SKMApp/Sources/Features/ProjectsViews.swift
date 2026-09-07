@@ -42,6 +42,7 @@ struct ProjectsListView: View {
                                 .lineLimit(1)
                                 .truncationMode(.middle)
                         }
+                        .padding(.horizontal, 10)
                         .padding(.vertical, 4)
                         .tag(project.id)
                         .accessibilityElement(children: .combine)
@@ -63,6 +64,7 @@ struct ProjectsListView: View {
                 }
                 .help("登记本机项目目录")
                 .accessibilityIdentifier("add-project-button")
+                .topToolbarActionStyle()
             }
         }
         .sheet(isPresented: $showsAddProject) { AddProjectSheet(model: model) }
@@ -196,16 +198,19 @@ struct ProjectDetailView: View {
             ToolbarItemGroup(placement: .primaryAction) {
                 if let id = model.selectedProjectID,
                    let project = model.projects.first(where: { $0.id == id }) {
-                    Button("重新扫描", systemImage: "arrow.clockwise") {
-                        Task { await model.loadProjectDetails(project.id) }
-                    }
-                    .help("重新扫描项目目录中的 Skills")
-                    .disabled(model.isLoading)
+                    Group {
+                        Button("重新扫描", systemImage: "arrow.clockwise") {
+                            Task { await model.loadProjectDetails(project.id) }
+                        }
+                        .help("重新扫描项目目录中的 Skills")
+                        .disabled(model.isLoading)
 
-                    Button("在 Finder 中显示", systemImage: "folder") {
-                        NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: project.path)
+                        Button("在 Finder 中显示", systemImage: "folder") {
+                            NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: project.path)
+                        }
+                        .help("在 Finder 中查看此项目目录")
                     }
-                    .help("在 Finder 中查看此项目目录")
+                    .topToolbarActionStyle()
                 }
             }
         }
@@ -448,6 +453,10 @@ private struct ProjectMigrationSheet: View {
                 Toggle("复制成功后移除项目原件", isOn: $removeSource)
                 Text("只有所有 Agent 副本内容一致且不受 SKM 管理时才允许移除。")
                     .font(.caption).foregroundStyle(.secondary)
+            } else {
+                Text("将在个人 Library 中建立指向项目 Skill 的软链接；项目内的修改会实时同步到我的 Skill。")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
             Spacer()
             HStack {

@@ -105,7 +105,7 @@ struct ProjectSkillImportSheet: View {
             Spacer(minLength: 0)
 
             HStack {
-                Text(String(format: String(localized: "将导入到 %@"), locale: .current, project.id))
+                Text("导入到项目")
                     .font(.callout)
                     .foregroundStyle(.secondary)
                 Spacer()

@@ -149,9 +149,14 @@ struct SourcesListView: View {
         content
         .navigationTitle("Sources")
         .toolbar {
-            Button("同步全部", systemImage: "arrow.triangle.2.circlepath") { Task { await model.syncSources() } }
-                .disabled(model.sources.isEmpty || model.isLoading)
-            Button("添加 Source", systemImage: "plus") { showsAddSource = true }
+            ToolbarItemGroup(placement: .primaryAction) {
+                Group {
+                    Button("同步全部", systemImage: "arrow.triangle.2.circlepath") { Task { await model.syncSources() } }
+                        .disabled(model.sources.isEmpty || model.isLoading)
+                    Button("添加 Source", systemImage: "plus") { showsAddSource = true }
+                }
+                .topToolbarActionStyle()
+            }
         }
         .sheet(isPresented: $showsAddSource) { AddSourceSheet(model: model) }
     }

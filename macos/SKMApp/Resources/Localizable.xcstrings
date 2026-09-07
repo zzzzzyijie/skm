@@ -1466,13 +1466,24 @@
         }
       }
     },
-    "将导入到 %@" : {
+    "导入到项目" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Will import into %@"
+            "value" : "Import into project"
+          }
+        }
+      }
+    },
+    "将在个人 Library 中建立指向项目 Skill 的软链接；项目内的修改会实时同步到我的 Skill。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A symlink to the project Skill will be created in your personal Library; changes in the project will be reflected in My Skills immediately."
           }
         }
       }

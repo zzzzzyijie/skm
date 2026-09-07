@@ -141,6 +141,9 @@ final class SKMUITests: XCTestCase {
 
     @MainActor
     func testChineseTagGroupsRenderAsSeparateListRows() throws {
+        let tagSuffix = String(UUID().uuidString.prefix(8)).lowercased()
+        let shortTag = "开发-\(tagSuffix)"
+        let longTag = "这是一个用于验证窄窗口截断表现的超长标签名称-\(tagSuffix)"
         let skillDirectory = temporaryRoot.appendingPathComponent("tag-layout-skill", isDirectory: true)
         try FileManager.default.createDirectory(at: skillDirectory, withIntermediateDirectories: true)
         try """
@@ -166,16 +169,16 @@ final class SKMUITests: XCTestCase {
 
         let tagsField = app.textFields["add-skill-tags-new-field"]
         tagsField.click()
-        paste("开发", into: tagsField)
+        paste(shortTag, into: tagsField)
         app.buttons["add-skill-tags-add-button"].click()
         tagsField.click()
-        paste("这是一个用于验证窄窗口截断表现的超长标签名称", into: tagsField)
+        paste(longTag, into: tagsField)
         app.buttons["add-skill-tags-add-button"].click()
         app.buttons["导入"].click()
 
         let allHeader = app.descendants(matching: .any)["skills-group-all"]
         let skillRow = app.descendants(matching: .any)["skill-row-local/tag-layout-skill"].firstMatch
-        let longTagHeader = app.descendants(matching: .any)["skills-group-这是一个用于验证窄窗口截断表现的超长标签名称"]
+        let longTagHeader = app.descendants(matching: .any)["skills-group-\(longTag)"]
 
         XCTAssertTrue(allHeader.waitForExistence(timeout: 8))
         XCTAssertTrue(skillRow.waitForExistence(timeout: 8))

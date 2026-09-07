@@ -115,14 +115,17 @@ struct PromptsListView: View {
         .navigationTitle("Prompts")
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
-                Button("标签管理", systemImage: "tag") {
-                    showsTagManager = true
-                }
-                .help("集中管理 Prompt 标签")
-                .accessibilityIdentifier("prompts-manage-tags-button")
+                Group {
+                    Button("标签管理", systemImage: "tag") {
+                        showsTagManager = true
+                    }
+                    .help("集中管理 Prompt 标签")
+                    .accessibilityIdentifier("prompts-manage-tags-button")
 
-                Button("导入 Prompt", systemImage: "square.and.arrow.down") { importPrompt() }
-                Button("新建 Prompt", systemImage: "plus") { showsNewPrompt = true }
+                    Button("导入 Prompt", systemImage: "square.and.arrow.down") { importPrompt() }
+                    Button("新建 Prompt", systemImage: "plus") { showsNewPrompt = true }
+                }
+                .topToolbarActionStyle()
             }
         }
         .sheet(isPresented: $showsNewPrompt) { PromptEditorSheet(model: model, details: nil) }
@@ -180,28 +183,17 @@ struct PromptDetailView: View {
                     VStack(alignment: .leading, spacing: 22) {
                         // ── 标题 & 描述 ──
                         VStack(alignment: .leading, spacing: 8) {
-                            HStack(spacing: 12) {
-                                Image(systemName: "text.bubble.fill")
-                                    .font(.title2)
-                                    .foregroundStyle(.purple)
-                                    .frame(width: 48, height: 48)
-                                    .background(Color.purple.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
-                                    .accessibilityHidden(true)
-                                Text(prompt.name).font(.system(size: 26, weight: .bold))
-                                    .textSelection(.enabled)
-                            }
+                            Text(prompt.name).font(.system(size: 26, weight: .bold))
+                                .textSelection(.enabled)
                             Text(prompt.description.isEmpty ? String(localized: "无描述") : prompt.description)
                                 .font(.title3).foregroundStyle(.secondary)
                         }
 
-                        // ── 元信息（来源 · 标签 · 字数） ──
+                        // ── 元信息（来源 · 标签） ──
                         HStack(spacing: 16) {
                             Label(prompt.source, systemImage: "archivebox")
                             if !prompt.tags.isEmpty {
                                 Label(prompt.tags.joined(separator: " · "), systemImage: "tag")
-                            }
-                            if let body = details?.body {
-                                Label("\(body.count) 字符", systemImage: "textformat.size")
                             }
                         }
                         .font(.callout)
@@ -269,15 +261,18 @@ struct PromptDetailView: View {
                 .task(id: "\(id):\(prompt.hash)") { await loadDetails(id) }
                 .toolbar {
                     ToolbarItemGroup(placement: .primaryAction) {
-                        Button("快速查看", systemImage: "eye") { Task { await showQuickLook() } }
-                        Button("复制", systemImage: "doc.on.doc") {
-                            NSPasteboard.general.clearContents()
-                            NSPasteboard.general.setString(details?.body ?? "", forType: .string)
-                            model.announce(String(localized: "Prompt 已复制"))
+                        Group {
+                            Button("快速查看", systemImage: "eye") { Task { await showQuickLook() } }
+                            Button("复制", systemImage: "doc.on.doc") {
+                                NSPasteboard.general.clearContents()
+                                NSPasteboard.general.setString(details?.body ?? "", forType: .string)
+                                model.announce(String(localized: "Prompt 已复制"))
+                            }
+                            Button("导出", systemImage: "square.and.arrow.up") { exportPrompt(prompt.name) }
+                            Button("编辑", systemImage: "pencil") { showsEditor = true }
+                            Button("删除", systemImage: "trash", role: .destructive) { confirmsDelete = true }
                         }
-                        Button("导出", systemImage: "square.and.arrow.up") { exportPrompt(prompt.name) }
-                        Button("编辑", systemImage: "pencil") { showsEditor = true }
-                        Button("删除", systemImage: "trash", role: .destructive) { confirmsDelete = true }
+                        .topToolbarActionStyle()
                     }
                 }
                 .sheet(isPresented: $showsEditor, onDismiss: { Task { await loadDetails(id) } }) {

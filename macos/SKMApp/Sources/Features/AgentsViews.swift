@@ -378,6 +378,7 @@ struct AgentsListView: View {
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button("添加自定义 Agent", systemImage: "plus") { showsCustomAgent = true }
+                    .topToolbarActionStyle()
             }
         }
         .sheet(isPresented: $showsCustomAgent) { CustomAgentSheet(model: model, agent: nil) }
@@ -429,8 +430,11 @@ struct AgentDetailView: View {
             .toolbar {
                 if agent.custom {
                     ToolbarItemGroup(placement: .primaryAction) {
-                        Button("编辑", systemImage: "pencil") { showsEditor = true }
-                        Button("删除", systemImage: "trash", role: .destructive) { confirmsDelete = true }
+                        Group {
+                            Button("编辑", systemImage: "pencil") { showsEditor = true }
+                            Button("删除", systemImage: "trash", role: .destructive) { confirmsDelete = true }
+                        }
+                        .topToolbarActionStyle()
                     }
                 }
             }

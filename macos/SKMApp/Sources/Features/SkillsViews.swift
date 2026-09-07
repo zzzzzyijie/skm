@@ -124,17 +124,20 @@ struct SkillsListView: View {
         .navigationTitle("Skills")
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
-                Button("标签管理", systemImage: "tag") {
-                    showsTagManager = true
-                }
-                .help("集中管理 Skill 标签")
-                .accessibilityIdentifier("skills-manage-tags-button")
+                Group {
+                    Button("标签管理", systemImage: "tag") {
+                        showsTagManager = true
+                    }
+                    .help("集中管理 Skill 标签")
+                    .accessibilityIdentifier("skills-manage-tags-button")
 
-                Button("添加 Skill", systemImage: "plus") {
-                    addMode = 0
-                    showsAdd = true
+                    Button("添加 Skill", systemImage: "plus") {
+                        addMode = 0
+                        showsAdd = true
+                    }
+                    .help("添加或导入 Skill")
                 }
-                .help("添加或导入 Skill")
+                .topToolbarActionStyle()
             }
         }
         .sheet(isPresented: $showsAdd) { AddSkillSheet(model: model, initialMode: addMode) }
@@ -203,12 +206,15 @@ struct SkillDetailView: View {
                 .task(id: "\(id):\(summary.hash)") { await loadDetails(id) }
                 .toolbar {
                     ToolbarItemGroup(placement: .primaryAction) {
-                        Button("快速查看", systemImage: "eye") { Task { await showQuickLook() } }
-                        if details?.editable ?? summary.editable {
-                            Button("编辑", systemImage: "pencil") { showsEditor = true }
+                        Group {
+                            Button("快速查看", systemImage: "eye") { Task { await showQuickLook() } }
+                            if details?.editable ?? summary.editable {
+                                Button("编辑", systemImage: "pencil") { showsEditor = true }
+                            }
+                            Button("在 Finder 中显示", systemImage: "folder") { revealInFinder(summary) }
+                            Button("删除", systemImage: "trash", role: .destructive) { confirmsDelete = true }
                         }
-                        Button("在 Finder 中显示", systemImage: "folder") { revealInFinder(summary) }
-                        Button("删除", systemImage: "trash", role: .destructive) { confirmsDelete = true }
+                        .topToolbarActionStyle()
                     }
                 }
                 .sheet(isPresented: $showsEditor, onDismiss: { Task { await loadDetails(id) } }) {
@@ -237,13 +243,7 @@ struct SkillDetailView: View {
     private func headerSection(_ skill: SkillSummary) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             // 标题行
-            HStack(alignment: .center, spacing: 12) {
-                Image(systemName: "square.stack.3d.up.fill")
-                    .font(.title2)
-                    .foregroundStyle(Color.accentColor)
-                    .frame(width: 48, height: 48)
-                    .background(Color.accentColor.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
-                    .accessibilityHidden(true)
+            HStack(alignment: .center, spacing: 10) {
                 Text(skill.name).font(.system(size: 26, weight: .bold))
                     .textSelection(.enabled)
                 HealthBadge(health: skill.health)
@@ -275,18 +275,11 @@ struct SkillDetailView: View {
                 }
             }
 
-            // 元信息（来源 · hash · 字数）
-            HStack(spacing: 16) {
-                Label(skill.source.isEmpty ? "local" : skill.source, systemImage: skill.source == "git" ? "arrow.triangle.branch" : "externaldrive")
-                Text(String(skill.hash.prefix(8)))
-                    .font(.callout.monospaced())
-                    .padding(.horizontal, 5)
-                    .padding(.vertical, 2)
-                    .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 4))
-                if let body = details?.body {
-                    Label("\(body.count) 字符", systemImage: "textformat.size")
-                }
-            }
+            // 来源元信息
+            Label(
+                skill.source.isEmpty ? "local" : skill.source,
+                systemImage: skill.source == "git" ? "arrow.triangle.branch" : "externaldrive"
+            )
             .font(.callout)
             .foregroundStyle(.secondary)
         }
