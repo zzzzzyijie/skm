@@ -121,6 +121,7 @@ struct PromptRenderSheet: View {
         _values = State(initialValue: Dictionary(uniqueKeysWithValues: (details.variables ?? []).map {
             ($0.name, $0.type == "secret" ? "" : ($0.default ?? ""))
         }))
+        _rendered = State(initialValue: (details.variables ?? []).isEmpty ? details.body : "")
     }
 
     var body: some View {
@@ -178,7 +179,6 @@ struct PromptRenderSheet: View {
         }
         .frame(minWidth: 850, minHeight: 560)
         .sheetChrome(model: model)
-        .task { if variables.isEmpty { await render() } }
         .onChange(of: values) { _, _ in
             rendered = ""
             missing = []

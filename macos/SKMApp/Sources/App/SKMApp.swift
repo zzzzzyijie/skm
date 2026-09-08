@@ -8,13 +8,6 @@ struct SKMApp: App {
     @State private var model = AppModel()
 
     init() {
-        // UI snapshots use an app-local appearance without changing macOS preferences.
-        let environment = ProcessInfo.processInfo.environment
-        if environment["SKM_PREFERENCES_SUITE"]?.hasPrefix("SKMUITests.") == true,
-           let appearance = environment["SKM_TEST_APPEARANCE"],
-           ["Aqua", "DarkAqua"].contains(appearance) {
-            NSApplication.shared.appearance = NSAppearance(named: NSAppearance.Name(appearance))
-        }
         ToolbarMenuFilter.install()
     }
 
@@ -22,6 +15,7 @@ struct SKMApp: App {
         // 主应用程序窗口
         Window("SKM", id: "main") {
             RootView(model: model)
+                .preferredColorScheme(testColorScheme)
                 .frame(minWidth: 980, minHeight: 640)
                 .task { await model.start() }
                 .onDisappear { Task { await model.stop() } }
@@ -63,7 +57,19 @@ struct SKMApp: App {
         // macOS 标准偏好设置窗口（Cmd+,）
         Settings {
             SettingsView(model: model)
+                .preferredColorScheme(testColorScheme)
                 .frame(minWidth: 780, minHeight: 560)
+        }
+    }
+
+    /// UI snapshots set an app-local scheme without changing the user's macOS appearance.
+    private var testColorScheme: ColorScheme? {
+        let environment = ProcessInfo.processInfo.environment
+        guard environment["SKM_PREFERENCES_SUITE"]?.hasPrefix("SKMUITests.") == true else { return nil }
+        switch environment["SKM_TEST_APPEARANCE"] {
+        case "Aqua": return ColorScheme.light
+        case "DarkAqua": return ColorScheme.dark
+        default: return nil
         }
     }
 
