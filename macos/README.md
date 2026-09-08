@@ -28,6 +28,10 @@ Developer ID、Apple 公证、stapling 与 Gatekeeper 的完整实操见
 
 Skills、Prompts 和 Projects 均支持 `⌘F` 聚焦搜索。搜索框内按 `Esc` 清空搜索，再按一次移出焦点；项目可按名称或路径查找。同步执行期间会禁用侧栏同步按钮，避免重复触发。
 
+主界面、六个设置分类和全部编辑／导入弹窗共用原生表面、标题、圆角与间距。详情支持代码块复制；Prompt 可直接进入变量填写与渲染预览，修改变量后会使旧复制结果失效。编辑器使用 `⌘S` 保存，取消有改动的草稿时会先确认。快速查看使用 `⌘Y`，避免拦截正文中的空格。普通弹窗支持 Return 执行主操作、Esc 取消；搜索中的 Esc 优先清除关键词。
+
+视觉与交互检查范围见 [macOS UI 打磨记录](../docs/Mac原生版UI打磨.md)。
+
 仓库提交了可直接打开的 Xcode workspace：
 
 ```bash
@@ -74,9 +78,10 @@ UI Test 需要 Xcode 的本地 ad-hoc 签名，因此 `test` 不要传 `CODE_SIG
 SKM_HOME=<temporary>/state
 SKM_USER_HOME=<temporary>/user
 SKM_PROJECT=<temporary>/project
+SKM_PREFERENCES_SUITE=SKMUITests.<unique-id>
 ```
 
-App 正式运行时不设置这些变量，Core 会使用与 CLI 相同的 `~/.skm`。
+App 正式运行时不设置这些变量，Core 会使用与 CLI 相同的 `~/.skm`。`SKM_PREFERENCES_SUITE` 仅接受以 `SKMUITests.` 开头的隔离测试域，让标签与欢迎状态等偏好也与真实用户隔离。
 
 ## 构建发布候选
 

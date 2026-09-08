@@ -12,13 +12,9 @@ struct SourcesSettingsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
-                HStack(alignment: .firstTextBaseline) {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("技能来源").font(.largeTitle.bold())
-                        Text("通过团队或社区 Git 仓库获取并更新 Skills。认证继续由系统 Git 管理。")
-                            .foregroundStyle(.secondary)
-                    }
-                    Spacer()
+                VStack(alignment: .leading, spacing: 16) {
+                    PanelHeader(title: String(localized: "技能来源"), subtitle: String(localized: "通过团队或社区 Git 仓库获取并更新 Skills。认证继续由系统 Git 管理。"), symbol: "arrow.triangle.branch", tint: .green)
+                    HStack {
                     Button("更新所有来源", systemImage: "arrow.triangle.2.circlepath") {
                         Task { await model.syncSources() }
                     }
@@ -26,6 +22,7 @@ struct SourcesSettingsView: View {
                     .help("重新拉取所有 Git Source 并刷新导入的 Skills")
                     Button("添加 Source", systemImage: "plus") { showsAddSource = true }
                         .buttonStyle(.borderedProminent)
+                    }
                 }
 
                 if model.sources.isEmpty {
@@ -49,6 +46,7 @@ struct SourcesSettingsView: View {
                                     confirmsRemoval = true
                                 }
                             )
+                            .disabled(model.isLoading)
                         }
                     }
                 }
@@ -74,8 +72,7 @@ struct SourcesSettingsView: View {
                     }
                 }
             }
-            .padding(26)
-            .frame(maxWidth: 860, alignment: .leading)
+            .readingLayout()
         }
         .navigationTitle("技能来源")
         .sheet(isPresented: $showsAddSource) { AddSourceSheet(model: model) }
@@ -131,7 +128,7 @@ private struct SourceSettingsRow: View {
             .fixedSize()
         }
         .padding(14)
-        .background(.quaternary.opacity(0.45), in: RoundedRectangle(cornerRadius: 12))
+        .skmSurface()
     }
 
     private var status: String {
@@ -241,8 +238,7 @@ struct SourceDetailView: View {
                         }
                     }
                 }
-                .padding(26)
-                .frame(maxWidth: 820, alignment: .leading)
+                .readingLayout()
             }
             .confirmationDialog("移除 \(source.name)？", isPresented: $confirmsRemoval) {
                 Button("移除", role: .destructive) { Task { await model.removeSource(name: source.name) } }
@@ -300,12 +296,13 @@ struct AddSourceSheet: View {
             minWidth: wizardStep == 1 ? 660 : 560,
             minHeight: wizardStep == 1 ? 480 : 280
         )
+        .sheetChrome(model: model)
+        .interactiveDismissDisabled(isScanning || model.isLoading)
     }
 
     private var headerView: some View {
         HStack {
-            Text(wizardStep == 0 ? String(localized: "添加 Skill Source") : String(localized: "选择要导入的 Skill"))
-                .font(.title2.bold())
+            PanelHeader(title: wizardStep == 0 ? String(localized: "添加 Skill Source") : String(localized: "选择要导入的 Skill"), subtitle: "", symbol: "arrow.triangle.branch", tint: .green)
             Spacer()
             Text(wizardStep == 0 ? "1/2 步：输入仓库" : "2/2 步：勾选技能")
                 .font(.caption)
@@ -329,6 +326,8 @@ struct AddSourceSheet: View {
             HStack {
                 Spacer()
                 Button("取消", role: .cancel) { dismiss() }
+                    .keyboardShortcut(.cancelAction)
+                    .disabled(model.isLoading || isScanning)
                 Button {
                     Task { await startPreview() }
                 } label: {
@@ -343,6 +342,7 @@ struct AddSourceSheet: View {
                     }
                 }
                 .buttonStyle(.borderedProminent)
+                .keyboardShortcut(.defaultAction)
                 .disabled(input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isScanning)
             }
         }
@@ -420,15 +420,18 @@ struct AddSourceSheet: View {
                 Button("上一步", systemImage: "arrow.left") {
                     wizardStep = 0
                 }
-                .disabled(model.isLoading)
+                .disabled(model.isLoading || isScanning)
 
                 Spacer()
 
                 Button("取消", role: .cancel) { dismiss() }
+                    .keyboardShortcut(.cancelAction)
+                    .disabled(model.isLoading || isScanning)
                 Button(String(format: String(localized: "添加并导入 (%lld)"), locale: .current, selectedPaths.count)) {
                     Task { await confirmImport() }
                 }
                 .buttonStyle(.borderedProminent)
+                .keyboardShortcut(.defaultAction)
                 .disabled(selectedPaths.isEmpty || model.isLoading)
             }
         }
@@ -528,7 +531,9 @@ private struct SourceSkillCandidateRow: View {
                     .stroke(isSelected ? Color.accentColor.opacity(0.35) : Color.clear, lineWidth: 1)
             )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SelectionCardButtonStyle())
+        .accessibilityLabel(candidate.name)
+        .accessibilityValue(isSelected ? String(localized: "已选择") : String(localized: "未选择"))
         .disabled(!candidate.valid)
     }
 }

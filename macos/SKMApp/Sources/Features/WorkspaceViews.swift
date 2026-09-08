@@ -29,9 +29,7 @@ struct WorkspaceDetailView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
-                Text("个人 Git 同步").font(.largeTitle.bold())
-                Text("通过私人 Git 仓库在多台设备间同步 Skills、Prompts 和 Source 配置。认证信息不会写入 SKM。")
-                    .foregroundStyle(.secondary)
+                PanelHeader(title: String(localized: "个人 Git 同步"), subtitle: String(localized: "通过私人 Git 仓库在多台设备间同步 Skills、Prompts 和 Source 配置。认证信息不会写入 SKM。"), symbol: "arrow.triangle.2.circlepath.icloud")
                 configuration
                 if model.workspace?.configured == true {
                     syncControls
@@ -40,8 +38,7 @@ struct WorkspaceDetailView: View {
                     previewView(preview)
                 }
             }
-            .padding(26)
-            .frame(maxWidth: 860, alignment: .leading)
+            .readingLayout()
         }
         .task { loadConfiguration() }
         .navigationTitle("Git 同步")
@@ -67,7 +64,7 @@ struct WorkspaceDetailView: View {
                     }
                     .accessibilityIdentifier("workspace-configure-button")
                     .buttonStyle(.borderedProminent)
-                    .disabled(url.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || ref.isEmpty)
+                    .disabled(url.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || ref.isEmpty || model.isLoading)
                 }
             }
             .padding(8)

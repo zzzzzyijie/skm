@@ -8,6 +8,13 @@ struct SKMApp: App {
     @State private var model = AppModel()
 
     init() {
+        // UI snapshots use an app-local appearance without changing macOS preferences.
+        let environment = ProcessInfo.processInfo.environment
+        if environment["SKM_PREFERENCES_SUITE"]?.hasPrefix("SKMUITests.") == true,
+           let appearance = environment["SKM_TEST_APPEARANCE"],
+           ["Aqua", "DarkAqua"].contains(appearance) {
+            NSApplication.shared.appearance = NSAppearance(named: NSAppearance.Name(appearance))
+        }
         ToolbarMenuFilter.install()
     }
 
@@ -36,11 +43,11 @@ struct SKMApp: App {
                     .keyboardShortcut("r", modifiers: .command)
                 Button("检查更新…") { Task { await model.checkForUpdates() } }
             }
-            // 快捷预览与删除（空格预览）
+            // ⌘Y 与 Finder 的快速查看一致，也不会拦截文本编辑器中的空格。
             CommandGroup(after: .pasteboard) {
                 Button("快速查看") { Task { await showQuickLook() } }
-                    .keyboardShortcut(.space, modifiers: [])
-                    .disabled(model.section != .skills && model.section != .prompts)
+                    .keyboardShortcut("y", modifiers: .command)
+                    .disabled((model.section != .skills && model.section != .prompts) || !model.canDeleteSelection)
                 Button("删除所选项目") { model.request(.deleteSelection) }
                     .disabled(!model.canDeleteSelection)
             }
@@ -128,4 +135,3 @@ private final class ToolbarMenuFilter: NSObject {
         }
     }
 }
-

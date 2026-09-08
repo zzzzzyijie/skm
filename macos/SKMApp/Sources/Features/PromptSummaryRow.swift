@@ -7,12 +7,12 @@ struct PromptSummaryRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(prompt.name)
-                .font(.system(size: 13, weight: .semibold))
+                .font(.body.weight(.semibold))
                 .lineLimit(1)
                 .truncationMode(.middle)
 
             Text(prompt.description.isEmpty ? String(localized: "无描述") : prompt.description)
-                .font(.system(size: 12))
+                .font(.callout)
                 .foregroundStyle(.secondary)
                 .lineLimit(2)
 

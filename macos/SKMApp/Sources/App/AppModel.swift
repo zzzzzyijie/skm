@@ -126,12 +126,18 @@ final class AppModel {
 
     init(
         core: any CoreServing = CoreClient(),
-        preferences: UserDefaults = .standard,
+        preferences: UserDefaults? = nil,
         monitorsFiles: Bool = true,
         presentsWelcome: Bool = true
     ) {
         self.core = core
-        self.preferences = preferences
+        if let preferences {
+            self.preferences = preferences
+        } else if let suite = ProcessInfo.processInfo.environment["SKM_PREFERENCES_SUITE"], suite.hasPrefix("SKMUITests.") {
+            self.preferences = UserDefaults(suiteName: suite) ?? .standard
+        } else {
+            self.preferences = .standard
+        }
         self.monitorsFiles = monitorsFiles
         self.presentsWelcome = presentsWelcome
     }
@@ -427,7 +433,9 @@ final class AppModel {
     /// 加载并扫描指定项目的内部 Skills 与各 Agent 部署情况
     func loadProjectDetails(_ id: String) async {
         await perform(String(localized: "正在扫描项目…")) {
-            self.projectDetails = try await self.core.call("projects.get", params: IDParams(id: id))
+            let details: ProjectDetails = try await self.core.call("projects.get", params: IDParams(id: id))
+            guard !Task.isCancelled, self.selectedProjectID == id else { return }
+            self.projectDetails = details
         }
     }
 

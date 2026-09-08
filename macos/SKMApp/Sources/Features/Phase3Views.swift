@@ -143,11 +143,13 @@ struct PromptRenderSheet: View {
             .toolbar {
                 Button("渲染") { Task { await render() } }
                     .buttonStyle(.borderedProminent)
+                    .keyboardShortcut(.defaultAction)
                     .disabled(isRendering)
             }
         } detail: {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
+                    PanelHeader(title: details.name, subtitle: String(localized: "填写变量并预览最终内容。"), symbol: "text.bubble", tint: .purple)
                     Spacer()
                     Button("复制", systemImage: "doc.on.doc") { copyRendered() }
                         .disabled(rendered.isEmpty || !missing.isEmpty)
@@ -163,17 +165,25 @@ struct PromptRenderSheet: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(12)
                 }
-                .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 10))
+                .skmSurface()
                 HStack {
                     Text("secret 值不会写入磁盘、日志或历史记录。")
                         .font(.caption).foregroundStyle(.secondary)
                     Spacer()
                     Button("关闭", role: .cancel) { dismiss() }
+                        .keyboardShortcut(.cancelAction)
                 }
             }
             .padding(20)
         }
         .frame(minWidth: 850, minHeight: 560)
+        .sheetChrome(model: model)
+        .task { if variables.isEmpty { await render() } }
+        .onChange(of: values) { _, _ in
+            rendered = ""
+            missing = []
+            errorMessage = nil
+        }
     }
 
     private var variables: [PromptVariable] { details.variables ?? [] }
@@ -186,10 +196,14 @@ struct PromptRenderSheet: View {
             set: { values[variable.name] = $0 }
         )
         VStack(alignment: .leading, spacing: 5) {
+            if variable.required == true {
+                Label("必填", systemImage: "asterisk")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
             switch variable.type ?? "text" {
             case "multiline":
                 Text(title)
-                TextEditor(text: binding).frame(minHeight: 72)
+                TextEditor(text: binding).frame(minHeight: 72).editorSurface()
             case "boolean":
                 Toggle(title, isOn: Binding(
                     get: { ["true", "1", "yes", "on"].contains(binding.wrappedValue.lowercased()) },
@@ -212,11 +226,14 @@ struct PromptRenderSheet: View {
     }
 
     private func render() async {
+        guard !isRendering else { return }
         isRendering = true
         errorMessage = nil
+        let submittedValues = values
         defer { isRendering = false }
         do {
-            let response = try await model.renderPrompt(id: details.id, values: values)
+            let response = try await model.renderPrompt(id: details.id, values: submittedValues)
+            guard values == submittedValues else { return }
             rendered = response.content
             missing = response.missingVariables
         } catch {
@@ -245,6 +262,7 @@ struct HistorySheet: View {
     @State private var diff = ""
     @State private var errorMessage: String?
     @State private var confirmsRestore = false
+    @State private var isLoadingDiff = false
 
     var body: some View {
         NavigationSplitView {
@@ -260,19 +278,20 @@ struct HistorySheet: View {
                 .padding(.vertical, 4)
                 .tag(entry.id)
             }
+            .overlay {
+                if entries.isEmpty {
+                    ContentUnavailableView("暂无历史版本", systemImage: "clock", description: Text("保存修改后，会在这里保留历史快照。"))
+                }
+            }
             .navigationTitle("历史")
         } detail: {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
-                    VStack(alignment: .leading) {
-                        Text(title).font(.title2.bold())
-                        Text("选择历史版本后与当前内容比较。")
-                            .foregroundStyle(.secondary)
-                    }
+                    PanelHeader(title: title, subtitle: String(localized: "选择历史版本后与当前内容比较。"), symbol: "clock.arrow.circlepath")
                     Spacer()
                     Button("恢复此版本", systemImage: "arrow.uturn.backward") { confirmsRestore = true }
                         .buttonStyle(.borderedProminent)
-                        .disabled(selectedID == nil || selectedID == "current")
+                        .disabled(selectedID == nil || selectedID == "current" || isLoadingDiff || model.isLoading)
                 }
                 if let errorMessage {
                     Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
@@ -285,16 +304,24 @@ struct HistorySheet: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(12)
                 }
-                .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 10))
-                HStack { Spacer(); Button("关闭", role: .cancel) { dismiss() } }
+                .skmSurface()
+                .overlay { if isLoadingDiff { ProgressView() } }
+                HStack {
+                    Spacer()
+                    Button("关闭", role: .cancel) { dismiss() }
+                        .keyboardShortcut(.cancelAction)
+                        .disabled(model.isLoading)
+                }
             }
             .padding(20)
         }
         .frame(minWidth: 860, minHeight: 540)
+        .sheetChrome(model: model)
         .task { await load() }
-        .onChange(of: selectedID) { _, value in
-            guard let value, value != "current" else { diff = ""; return }
-            Task { await loadDiff(value) }
+        .task(id: selectedID) {
+            diff = ""
+            guard let selectedID, selectedID != "current" else { isLoadingDiff = false; return }
+            await loadDiff(selectedID)
         }
         .confirmationDialog("恢复这个历史版本？", isPresented: $confirmsRestore) {
             Button("恢复", role: .destructive) { Task { await restore() } }
@@ -311,9 +338,18 @@ struct HistorySheet: View {
     }
 
     private func loadDiff(_ entryID: String) async {
+        isLoadingDiff = true
+        errorMessage = nil
         do {
-            diff = try await model.historyDiff(kind: kind, itemID: itemID, from: entryID).diff
-        } catch { errorMessage = error.localizedDescription }
+            let result = try await model.historyDiff(kind: kind, itemID: itemID, from: entryID).diff
+            guard !Task.isCancelled, selectedID == entryID else { return }
+            diff = result
+            isLoadingDiff = false
+        } catch {
+            guard !Task.isCancelled, selectedID == entryID else { return }
+            errorMessage = error.localizedDescription
+            isLoadingDiff = false
+        }
     }
 
     private func restore() async {

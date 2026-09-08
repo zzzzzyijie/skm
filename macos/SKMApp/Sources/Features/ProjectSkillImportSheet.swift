@@ -29,12 +29,7 @@ struct ProjectSkillImportSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
-            VStack(alignment: .leading, spacing: 6) {
-                Label("从我的 Skill 里导入", systemImage: "square.and.arrow.down")
-                    .font(.title2.bold())
-                Text("选择一个 Skill 和要使用它的 Agent。提交前会先展示文件变更预览。")
-                    .foregroundStyle(.secondary)
-            }
+            PanelHeader(title: String(localized: "从我的 Skill 里导入"), subtitle: String(localized: "选择一个 Skill 和要使用它的 Agent。提交前会先展示文件变更预览。"), symbol: "square.and.arrow.down")
 
             if model.skills.isEmpty {
                 ContentUnavailableView(
@@ -110,6 +105,8 @@ struct ProjectSkillImportSheet: View {
                     .foregroundStyle(.secondary)
                 Spacer()
                 Button("取消", role: .cancel, action: dismiss.callAsFunction)
+                    .keyboardShortcut(.cancelAction)
+                    .disabled(model.isLoading)
                 Button("预览导入", action: previewImport)
                     .buttonStyle(.borderedProminent)
                     .keyboardShortcut(.defaultAction)
@@ -118,6 +115,7 @@ struct ProjectSkillImportSheet: View {
         }
         .padding(24)
         .frame(minWidth: 600, idealWidth: 640, minHeight: 620, idealHeight: 640)
+        .sheetChrome(model: model)
     }
 
     private var deploymentHelp: String {
@@ -183,7 +181,7 @@ private struct AgentSelectionButton: View {
                     .stroke(isSelected ? Color.accentColor.opacity(0.45) : Color.primary.opacity(0.08))
             }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SelectionCardButtonStyle())
         .accessibilityLabel(agent.name)
         .accessibilityValue(isSelected ? String(localized: "已选择") : String(localized: "未选择"))
     }

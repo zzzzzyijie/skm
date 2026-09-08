@@ -87,6 +87,39 @@
     "⌘F" : {
 
     },
+    "1/2 步：输入仓库" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 of 2 · Repository"
+          }
+        }
+      }
+    },
+    "1/2 步：输入来源" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 of 2 · Source"
+          }
+        }
+      }
+    },
+    "2/2 步：勾选技能" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "2 of 2 · Select Skills"
+          }
+        }
+      }
+    },
     "Agent 激活" : {
 
     },
@@ -111,9 +144,6 @@
           }
         }
       }
-    },
-    "Agents" : {
-
     },
     "App 中缺少 skm-core，请重新构建或安装 SKM。" : {
       "extractionState" : "stale",
@@ -194,6 +224,39 @@
         }
       }
     },
+    "Git Source 已更新" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Git source updated"
+          }
+        }
+      }
+    },
+    "Git Source 已添加" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Git source added"
+          }
+        }
+      }
+    },
+    "Git Source 已移除" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Git source removed"
+          }
+        }
+      }
+    },
     "Git URL、owner/repo 或 npx skills add …" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -216,6 +279,17 @@
         }
       }
     },
+    "Library 模式" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Library Mode"
+          }
+        }
+      }
+    },
     "Link（跟随 Library）" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -226,6 +300,20 @@
           }
         }
       }
+    },
+    "macOS 或文件系统拒绝了目录读取，请重新选择该目录授权。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS or the file system denied access. Select the folder again to grant access."
+          }
+        }
+      }
+    },
+    "Markdown" : {
+
     },
     "my-agent" : {
 
@@ -292,6 +380,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Prompt removed"
+          }
+        }
+      }
+    },
+    "Prompt 标签管理" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prompt Tags"
           }
         }
       }
@@ -383,6 +482,17 @@
         }
       }
     },
+    "Skill 标签管理" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skill Tags"
+          }
+        }
+      }
+    },
     "Skill 根目录" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -416,7 +526,19 @@
         }
       }
     },
+    "Skill、Prompt 和部署状态与命令行共享。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skills, prompts, and deployments are shared with the command line."
+          }
+        }
+      }
+    },
     "Skill、Prompt、部署状态继续与命令行共享；App 不直接修改 YAML。" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -425,6 +547,20 @@
           }
         }
       }
+    },
+    "Skills 已从 Git 仓库导入" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skills imported from Git"
+          }
+        }
+      }
+    },
+    "SKM" : {
+
     },
     "SKM Core 已停止。" : {
       "extractionState" : "stale",
@@ -444,6 +580,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "SKM Core stopped.\n%@"
+          }
+        }
+      }
+    },
+    "SKM Core 请求超时，已停止无响应的 Core。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SKM Core timed out. The unresponsive process has been stopped."
           }
         }
       }
@@ -469,15 +616,34 @@
         }
       }
     },
-    "SKM 只保存项目路径。这里实时检查读取状态；写入权限会在部署确认后由 Core 实际校验。" : {
-
-    },
     "SKM 只登记目录，不会修改项目；部署操作仍会单独预览和确认。" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "SKM only registers the directory and does not modify it. Deployment is previewed and confirmed separately."
+          }
+        }
+      }
+    },
+    "SKM 可以扫描此项目；写入仍只会在部署预览确认后进行。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SKM can scan this project. Files are written only after you confirm a deployment preview."
+          }
+        }
+      }
+    },
+    "Source 配置" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Source Configuration"
           }
         }
       }
@@ -515,6 +681,50 @@
         }
       }
     },
+    "一键同步 (Rev: %@)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sync Now (Rev: %@)"
+          }
+        }
+      }
+    },
+    "一键同步个人工作区" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sync Personal Workspace"
+          }
+        }
+      }
+    },
+    "上一步" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Back"
+          }
+        }
+      }
+    },
+    "上传" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Upload"
+          }
+        }
+      }
+    },
     "上传 %lld" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -528,6 +738,17 @@
     },
     "下一步：扫描技能" : {
 
+    },
+    "下载" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Download"
+          }
+        }
+      }
     },
     "下载 %lld" : {
       "extractionState" : "stale",
@@ -551,7 +772,30 @@
         }
       }
     },
+    "个 Prompt" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "prompts"
+          }
+        }
+      }
+    },
+    "个 Skill" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "skills"
+          }
+        }
+      }
+    },
     "个人 Git 同步" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -568,6 +812,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Personal Workspace"
+          }
+        }
+      }
+    },
+    "个人工作区同步完成" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Personal workspace synced"
           }
         }
       }
@@ -612,6 +867,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Enable %2$@ for %1$@"
+          }
+        }
+      }
+    },
+    "为你的 AI 工具指定 Skill 存放位置。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose where your AI tool stores its skills."
+          }
+        }
+      }
+    },
+    "仍无法读取该目录。请检查 macOS 文件与文件夹设置，或 Finder 中的共享与权限。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The folder is still unreadable. Check Files and Folders in System Settings or Sharing & Permissions in Finder."
           }
         }
       }
@@ -670,6 +947,50 @@
         }
       }
     },
+    "从项目移除此 Skill？" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove This Skill from the Project?"
+          }
+        }
+      }
+    },
+    "仓库内目录（可选）" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Folder in repository (optional)"
+          }
+        }
+      }
+    },
+    "你的 Skills、Prompts 与项目，一处管理。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your skills, prompts, and projects, together."
+          }
+        }
+      }
+    },
+    "你的草稿" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your Draft"
+          }
+        }
+      }
+    },
     "使用中的 Agent" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -692,6 +1013,17 @@
         }
       }
     },
+    "使用磁盘版本" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use Disk Version"
+          }
+        }
+      }
+    },
     "使用远端" : {
       "localizations" : {
         "en" : {
@@ -709,6 +1041,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Save"
+          }
+        }
+      }
+    },
+    "保存修改后，会在这里保留历史快照。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Previous versions will appear here after you save changes."
           }
         }
       }
@@ -735,8 +1078,27 @@
         }
       }
     },
-    "保存时校验 baseHash 防止并发冲突。" : {
-
+    "保存时会检查外部修改，保护你的编辑内容。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your edits are checked against external changes when saving."
+          }
+        }
+      }
+    },
+    "保持最新，获得体验改进与问题修复。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stay up to date with improvements and fixes."
+          }
+        }
+      }
     },
     "保持同步" : {
       "extractionState" : "manual",
@@ -770,6 +1132,17 @@
         }
       }
     },
+    "保留草稿并覆盖" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keep Draft and Overwrite"
+          }
+        }
+      }
+    },
     "信息" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -781,6 +1154,17 @@
         }
       }
     },
+    "偏好设置 (⌘,)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Settings (⌘,)"
+          }
+        }
+      }
+    },
     "允许 SKM 向此 Agent 部署 Skill" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -788,6 +1172,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Allow SKM to deploy Skills to this Agent"
+          }
+        }
+      }
+    },
+    "允许向此 Agent 部署 Skill" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Allow skill deployment to this Agent"
           }
         }
       }
@@ -814,6 +1209,17 @@
         }
       }
     },
+    "全选" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Select All"
+          }
+        }
+      }
+    },
     "全部" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -832,6 +1238,53 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "All Agents"
+          }
+        }
+      }
+    },
+    "共 %@ 项" : {
+
+    },
+    "共 %lld 个标签" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld tags"
+          }
+        }
+      }
+    },
+    "共 %lld 项" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld items"
+          }
+        }
+      }
+    },
+    "关闭" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Close"
+          }
+        }
+      }
+    },
+    "关闭后，本次未保存的编辑将丢失。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your unsaved edits will be lost when you close this window."
           }
         }
       }
@@ -879,6 +1332,17 @@
         }
       }
     },
+    "最近一次统一同步" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Last Sync"
+          }
+        }
+      }
+    },
     "写入项目清单" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -886,6 +1350,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Add to Manifest"
+          }
+        }
+      }
+    },
+    "冲突" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conflicts"
           }
         }
       }
@@ -918,6 +1393,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Credentials are managed by system Git, SSH Agent, or Credential Helper. SKM does not store tokens."
+          }
+        }
+      }
+    },
+    "分支" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Branch"
+          }
+        }
+      }
+    },
+    "分支 / Ref" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Branch / Ref"
           }
         }
       }
@@ -1019,6 +1516,17 @@
         }
       }
     },
+    "历史版本…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Version History…"
+          }
+        }
+      }
+    },
     "历史版本已恢复" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1030,6 +1538,17 @@
         }
       }
     },
+    "发现新版本 %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Version %@ is available"
+          }
+        }
+      }
+    },
     "取消" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1037,6 +1556,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Cancel"
+          }
+        }
+      }
+    },
+    "取消全选" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deselect All"
           }
         }
       }
@@ -1125,6 +1655,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Variable names must be unique."
+          }
+        }
+      }
+    },
+    "另存为新 Prompt" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save as New Prompt"
           }
         }
       }
@@ -1260,6 +1801,17 @@
         }
       }
     },
+    "启用后即可统一部署和更新" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enable to deploy and update skills"
+          }
+        }
+      }
+    },
     "回滚前" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1267,6 +1819,61 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Before Rollback"
+          }
+        }
+      }
+    },
+    "在 Finder 中显示" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show in Finder"
+          }
+        }
+      }
+    },
+    "在 Finder 中查看此项目目录" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show this project folder in Finder"
+          }
+        }
+      }
+    },
+    "在左侧选择内容，阅读说明并管理 Agent 激活。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Select a skill to read its instructions and manage Agent activation."
+          }
+        }
+      }
+    },
+    "在左侧选择模板，填写变量或复制到你的工作流程。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Select a template to fill in variables or copy into your workflow."
+          }
+        }
+      }
+    },
+    "在编辑详情中为条目添加标签后，将在此集中展示。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tags you add while editing items will appear here."
           }
         }
       }
@@ -1282,6 +1889,17 @@
         }
       }
     },
+    "填写变量并预览最终内容。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fill in variables and preview the result."
+          }
+        }
+      }
+    },
     "复制" : {
       "localizations" : {
         "en" : {
@@ -1292,12 +1910,56 @@
         }
       }
     },
+    "复制 Prompt 内容" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy Prompt Content"
+          }
+        }
+      }
+    },
+    "复制：创建独立副本，项目可脱离 SKM 单独使用，后续不随 Library 自动更新。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy: create an independent copy that works without SKM and does not follow library updates."
+          }
+        }
+      }
+    },
+    "复制代码" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy Code"
+          }
+        }
+      }
+    },
     "复制到 Library" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Copy to Library"
+          }
+        }
+      }
+    },
+    "复制成功后移除项目原件" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove the project original after copying"
           }
         }
       }
@@ -1369,6 +2031,17 @@
         }
       }
     },
+    "完成" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Done"
+          }
+        }
+      }
+    },
     "密码" : {
       "localizations" : {
         "en" : {
@@ -1423,6 +2096,39 @@
         }
       }
     },
+    "导入到项目" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import into project"
+          }
+        }
+      }
+    },
+    "导入外部 Skill…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import External Skill…"
+          }
+        }
+      }
+    },
+    "导入所选技能 (%lld)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import Selected (%lld)"
+          }
+        }
+      }
+    },
     "导入方式" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1455,6 +2161,17 @@
         }
       }
     },
+    "导出到文件…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Export to File…"
+          }
+        }
+      }
+    },
     "导航" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1466,13 +2183,13 @@
         }
       }
     },
-    "导入到项目" : {
+    "将原标签“%@”更新为新名称：" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Import into project"
+            "value" : "Rename the tag “%@”:"
           }
         }
       }
@@ -1484,6 +2201,50 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "A symlink to the project Skill will be created in your personal Library; changes in the project will be reflected in My Skills immediately."
+          }
+        }
+      }
+    },
+    "尚无项目需要检查" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No Projects to Check"
+          }
+        }
+      }
+    },
+    "尚未同步" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not synced yet"
+          }
+        }
+      }
+    },
+    "尝试其他关键词。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Try a different search."
+          }
+        }
+      }
+    },
+    "已与远端保持完全同步" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Everything is up to date"
           }
         }
       }
@@ -1539,6 +2300,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "In My Skills"
+          }
+        }
+      }
+    },
+    "已复制" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copied"
+          }
+        }
+      }
+    },
+    "已安装" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Installed"
           }
         }
       }
@@ -1607,6 +2390,17 @@
         }
       }
     },
+    "已检测未启用" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Detected, not enabled"
+          }
+        }
+      }
+    },
     "已管理" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1650,6 +2444,17 @@
         }
       }
     },
+    "已选择 %lld / %lld 个可用技能" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld of %lld available skills selected"
+          }
+        }
+      }
+    },
     "已配置" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1657,6 +2462,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Configured"
+          }
+        }
+      }
+    },
+    "应用部署" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apply Deployment"
           }
         }
       }
@@ -1720,6 +2536,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "The current content will be saved to history before the selected version is restored."
+          }
+        }
+      }
+    },
+    "当前已是最新版本" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You’re up to date"
           }
         }
       }
@@ -1821,6 +2648,28 @@
         }
       }
     },
+    "所有 Git Sources 已同步" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All Git sources synced"
+          }
+        }
+      }
+    },
+    "所有项目均可读取" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All Projects Are Readable"
+          }
+        }
+      }
+    },
     "打开 Git 同步设置…" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1832,12 +2681,79 @@
         }
       }
     },
+    "打开权限访问设置…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open File Access Settings…"
+          }
+        }
+      }
+    },
+    "打开系统设置…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open System Settings…"
+          }
+        }
+      }
+    },
     "技能来源" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Skill Sources"
+          }
+        }
+      }
+    },
+    "把好用的提示词保存为可复用模板。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save your favorite prompts as reusable templates."
+          }
+        }
+      }
+    },
+    "把常用技能收进资料库，随时用于你的 Agent 和项目。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keep your skills together, ready for your Agents and projects."
+          }
+        }
+      }
+    },
+    "把项目中的技能加入个人资料库。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add a project skill to your personal library."
+          }
+        }
+      }
+    },
+    "授权" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Grant Access"
           }
         }
       }
@@ -1864,6 +2780,17 @@
         }
       }
     },
+    "搜索 Skill" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Search Skills"
+          }
+        }
+      }
+    },
     "搜索名称、描述或标签" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1875,6 +2802,17 @@
         }
       }
     },
+    "搜索标签" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Search Tags"
+          }
+        }
+      }
+    },
     "搜索项目" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1882,6 +2820,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Search Projects"
+          }
+        }
+      }
+    },
+    "放弃更改" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discard Changes"
+          }
+        }
+      }
+    },
+    "放弃未保存的更改？" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discard Unsaved Changes?"
           }
         }
       }
@@ -1914,6 +2874,50 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "New Prompt"
+          }
+        }
+      }
+    },
+    "新建 Prompt…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New Prompt…"
+          }
+        }
+      }
+    },
+    "新标签名称" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New tag name"
+          }
+        }
+      }
+    },
+    "新标签已存在，保存后将自动合并。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This tag already exists. Saving will merge the tags."
+          }
+        }
+      }
+    },
+    "无匹配标签" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No Matching Tags"
           }
         }
       }
@@ -1984,6 +2988,17 @@
         }
       }
     },
+    "暂无历史版本" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No Version History"
+          }
+        }
+      }
+    },
     "暂无可用标签，可在下方创建。" : {
       "localizations" : {
         "en" : {
@@ -2001,6 +3016,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "No Skill Sources"
+          }
+        }
+      }
+    },
+    "暂无标签" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No Tags Yet"
           }
         }
       }
@@ -2038,6 +3064,17 @@
         }
       }
     },
+    "更新所有来源" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Update All Sources"
+          }
+        }
+      }
+    },
     "更新技能来源或同步个人数据" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -2045,6 +3082,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Update Skill sources or sync personal data"
+          }
+        }
+      }
+    },
+    "更新此 Source" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Update Source"
           }
         }
       }
@@ -2094,6 +3142,17 @@
     },
     "未检测" : {
       "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not detected"
+          }
+        }
+      }
+    },
+    "未检测到" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2158,6 +3217,17 @@
         }
       }
     },
+    "未配置 Git 同步，点击前往设置" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Git sync is not configured. Open Settings to connect."
+          }
+        }
+      }
+    },
     "本地" : {
       "localizations" : {
         "en" : {
@@ -2201,6 +3271,7 @@
       }
     },
     "权限访问" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2217,6 +3288,39 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Source"
+          }
+        }
+      }
+    },
+    "来源 Agent" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Source Agent"
+          }
+        }
+      }
+    },
+    "来源名称（可选，留空自动提取）" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Source name (optional)"
+          }
+        }
+      }
+    },
+    "查看修改历史快照、Diff 与回滚" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "View previous versions, compare changes, and restore"
           }
         }
       }
@@ -2278,6 +3382,39 @@
     "标签将从所有关联条目中移除，但不会删除条目本身。" : {
 
     },
+    "标签已更新" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tags updated"
+          }
+        }
+      }
+    },
+    "标签已移除" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tag removed"
+          }
+        }
+      }
+    },
+    "标签管理" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Manage Tags"
+          }
+        }
+      }
+    },
     "标识" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -2310,6 +3447,61 @@
         }
       }
     },
+    "检查是否有新版本可供下载。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Check for a new version to download."
+          }
+        }
+      }
+    },
+    "检查更新" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Check for Updates"
+          }
+        }
+      }
+    },
+    "检查更新…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Check for Updates…"
+          }
+        }
+      }
+    },
+    "检查更新失败：%@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Could not check for updates: %@"
+          }
+        }
+      }
+    },
+    "检查项目目录的读取状态，管理 macOS 文件访问权限。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Check project folder access and manage macOS file permissions."
+          }
+        }
+      }
+    },
     "检测到 CLI 变更，已刷新" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -2317,6 +3509,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "CLI changes detected; refreshed"
+          }
+        }
+      }
+    },
+    "检测到并发修改" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "External Changes Detected"
+          }
+        }
+      }
+    },
+    "检测到未知目标或损坏状态。SKM 不会覆盖它；请先在 Finder 或终端中处理。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "An unmanaged or broken target was found. Resolve it in Finder or Terminal before deploying."
           }
         }
       }
@@ -2354,6 +3568,28 @@
         }
       }
     },
+    "正在从 %lld 个 Prompt 中移除标签…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Removing tags from %lld prompts…"
+          }
+        }
+      }
+    },
+    "正在从 %lld 个 Skill 中移除标签…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Removing tags from %lld skills…"
+          }
+        }
+      }
+    },
     "正在刷新…" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -2361,6 +3597,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Refreshing…"
+          }
+        }
+      }
+    },
+    "正在同步…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Syncing…"
           }
         }
       }
@@ -2379,6 +3626,50 @@
     "正在扫描…" : {
 
     },
+    "正在扫描项目…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scanning project…"
+          }
+        }
+      }
+    },
+    "正在更新 %lld 个 Prompt 的标签…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Updating tags on %lld prompts…"
+          }
+        }
+      }
+    },
+    "正在更新 %lld 个 Skill 的标签…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Updating tags on %lld skills…"
+          }
+        }
+      }
+    },
+    "正在检查更新…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Checking for updates…"
+          }
+        }
+      }
+    },
     "正在读取…" : {
       "localizations" : {
         "en" : {
@@ -2391,6 +3682,17 @@
     },
     "正在读取文档…" : {
 
+    },
+    "正在运行诊断…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Running diagnostics…"
+          }
+        }
+      }
     },
     "正在连接 Core…" : {
       "extractionState" : "stale",
@@ -2413,11 +3715,33 @@
         }
       }
     },
+    "正在预览同步…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Preparing sync preview…"
+          }
+        }
+      }
+    },
     "此 Prompt 没有正文内容。" : {
 
     },
     "此 Skill 没有正文内容。" : {
 
+    },
+    "没有 Git Source" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No Git Sources"
+          }
+        }
+      }
     },
     "没有变量" : {
       "extractionState" : "stale",
@@ -2485,6 +3809,50 @@
         }
       }
     },
+    "注销" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unregister"
+          }
+        }
+      }
+    },
+    "注销项目" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unregister Project"
+          }
+        }
+      }
+    },
+    "注销项目？" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unregister Project?"
+          }
+        }
+      }
+    },
+    "添加" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add"
+          }
+        }
+      }
+    },
     "添加 Git 仓库后，可以统一更新其中的 Skills。" : {
       "localizations" : {
         "en" : {
@@ -2513,6 +3881,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Add Skill Source"
+          }
+        }
+      }
+    },
+    "添加 Skill…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add Skill…"
           }
         }
       }
@@ -2571,6 +3950,17 @@
         }
       }
     },
+    "添加并导入 (%lld)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add and Import (%lld)"
+          }
+        }
+      }
+    },
     "添加并选中" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -2582,7 +3972,19 @@
         }
       }
     },
+    "添加或导入 Skill" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add or import a skill"
+          }
+        }
+      }
+    },
     "添加新标签" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2603,6 +4005,17 @@
         }
       }
     },
+    "添加标签" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add Tag"
+          }
+        }
+      }
+    },
     "添加自定义 Agent" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -2615,11 +4028,23 @@
       }
     },
     "添加项目" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Add Project"
+          }
+        }
+      }
+    },
+    "添加项目…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add Project…"
           }
         }
       }
@@ -2701,6 +4126,17 @@
         }
       }
     },
+    "版本与更新" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Version and Updates"
+          }
+        }
+      }
+    },
     "独立副本" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2745,6 +4181,50 @@
         }
       }
     },
+    "登记本机项目目录" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Register a local project folder"
+          }
+        }
+      }
+    },
+    "登记的项目目录已被移动、重命名或删除。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The registered folder has been moved, renamed, or deleted."
+          }
+        }
+      }
+    },
+    "目录不可用" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Folder Unavailable"
+          }
+        }
+      }
+    },
+    "目录当前无法读取；请检查磁盘、网络卷或 Finder 权限。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The folder is unreadable. Check the disk, network volume, or Finder permissions."
+          }
+        }
+      }
+    },
     "目标 Agents" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -2774,6 +4254,50 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Direct deployment updates local state only. Empty projects can select Agents and create target directories."
+          }
+        }
+      }
+    },
+    "确定要移除标签“%@”吗？" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove the tag “%@”?"
+          }
+        }
+      }
+    },
+    "确认更新" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Update"
+          }
+        }
+      }
+    },
+    "确认添加" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add Tag"
+          }
+        }
+      }
+    },
+    "磁盘版本" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Disk Version"
           }
         }
       }
@@ -2885,6 +4409,28 @@
         }
       }
     },
+    "移除标签" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove Tag"
+          }
+        }
+      }
+    },
+    "移除这个项目中的受管部署，个人资料库中的 Skill 会保留。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The managed deployment will be removed from this project. The skill stays in your library."
+          }
+        }
+      }
+    },
     "移除项目清单条目？" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -2940,8 +4486,27 @@
         }
       }
     },
-    "管理支持的 AI 工具。启用后，你可以从 Skill 详情中一键部署。" : {
-
+    "管理 Prompt 标签…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Manage Prompt Tags…"
+          }
+        }
+      }
+    },
+    "管理 Skill 标签…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Manage Skill Tags…"
+          }
+        }
+      }
     },
     "管理本机的 Skills、Prompts 和 Agent 部署。SKM 不会自动启用任何 Agent。" : {
       "extractionState" : "stale",
@@ -2987,6 +4552,17 @@
         }
       }
     },
+    "继续编辑" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keep Editing"
+          }
+        }
+      }
+    },
     "编辑" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -2999,11 +4575,23 @@
       }
     },
     "编辑 %@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Edit %@"
+          }
+        }
+      }
+    },
+    "编辑 Markdown 原文，保存后更新资料库。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Edit the Markdown source and save it to your library."
           }
         }
       }
@@ -3059,6 +4647,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Missing required variables: %@"
+          }
+        }
+      }
+    },
+    "自动发现" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discover automatically"
           }
         }
       }
@@ -3139,6 +4738,28 @@
         }
       }
     },
+    "诊断信息已导出" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diagnostics exported"
+          }
+        }
+      }
+    },
+    "诊断报告" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diagnostic Report"
+          }
+        }
+      }
+    },
     "该标签已存在，可直接在上方选择。" : {
       "localizations" : {
         "en" : {
@@ -3185,6 +4806,17 @@
     "请先在主窗口的 Projects 中添加项目。" : {
 
     },
+    "请填写名称、描述和正文后保存。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enter a name, description, and content before saving."
+          }
+        }
+      }
+    },
     "请选择" : {
       "localizations" : {
         "en" : {
@@ -3216,6 +4848,50 @@
         }
       }
     },
+    "请选择已登记的项目目录“%@”。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Select the registered project folder “%@”."
+          }
+        }
+      }
+    },
+    "请选择当前已登记的同一个项目目录；如项目已移动，请在 Projects 中注销后重新添加。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Select the same registered folder. If the project moved, unregister it in Projects and add it again."
+          }
+        }
+      }
+    },
+    "读取正常" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Readable"
+          }
+        }
+      }
+    },
+    "资料库" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Library"
+          }
+        }
+      }
+    },
     "跟随项目" : {
       "localizations" : {
         "en" : {
@@ -3237,7 +4913,19 @@
         }
       }
     },
+    "路径不存在" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Path Not Found"
+          }
+        }
+      }
+    },
     "软件更新" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3249,6 +4937,17 @@
     },
     "软链接" : {
 
+    },
+    "软链接：跟随个人 Library 保持同步，库中改动会自动反映到项目中。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Link: stay in sync with your personal library. Library changes appear in the project automatically."
+          }
+        }
+      }
     },
     "输入新标签" : {
       "extractionState" : "stale",
@@ -3271,7 +4970,19 @@
         }
       }
     },
+    "迁移" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Migrate"
+          }
+        }
+      }
+    },
     "迁移 %@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3328,6 +5039,17 @@
         }
       }
     },
+    "连接本机项目，集中查看和部署它的 Skills。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connect a local project to view and deploy its skills."
+          }
+        }
+      }
+    },
     "选择 Skill" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3368,6 +5090,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Select an Agent"
+          }
+        }
+      }
+    },
+    "选择一个 Git Source" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Select a Git Source"
           }
         }
       }
@@ -3417,11 +5150,23 @@
       }
     },
     "选择历史版本后与当前内容比较。" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Select a historical version to compare it with the current content."
+          }
+        }
+      }
+    },
+    "选择本机项目，查看 Skills 和 Agent 部署状态。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Select a local project to view its skills and Agent deployments."
           }
         }
       }
@@ -3433,6 +5178,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Choose the Agents that should load this Skill. Changes are validated by the Go planner and applied atomically."
+          }
+        }
+      }
+    },
+    "选择要导入的 Skill" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Select Skills to Import"
           }
         }
       }
@@ -3492,6 +5248,7 @@
       }
     },
     "通过团队或社区 Git 仓库获取并更新 Skills。认证继续由系统 Git 管理。" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3502,11 +5259,23 @@
       }
     },
     "通过私人 Git 仓库在多台设备间同步 Skills、Prompts 和 Source 配置。认证信息不会写入 SKM。" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sync Skills, Prompts, and Source settings across devices through a private Git repository. Credentials are never written to SKM."
+          }
+        }
+      }
+    },
+    "部分项目需要处理" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Some Projects Need Attention"
           }
         }
       }
@@ -3522,6 +5291,28 @@
         }
       }
     },
+    "部署预览" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deployment Preview"
+          }
+        }
+      }
+    },
+    "部署预览已生成" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deployment preview ready"
+          }
+        }
+      }
+    },
     "配置并测试连接" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -3533,11 +5324,96 @@
         }
       }
     },
-    "重命名 / 合并标签" : {
-
+    "重命名" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rename"
+          }
+        }
+      }
     },
     "重命名若与现有标签相同将自动合并；删除仅解绑标签，不删除条目。" : {
 
+    },
+    "重新扫描" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rescan"
+          }
+        }
+      }
+    },
+    "重新扫描项目目录中的 Skills" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rescan skills in the project folder"
+          }
+        }
+      }
+    },
+    "重新拉取所有 Git Source 并刷新导入的 Skills" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fetch all Git sources and refresh imported skills"
+          }
+        }
+      }
+    },
+    "重新授权…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Grant Access Again…"
+          }
+        }
+      }
+    },
+    "重新授权项目目录" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Grant Project Folder Access"
+          }
+        }
+      }
+    },
+    "重新检查" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Check Again"
+          }
+        }
+      }
+    },
+    "重新运行" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Run Again"
+          }
+        }
+      }
     },
     "重试" : {
       "extractionState" : "stale",
@@ -3546,6 +5422,61 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Retry"
+          }
+        }
+      }
+    },
+    "集中管理 Prompt 标签" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Manage all prompt tags"
+          }
+        }
+      }
+    },
+    "集中管理 Skill 标签" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Manage all skill tags"
+          }
+        }
+      }
+    },
+    "需要文件访问权限" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "File Access Required"
+          }
+        }
+      }
+    },
+    "项目 Skill 已解绑" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Project skill unlinked"
+          }
+        }
+      }
+    },
+    "项目 Skill 已迁移" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Project skill migrated"
           }
         }
       }
@@ -3579,6 +5510,39 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Project dependency pinned"
+          }
+        }
+      }
+    },
+    "项目已注销" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Project unregistered"
+          }
+        }
+      }
+    },
+    "项目已登记" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Project registered"
+          }
+        }
+      }
+    },
+    "项目文件访问已恢复" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Project file access restored"
           }
         }
       }
@@ -3623,6 +5587,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Project manifest entry removed"
+          }
+        }
+      }
+    },
+    "项目目录" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Project folder"
+          }
+        }
+      }
+    },
+    "项目部署已完成" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Project deployment complete"
           }
         }
       }

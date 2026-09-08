@@ -2,6 +2,7 @@ import SwiftUI
 
 /// AgentIconView - 展示 Agent 对应的品牌图标，支持内置 Agent 真实 SVG 资产及自定义 Agent 的优雅降级。
 struct AgentIconView: View {
+    @Environment(\.colorScheme) private var colorScheme
     let agentId: String
     let isCustom: Bool
     let size: CGFloat
@@ -21,6 +22,10 @@ struct AgentIconView: View {
                 .aspectRatio(contentMode: .fit)
                 .frame(width: size, height: size)
                 .clipShape(RoundedRectangle(cornerRadius: max(3, size * 0.22), style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: max(3, size * 0.22))
+                        .strokeBorder((colorScheme == .dark ? Color.white : .black).opacity(0.1), lineWidth: 1)
+                }
                 .shadow(color: .black.opacity(0.06), radius: 1, y: 0.5)
         } else {
             Image(systemName: fallbackSymbol)
@@ -89,14 +94,8 @@ struct AgentsSettingsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 26) {
-                HStack(alignment: .center, spacing: 20) {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("Agents")
-                            .font(.largeTitle.bold())
-                        Text("管理支持的 AI 工具。启用后，你可以从 Skill 详情中一键部署。")
-                            .foregroundStyle(.secondary)
-                    }
-                    Spacer()
+                VStack(alignment: .leading, spacing: 16) {
+                    PanelHeader(title: "Agents", subtitle: String(localized: "管理支持的 AI 工具。启用后，你可以从 Skill 详情中一键部署。"), symbol: "cpu", tint: .purple)
                     Button("添加自定义 Agent", systemImage: "plus") {
                         editingAgent = nil
                         showsEditor = true
@@ -151,8 +150,7 @@ struct AgentsSettingsView: View {
                     }
                 }
             }
-            .padding(26)
-            .frame(maxWidth: 820, alignment: .leading)
+            .readingLayout()
         }
         .navigationTitle("Agent 管理")
         .sheet(isPresented: $showsEditor, onDismiss: { editingAgent = nil }) {
@@ -301,7 +299,7 @@ private struct AgentSettingsRow: View {
             }
         }
         .padding(16)
-        .background(.quaternary.opacity(0.38), in: RoundedRectangle(cornerRadius: 14))
+        .skmSurface()
         .overlay {
             if agent.configured {
                 RoundedRectangle(cornerRadius: 14)
@@ -424,8 +422,7 @@ struct AgentDetailView: View {
                     }
                     if let note = agent.note { Label(note, systemImage: "info.circle").foregroundStyle(.secondary) }
                 }
-                .padding(26)
-                .frame(maxWidth: 760, alignment: .leading)
+                .readingLayout()
             }
             .toolbar {
                 if agent.custom {
@@ -468,8 +465,7 @@ struct CustomAgentSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            Text(agent == nil ? String(localized: "添加自定义 Agent") : String(localized: "编辑自定义 Agent"))
-                .font(.title2.bold())
+            PanelHeader(title: agent == nil ? String(localized: "添加自定义 Agent") : String(localized: "编辑自定义 Agent"), subtitle: String(localized: "为你的 AI 工具指定 Skill 存放位置。"), symbol: "cpu", tint: .purple)
             Form {
                 TextField("标识", text: $id, prompt: Text("my-agent"))
                     .disabled(agent != nil)
@@ -477,12 +473,16 @@ struct CustomAgentSheet: View {
                 TextField("Skill 根目录", text: $path, prompt: Text("~/.agent/skills"))
             }
             .formStyle(.columns)
+            .padding(16)
+            .skmSurface()
             Text("标识使用 2–32 位小写字母、数字或连字符；路径必须以 ~/ 开头。")
                 .font(.caption).foregroundStyle(.secondary)
             Spacer()
             HStack {
                 Spacer()
                 Button("取消", role: .cancel) { dismiss() }
+                    .keyboardShortcut(.cancelAction)
+                    .disabled(model.isLoading)
                 Button("保存") {
                     Task {
                         await model.saveCustomAgent(id: id, name: name, path: path)
@@ -490,11 +490,13 @@ struct CustomAgentSheet: View {
                     }
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(id.isEmpty || name.isEmpty || !path.hasPrefix("~/"))
+                .keyboardShortcut(.defaultAction)
+                .disabled(id.range(of: "^[a-z0-9][a-z0-9-]{1,31}$", options: .regularExpression) == nil || name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !path.hasPrefix("~/") || model.isLoading)
             }
         }
         .padding(24)
-        .frame(width: 540, height: 300)
+        .frame(width: 560, height: 360)
+        .sheetChrome(model: model)
     }
 }
 

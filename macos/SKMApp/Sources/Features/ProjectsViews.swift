@@ -34,6 +34,11 @@ struct ProjectsListView: View {
                     ContentUnavailableView.search(text: search)
                 } else {
                     List(filteredProjects, selection: $model.selectedProjectID) { project in
+                        HStack(alignment: .top, spacing: 10) {
+                            Image(systemName: "folder.fill")
+                                .font(.title2)
+                                .foregroundStyle(Color.accentColor)
+                                .accessibilityHidden(true)
                         VStack(alignment: .leading, spacing: 4) {
                             Text(project.id).bold()
                             Text(project.path)
@@ -42,8 +47,9 @@ struct ProjectsListView: View {
                                 .lineLimit(1)
                                 .truncationMode(.middle)
                         }
+                        }
                         .padding(.horizontal, 10)
-                        .padding(.vertical, 4)
+                        .padding(.vertical, 10)
                         .tag(project.id)
                         .accessibilityElement(children: .combine)
                         .contextMenu {
@@ -55,6 +61,7 @@ struct ProjectsListView: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            CollectionFooter(count: filteredProjects.count, symbol: "folder")
         }
         .navigationTitle("Projects")
         .toolbar {
@@ -100,7 +107,7 @@ struct AddProjectSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            Text("添加项目").font(.title2.bold())
+            PanelHeader(title: String(localized: "添加项目"), subtitle: String(localized: "连接本机项目，集中查看和部署它的 Skills。"), symbol: "folder.badge.plus")
             Form {
                 HStack {
                     TextField("项目目录", text: $path)
@@ -109,7 +116,9 @@ struct AddProjectSheet: View {
                 }
                 TextField("显示名称（可选）", text: $name)
             }
-            .formStyle(.grouped)
+            .formStyle(.columns)
+            .padding(16)
+            .skmSurface()
             Text("SKM 只登记目录，不会修改项目；部署操作仍会单独预览和确认。")
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -117,6 +126,8 @@ struct AddProjectSheet: View {
             HStack {
                 Spacer()
                 Button("取消", role: .cancel) { dismiss() }
+                    .keyboardShortcut(.cancelAction)
+                    .disabled(model.isLoading)
                 Button("添加") {
                     Task {
                         await model.addProject(path: path, name: name)
@@ -124,11 +135,13 @@ struct AddProjectSheet: View {
                     }
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(path.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .keyboardShortcut(.defaultAction)
+                .disabled(path.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || model.isLoading)
             }
         }
         .padding(24)
-        .frame(width: 560, height: 300)
+        .frame(width: 580, height: 340)
+        .sheetChrome(model: model)
     }
 
     private func chooseProject() {
@@ -169,8 +182,7 @@ struct ProjectDetailView: View {
                                     .frame(maxWidth: .infinity, minHeight: 220)
                             }
                         }
-                        .padding(26)
-                        .frame(maxWidth: 900, alignment: .leading)
+                        .readingLayout()
                     }
                     .task(id: id) {
                         await model.loadProjectDetails(id)
@@ -191,7 +203,7 @@ struct ProjectDetailView: View {
                     }
                 }
             } else {
-                ContentUnavailableView("选择一个项目", systemImage: "folder")
+                ContentUnavailableView("选择一个项目", systemImage: "folder", description: Text("选择本机项目，查看 Skills 和 Agent 部署状态。"))
             }
         }
         .toolbar {
@@ -222,7 +234,7 @@ struct ProjectDetailView: View {
     }
 
     private func header(_ project: ProjectModel, details: ProjectDetails?) -> some View {
-        HStack(alignment: .center, spacing: 20) {
+        VStack(alignment: .leading, spacing: 18) {
             VStack(alignment: .leading, spacing: 6) {
                 Text(project.id).font(.largeTitle.bold())
                 Label(project.path, systemImage: "folder")
@@ -232,11 +244,6 @@ struct ProjectDetailView: View {
                     .truncationMode(.middle)
                     .textSelection(.enabled)
             }
-            Spacer()
-            Button("重新扫描", systemImage: "arrow.clockwise") {
-                Task { await model.loadProjectDetails(project.id) }
-            }
-                .disabled(model.isLoading)
             Button("从我的 Skill 里导入", systemImage: "square.and.arrow.down") {
                 showsSkillImporter = true
             }
@@ -272,7 +279,7 @@ struct ProjectDetailView: View {
 
     @ViewBuilder
     private var planSection: some View {
-        if let preview = model.projectDeploymentPreview {
+        if let preview = model.projectDeploymentPreview, preview.project.id == model.selectedProjectID {
             let hasConflict = preview.plan.operations.contains { $0.status == "conflict-unmanaged" || $0.status == "broken" }
             GroupBox("部署预览") {
                 VStack(alignment: .leading, spacing: 10) {
@@ -306,7 +313,7 @@ struct ProjectDetailView: View {
                             }
                         }
                         .buttonStyle(.borderedProminent)
-                        .disabled(hasConflict || preview.plan.operations.isEmpty)
+                        .disabled(hasConflict || preview.plan.operations.isEmpty || model.isLoading)
                     }
                 }
                 .padding(8)
@@ -326,9 +333,6 @@ struct ProjectDetailView: View {
                     .padding(.vertical, 3)
                     .background(.quaternary, in: Capsule())
                 Spacer()
-                Text("自动扫描各 Agent 的项目目录")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
             }
 
             VStack(alignment: .leading, spacing: 0) {
@@ -358,7 +362,7 @@ struct ProjectDetailView: View {
                 }
             }
             .padding(.horizontal, 16)
-            .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 14))
+            .skmSurface()
         }
     }
 }
@@ -370,6 +374,7 @@ private struct ProjectSkillRow: View {
     let agents: [ProjectScanAgent]
     let activations: [ActivationModel]
     @State private var showsMigration = false
+    @State private var confirmsUnlink = false
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
@@ -402,9 +407,15 @@ private struct ProjectSkillRow: View {
             }
             Spacer()
             if let activation = activations.first(where: { $0.name == skill.id || $0.skillId == skill.librarySkillId }) {
-                Button("从项目移除") {
-                    Task { await model.unlinkProject(project: project.id, skill: activation.skillId, agents: activation.agents) }
-                }
+                Button("从项目移除", role: .destructive) { confirmsUnlink = true }
+                    .disabled(model.isLoading)
+                    .confirmationDialog("从项目移除此 Skill？", isPresented: $confirmsUnlink) {
+                        Button("从项目移除", role: .destructive) {
+                            Task { await model.unlinkProject(project: project.id, skill: activation.skillId, agents: activation.agents) }
+                        }
+                    } message: {
+                        Text("移除这个项目中的受管部署，个人资料库中的 Skill 会保留。")
+                    }
             } else if skill.librarySkillId == nil {
                 Button("存到我的 Skill") { showsMigration = true }
             } else {
@@ -440,7 +451,7 @@ private struct ProjectMigrationSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            Text("迁移 \(skill.name)").font(.title2.bold())
+            PanelHeader(title: String(localized: "迁移 \(skill.name)"), subtitle: String(localized: "把项目中的技能加入个人资料库。"), symbol: "tray.and.arrow.down")
             Picker("来源 Agent", selection: $agent) {
                 ForEach(skill.agents, id: \.self) { Text($0).tag($0) }
             }
@@ -462,6 +473,8 @@ private struct ProjectMigrationSheet: View {
             HStack {
                 Spacer()
                 Button("取消", role: .cancel) { dismiss() }
+                    .keyboardShortcut(.cancelAction)
+                    .disabled(model.isLoading)
                 Button("迁移") {
                     Task {
                         await model.migrateProjectSkill(project: project.id, skill: skill.id, agent: agent, mode: mode, removeSource: removeSource)
@@ -469,10 +482,13 @@ private struct ProjectMigrationSheet: View {
                     }
                 }
                 .buttonStyle(.borderedProminent)
+                .keyboardShortcut(.defaultAction)
+                .disabled(agent.isEmpty || model.isLoading)
             }
         }
         .padding(24)
-        .frame(width: 540, height: 340)
+        .frame(width: 560, height: 380)
+        .sheetChrome(model: model)
         .onChange(of: mode) { _, newValue in if newValue != "copy" { removeSource = false } }
     }
 }
@@ -491,6 +507,7 @@ struct MetricCard: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
-        .background(.quaternary.opacity(0.45), in: RoundedRectangle(cornerRadius: 12))
+        .skmSurface()
+        .accessibilityElement(children: .combine)
     }
 }

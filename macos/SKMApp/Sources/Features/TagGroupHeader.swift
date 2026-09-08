@@ -44,7 +44,7 @@ struct TagGroupHeader: View {
                     .accessibilityHidden(true)
 
                 Text(title)
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .truncationMode(.middle)
@@ -68,7 +68,7 @@ struct TagGroupHeader: View {
         .listRowSeparator(.hidden)
         .accessibilityLabel(title)
         .accessibilityValue(isExpanded ? Text("已展开") : Text("已收起"))
-        .animation(reduceMotion ? nil : .easeOut(duration: 0.16), value: isExpanded)
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.15), value: isExpanded)
     }
 }
 
@@ -158,7 +158,9 @@ struct TagManagementSheet: View {
             Divider()
             footer
         }
-        .frame(width: 500, height: 460)
+        .frame(width: 560, height: 500)
+        .sheetChrome(model: model)
+        .onExitCommand { if search.isEmpty { dismiss() } else { search = "" } }
         .confirmationDialog(
             String(format: String(localized: "确定要移除标签“%@”吗？"), tagToDelete ?? ""),
             isPresented: Binding(
@@ -193,11 +195,7 @@ struct TagManagementSheet: View {
 
     private var header: some View {
         HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text(target.title).font(.headline)
-                Text(String(format: String(localized: "共 %lld 个标签"), allTagCounts.count))
-                    .font(.caption).foregroundStyle(.secondary)
-            }
+            PanelHeader(title: target.title, subtitle: String(format: String(localized: "共 %lld 个标签"), allTagCounts.count), symbol: "tag")
             Spacer()
             Button("添加标签", systemImage: "plus") {
                 newCreatedTag = ""
@@ -213,27 +211,8 @@ struct TagManagementSheet: View {
     }
 
     private var content: some View {
-        VStack(spacing: 8) {
-            HStack(spacing: 6) {
-                Image(systemName: "magnifyingglass")
-                    .foregroundStyle(.secondary)
-                    .font(.system(size: 11))
-                TextField("搜索标签", text: $search)
-                    .textFieldStyle(.plain)
-                    .font(.system(size: 12))
-                if !search.isEmpty {
-                    Button { search = "" } label: {
-                        Image(systemName: "xmark.circle.fill").font(.system(size: 11)).foregroundStyle(.secondary)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 5)
-            .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 6))
-            .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color(nsColor: .separatorColor).opacity(0.6), lineWidth: 0.5))
-            .padding(.horizontal, 16)
-            .padding(.top, 10)
+        VStack(spacing: 0) {
+            CollectionSearchField(title: "搜索标签", text: $search)
 
             if filteredTagCounts.isEmpty {
                 ContentUnavailableView {
@@ -277,12 +256,15 @@ struct TagManagementSheet: View {
                                     .foregroundStyle(.red)
                             }
                             .buttonStyle(.plain)
+                            .accessibilityLabel(String(localized: "移除标签") + " " + item.tag)
+                            .help("移除标签")
+                            .frame(width: 28, height: 28)
                             .padding(.leading, 4)
                         }
                         .padding(.vertical, 3)
                     }
                 }
-                .listStyle(.inset(alternatesRowBackgrounds: true))
+                .listStyle(.inset)
             }
         }
     }
@@ -290,7 +272,7 @@ struct TagManagementSheet: View {
     private var footer: some View {
         HStack {
             Text("重命名若与现有标签相同将自动合并；删除仅解绑标签，不删除条目。")
-                .font(.caption2)
+                .font(.caption)
                 .foregroundStyle(.secondary)
             Spacer()
         }
@@ -301,7 +283,7 @@ struct TagManagementSheet: View {
 
     private var renameSheet: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("重命名 / 合并标签").font(.headline)
+            PanelHeader(title: String(localized: "重命名 / 合并标签"), subtitle: "", symbol: "tag")
             Text(String(format: String(localized: "将原标签“%@”更新为新名称："), editingTag ?? ""))
                 .font(.callout).foregroundStyle(.secondary)
             TextField("新标签名称", text: $newTagName)
@@ -315,7 +297,8 @@ struct TagManagementSheet: View {
 
             HStack {
                 Spacer()
-                Button("取消") { editingTag = nil }
+                Button("取消", role: .cancel) { editingTag = nil }
+                    .keyboardShortcut(.cancelAction)
                 Button("确认更新") {
                     if let oldTag = editingTag {
                         let targetName = newTagName.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -330,16 +313,18 @@ struct TagManagementSheet: View {
                     }
                 }
                 .buttonStyle(.borderedProminent)
+                .keyboardShortcut(.defaultAction)
                 .disabled(newTagName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || newTagName == editingTag)
             }
         }
         .padding(20)
-        .frame(width: 360)
+        .frame(width: 420)
+        .sheetChrome(model: model)
     }
 
     private var addTagSheet: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("添加新标签").font(.headline)
+            PanelHeader(title: String(localized: "添加新标签"), subtitle: "", symbol: "tag.fill")
             Text("输入标签名称。添加后将进入全局标签池，可在录入或编辑条目时选择使用。")
                 .font(.callout).foregroundStyle(.secondary)
 
@@ -357,17 +342,20 @@ struct TagManagementSheet: View {
 
             HStack {
                 Spacer()
-                Button("取消") { showsAddTagSheet = false }
+                Button("取消", role: .cancel) { showsAddTagSheet = false }
+                    .keyboardShortcut(.cancelAction)
                 Button("确认添加") {
                     model.registerCustomTag(trimmed)
                     showsAddTagSheet = false
                 }
                 .buttonStyle(.borderedProminent)
+                .keyboardShortcut(.defaultAction)
                 .disabled(trimmed.isEmpty || isDuplicate)
             }
         }
         .padding(20)
-        .frame(width: 360)
+        .frame(width: 420)
+        .sheetChrome(model: model)
     }
 }
 

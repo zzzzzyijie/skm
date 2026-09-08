@@ -55,7 +55,7 @@ struct PromptsListView: View {
                             if isAllGroupExpanded {
                                 ForEach(visiblePrompts) { prompt in
                                     PromptSummaryRow(prompt: prompt)
-                                        .padding(.leading, 28)
+                                        .padding(.leading, 8)
                                         .listRowInsets(EdgeInsets(top: 3, leading: 12, bottom: 3, trailing: 12))
                                         .accessibilityIdentifier("prompt-row-\(prompt.id)")
                                         .tag(prompt.id)
@@ -87,7 +87,7 @@ struct PromptsListView: View {
                                 if expandedTags.contains(group.tag) {
                                     ForEach(group.items) { prompt in
                                         PromptSummaryRow(prompt: prompt)
-                                            .padding(.leading, 28)
+                                            .padding(.leading, 8)
                                             .listRowInsets(EdgeInsets(top: 3, leading: 12, bottom: 3, trailing: 12))
                                             .accessibilityIdentifier("prompt-row-\(prompt.id)")
                                             .tag(prompt.id)
@@ -111,6 +111,7 @@ struct PromptsListView: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            CollectionFooter(count: visiblePrompts.count, symbol: "text.bubble")
         }
         .navigationTitle("Prompts")
         .toolbar {
@@ -175,6 +176,7 @@ struct PromptDetailView: View {
     @State private var details: PromptDetails?
     @State private var showsEditor = false
     @State private var confirmsDelete = false
+    @State private var showsRender = false
 
     var body: some View {
         Group {
@@ -182,12 +184,7 @@ struct PromptDetailView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 22) {
                         // ── 标题 & 描述 ──
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text(prompt.name).font(.system(size: 26, weight: .bold))
-                                .textSelection(.enabled)
-                            Text(prompt.description.isEmpty ? String(localized: "无描述") : prompt.description)
-                                .font(.title3).foregroundStyle(.secondary)
-                        }
+                        PanelHeader(title: prompt.name, subtitle: prompt.description, symbol: "text.bubble", tint: .purple)
 
                         // ── 元信息（来源 · 标签） ──
                         HStack(spacing: 16) {
@@ -216,7 +213,17 @@ struct PromptDetailView: View {
 
                         // ── 内容区（Markdown 渲染 + 右上角复制） ──
                         GroupBox {
-                            ZStack(alignment: .topTrailing) {
+                            VStack(alignment: .leading, spacing: 14) {
+                                HStack {
+                                    Text("Markdown").font(.caption.monospaced()).foregroundStyle(.secondary)
+                                    Spacer()
+                                    Button("复制 Prompt 内容", systemImage: "doc.on.doc", action: copyBody)
+                                        .labelStyle(.iconOnly)
+                                        .buttonStyle(.borderless)
+                                        .help("复制 Prompt 内容")
+                                        .disabled(details == nil)
+                                }
+                                Divider()
                                 Group {
                                     if let body = details?.body {
                                         if body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -234,42 +241,26 @@ struct PromptDetailView: View {
                                     }
                                 }
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(10)
-
-                                Button {
-                                    NSPasteboard.general.clearContents()
-                                    NSPasteboard.general.setString(details?.body ?? "", forType: .string)
-                                    model.announce(String(localized: "Prompt 已复制"))
-                                } label: {
-                                    Image(systemName: "doc.on.doc")
-                                        .font(.callout)
-                                        .foregroundStyle(.secondary)
-                                }
-                                .buttonStyle(.borderless)
-                                .help("复制 Prompt 内容")
-                                .padding(8)
-                                .disabled(details == nil)
                             }
                         } label: {
                             Text("内容")
                         }
                     }
-                    .padding(26)
-                    .frame(maxWidth: 820, alignment: .leading)
-                    .frame(maxWidth: .infinity, alignment: .center)
+                    .readingLayout()
                 }
                 .task(id: "\(id):\(prompt.hash)") { await loadDetails(id) }
                 .toolbar {
                     ToolbarItemGroup(placement: .primaryAction) {
                         Group {
                             Button("快速查看", systemImage: "eye") { Task { await showQuickLook() } }
-                            Button("复制", systemImage: "doc.on.doc") {
-                                NSPasteboard.general.clearContents()
-                                NSPasteboard.general.setString(details?.body ?? "", forType: .string)
-                                model.announce(String(localized: "Prompt 已复制"))
-                            }
+                            Button("复制", systemImage: "doc.on.doc", action: copyBody)
+                                .disabled(details == nil)
+                            Button("填写变量", systemImage: "slider.horizontal.3") { showsRender = true }
+                                .disabled(details == nil)
                             Button("导出", systemImage: "square.and.arrow.up") { exportPrompt(prompt.name) }
+                                .disabled(details == nil)
                             Button("编辑", systemImage: "pencil") { showsEditor = true }
+                                .disabled(details == nil)
                             Button("删除", systemImage: "trash", role: .destructive) { confirmsDelete = true }
                         }
                         .topToolbarActionStyle()
@@ -277,6 +268,9 @@ struct PromptDetailView: View {
                 }
                 .sheet(isPresented: $showsEditor, onDismiss: { Task { await loadDetails(id) } }) {
                     if let details { PromptEditorSheet(model: model, details: details) }
+                }
+                .sheet(isPresented: $showsRender) {
+                    if let details { PromptRenderSheet(model: model, details: details) }
                 }
                 .confirmationDialog("移除 \(prompt.name)？", isPresented: $confirmsDelete) {
                     Button("移除 Prompt", role: .destructive) { Task { await model.removePrompt(id: id) } }
@@ -289,14 +283,28 @@ struct PromptDetailView: View {
                     model.consumeCommand(command.id)
                 }
             } else {
-                ContentUnavailableView("选择一个 Prompt", systemImage: "text.bubble")
+                ContentUnavailableView("选择一个 Prompt", systemImage: "text.bubble", description: Text("在左侧选择模板，填写变量或复制到你的工作流程。"))
             }
         }
     }
 
     private func loadDetails(_ id: String) async {
-        do { details = try await model.promptDetails(id) }
-        catch { model.errorMessage = error.localizedDescription }
+        details = nil
+        do {
+            let loaded = try await model.promptDetails(id)
+            guard !Task.isCancelled, model.selectedPromptID == id else { return }
+            details = loaded
+        } catch {
+            guard !Task.isCancelled, model.selectedPromptID == id else { return }
+            model.errorMessage = error.localizedDescription
+        }
+    }
+
+    private func copyBody() {
+        guard let body = details?.body else { return }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(body, forType: .string)
+        model.announce(String(localized: "Prompt 已复制"))
     }
 
     private func showQuickLook() async {
@@ -335,6 +343,8 @@ struct PromptEditorSheet: View {
     @State private var baseHash: String?
     @State private var latest: PromptDetails?
     @State private var variables: [PromptVariableDraft]
+    @State private var confirmsDiscard = false
+    @FocusState private var nameFocused: Bool
 
     init(model: AppModel, details: PromptDetails?) {
         self.model = model
@@ -349,10 +359,10 @@ struct PromptEditorSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text(details == nil ? String(localized: "新建 Prompt") : String(localized: "编辑 Prompt"))
-                .font(.title2.bold())
+            PanelHeader(title: details == nil ? String(localized: "新建 Prompt") : String(localized: "编辑 Prompt"), subtitle: String(localized: "把好用的提示词保存为可复用模板。"), symbol: "text.badge.plus", tint: .purple)
             Form {
                 TextField("名称", text: $name)
+                    .focused($nameFocused)
                     .accessibilityIdentifier("prompt-name-field")
                 TextField("描述", text: $description)
                     .accessibilityIdentifier("prompt-description-field")
@@ -361,9 +371,10 @@ struct PromptEditorSheet: View {
             TagSelector(model: model, selectedTags: $tags, accessibilityIdentifier: "prompt-tags")
             TextEditor(text: $promptBody)
                 .font(.system(.body, design: .monospaced))
-                .border(.separator)
+                .editorSurface()
                 .accessibilityIdentifier("prompt-body-editor")
             DisclosureGroup("变量（\(variables.count)）") {
+                ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
                     ForEach($variables) { $variable in
                         PromptVariableEditor(variable: $variable) {
@@ -376,6 +387,8 @@ struct PromptEditorSheet: View {
                     }
                 }
                 .padding(.vertical, 8)
+                }
+                .frame(maxHeight: 180)
             }
             if let latest {
                 GroupBox("检测到并发修改") {
@@ -416,16 +429,38 @@ struct PromptEditorSheet: View {
                 Text(variableHint)
                     .font(.caption).foregroundStyle(.secondary)
                 Spacer()
-                Button("取消", role: .cancel) { dismiss() }
+                Button("取消", role: .cancel) { requestDismiss() }
+                    .keyboardShortcut(.cancelAction)
+                    .disabled(model.isLoading)
                 Button("保存") {
                     Task { await save() }
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(!canSave)
+                .keyboardShortcut("s", modifiers: .command)
+                .disabled(!canSave || model.isLoading)
             }
         }
         .padding(24)
         .frame(minWidth: 680, minHeight: 520)
+        .sheetChrome(model: model)
+        .interactiveDismissDisabled(hasChanges || model.isLoading)
+        .onAppear { nameFocused = details == nil }
+        .confirmationDialog("放弃未保存的更改？", isPresented: $confirmsDiscard) {
+            Button("放弃更改", role: .destructive) { dismiss() }
+            Button("继续编辑", role: .cancel) { }
+        } message: {
+            Text("关闭后，本次未保存的编辑将丢失。")
+        }
+    }
+
+    private var hasChanges: Bool {
+        name != (details?.name ?? "") || description != (details?.description ?? "") ||
+        promptBody != (details?.body ?? "") || tags != (details?.tags ?? ["general"]) ||
+        variables.map(\.model) != (details?.variables ?? []).map { PromptVariableDraft($0).model }
+    }
+
+    private func requestDismiss() {
+        if hasChanges { confirmsDiscard = true } else { dismiss() }
     }
 
     private func save(asCopy: Bool = false) async {
@@ -449,11 +484,15 @@ struct PromptEditorSheet: View {
     private var canSave: Bool {
         let names = variables.map { $0.name.trimmingCharacters(in: .whitespacesAndNewlines) }
         return !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+            !description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
             !promptBody.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
             names.allSatisfy { !$0.isEmpty } && Set(names).count == names.count
     }
 
     private var variableHint: String {
+        if description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return String(localized: "请填写名称、描述和正文后保存。")
+        }
         let names = variables.map { $0.name.trimmingCharacters(in: .whitespacesAndNewlines) }
         if Set(names).count != names.count { return String(localized: "变量名不能重复。") }
         return String(localized: "变量可在正文中使用 {{name}}。secret 类型只在内存中参与渲染。")

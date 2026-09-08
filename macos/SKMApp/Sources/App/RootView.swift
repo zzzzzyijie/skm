@@ -5,6 +5,7 @@ import SwiftUI
 /// 并承载底部全局状态气泡（StatusPill）、全局错误弹窗以及新用户欢迎向导（WelcomeView）。
 struct RootView: View {
     @Bindable var model: AppModel
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         Group {
@@ -19,10 +20,13 @@ struct RootView: View {
         .overlay(alignment: .bottom) {
             // 底部居中悬浮状态胶囊
             if let status = model.statusMessage {
-                StatusPill(text: status, symbol: model.isLoading ? "arrow.triangle.2.circlepath" : "checkmark.circle.fill")
+                StatusPill(text: status, isLoading: model.isLoading)
                     .padding(.bottom, 16)
+                    .transition(.opacity)
             }
         }
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.15), value: model.statusMessage)
+        .groupBoxStyle(InspectorGroupBoxStyle())
         .alert("无法完成操作", isPresented: Binding(
             get: { model.errorMessage != nil },
             set: { if !$0 { model.errorMessage = nil } }
@@ -43,11 +47,11 @@ struct RootView: View {
                 .navigationSplitViewColumnWidth(min: 180, ideal: 210, max: 260)
         } content: {
             content
-                .navigationSplitViewColumnWidth(min: 260, ideal: 320, max: 420)
+                .navigationSplitViewColumnWidth(min: 280, ideal: 340, max: 440)
         } detail: {
             detail
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color(nsColor: .textBackgroundColor))
+                .background(SKMDesign.canvas)
         }
         .navigationSplitViewStyle(.balanced)
     }
@@ -80,11 +84,29 @@ struct RootView: View {
     }
 
     private var sidebar: some View {
-        List(AppSection.allCases, selection: $model.section) { section in
-            Label(section.rawValue, systemImage: section.symbol)
-                .accessibilityIdentifier("navigation-\(section.rawValue.lowercased())")
-                .tag(section)
+        List(selection: $model.section) {
+            Section("资料库") {
+                ForEach(AppSection.allCases) { section in
+                    HStack(spacing: 10) {
+                        Image(systemName: section.symbol)
+                            .symbolRenderingMode(.hierarchical)
+                            .foregroundStyle(model.section == section ? Color.primary : Color.accentColor)
+                            .frame(width: 20)
+                            .accessibilityHidden(true)
+                        Text(section.rawValue)
+                        Spacer()
+                        Text(collectionCount(section), format: .number)
+                            .font(.caption.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.vertical, 5)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityIdentifier("navigation-\(section.rawValue.lowercased())")
+                    .tag(section)
+                }
+            }
         }
+        .listStyle(.sidebar)
         .safeAreaInset(edge: .bottom) {
             VStack(spacing: 0) {
                 Divider()
@@ -94,6 +116,14 @@ struct RootView: View {
             }
         }
         .navigationTitle("SKM")
+    }
+
+    private func collectionCount(_ section: AppSection) -> Int {
+        switch section {
+        case .skills: model.skills.count
+        case .prompts: model.prompts.count
+        case .projects: model.projects.count
+        }
     }
 
     @ViewBuilder
@@ -148,7 +178,7 @@ struct CollectionSearchField: View {
                 .accessibilityLabel("清除搜索")
             } else if !isFocused {
                 Text("⌘F")
-                    .font(.caption2)
+                    .font(.caption)
                     .foregroundStyle(.tertiary)
                     .accessibilityHidden(true)
             }
@@ -161,22 +191,32 @@ struct CollectionSearchField: View {
             RoundedRectangle(cornerRadius: 8)
                 .strokeBorder(isFocused ? Color.accentColor : Color.primary.opacity(0.1), lineWidth: isFocused ? 2 : 0.5)
         }
-        .padding(12)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
         .background(.bar)
     }
 }
 
 struct StatusPill: View {
     let text: String
-    let symbol: String
+    let isLoading: Bool
 
     var body: some View {
-        Label(text, systemImage: symbol)
+        HStack(spacing: 8) {
+            if isLoading {
+                ProgressView().controlSize(.small)
+            } else {
+                Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+            }
+            Text(text).lineLimit(3)
+        }
             .font(.callout)
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
             .background(.regularMaterial, in: Capsule())
             .shadow(color: .black.opacity(0.12), radius: 8, y: 3)
+            .padding(.horizontal, 24)
+            .allowsHitTesting(false)
             .accessibilityAddTraits(.isStaticText)
     }
 }
@@ -251,6 +291,8 @@ struct WelcomeView: View {
         }
         .padding(32)
         .frame(width: 620, height: 430)
+        .background(SKMDesign.canvas)
+        .groupBoxStyle(InspectorGroupBoxStyle())
         .interactiveDismissDisabled()
     }
 }
@@ -269,7 +311,7 @@ private struct WelcomeMetric: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(14)
-        .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 12))
+        .skmSurface()
         .accessibilityElement(children: .combine)
     }
 }
@@ -282,21 +324,52 @@ struct SettingsView: View {
             List(SettingsSection.allCases, selection: $model.settingsSection) { section in
                 HStack(spacing: 10) {
                     Image(systemName: section.symbol)
-                        .frame(width: 20, alignment: .center)
+                        .font(.callout.weight(.medium))
+                        .foregroundStyle(.white)
+                        .frame(width: 26, height: 26)
+                        .background(settingsTint(section), in: RoundedRectangle(cornerRadius: 6))
                         .accessibilityHidden(true)
                     Text(section.title)
                 }
+                    .padding(.vertical, 3)
                     .tag(section)
                     .accessibilityElement(children: .combine)
                     .accessibilityIdentifier("settings-\(section.rawValue)")
             }
+            .listStyle(.sidebar)
             .navigationTitle("设置")
             .navigationSplitViewColumnWidth(min: 170, ideal: 190, max: 230)
         } detail: {
             detail
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(SKMDesign.canvas)
         }
+        .groupBoxStyle(InspectorGroupBoxStyle())
+        .textFieldStyle(.roundedBorder)
         .toolbar(removing: .sidebarToggle)
+        .overlay(alignment: .bottom) {
+            if let status = model.statusMessage {
+                StatusPill(text: status, isLoading: model.isLoading)
+                    .padding(.bottom, 16)
+            }
+        }
+        .alert("无法完成操作", isPresented: Binding(
+            get: { model.errorMessage != nil },
+            set: { if !$0 { model.errorMessage = nil } }
+        )) { } message: {
+            Text(model.errorMessage ?? "")
+        }
+    }
+
+    private func settingsTint(_ section: SettingsSection) -> Color {
+        switch section {
+        case .general: .gray
+        case .fileAccess: .orange
+        case .agents: .purple
+        case .sources: .green
+        case .gitSync: .blue
+        case .updates: .indigo
+        }
     }
 
     @ViewBuilder
@@ -340,6 +413,7 @@ private struct SidebarBottomToolbar: View {
                             .frame(width: 16, height: 16)
                     }
                 }
+                .frame(width: 30, height: 30)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -353,7 +427,7 @@ private struct SidebarBottomToolbar: View {
                 Image(systemName: "gearshape")
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(.secondary)
-                    .frame(width: 16, height: 16)
+                    .frame(width: 30, height: 30)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -362,6 +436,10 @@ private struct SidebarBottomToolbar: View {
             .help(String(localized: "偏好设置 (⌘,)"))
 
             Spacer()
+            Text("SKM")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.tertiary)
+                .accessibilityHidden(true)
         }
         .padding(.horizontal, 4)
         .padding(.vertical, 4)

@@ -29,13 +29,8 @@ struct ProjectAccessSettingsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
-                HStack(alignment: .firstTextBaseline) {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("权限访问").font(.largeTitle.bold())
-                        Text("SKM 只保存项目路径。这里实时检查读取状态；写入权限会在部署确认后由 Core 实际校验。")
-                            .foregroundStyle(.secondary)
-                    }
-                    Spacer()
+                VStack(alignment: .leading, spacing: 16) {
+                    PanelHeader(title: String(localized: "权限访问"), subtitle: String(localized: "检查项目目录的读取状态，管理 macOS 文件访问权限。"), symbol: "folder.badge.gearshape", tint: .orange)
                     Button("重新检查", systemImage: "arrow.clockwise", action: refreshAccess)
                         .disabled(model.isLoading)
                 }
@@ -107,14 +102,13 @@ struct ProjectAccessSettingsView: View {
                                 }
                             }
                             .padding(14)
-                            .background(.quaternary.opacity(0.45), in: RoundedRectangle(cornerRadius: 12))
+                            .skmSurface()
                             .accessibilityElement(children: .contain)
                         }
                     }
                 }
             }
-            .padding(26)
-            .frame(maxWidth: 860, alignment: .leading)
+            .readingLayout()
         }
         .navigationTitle("权限访问")
     }

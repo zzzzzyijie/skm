@@ -11,14 +11,19 @@ struct GeneralSettingsView: View {
 
     var body: some View {
         Form {
+            Section {
+                PanelHeader(title: "SKM", subtitle: String(localized: "你的 Skills、Prompts 与项目，一处管理。"), symbol: "square.stack.3d.up")
+                    .padding(.vertical, 8)
+            }
             Section("版本") {
                 LabeledContent("App", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev")
             }
 
             Section("存储") {
                 LabeledContent("个人数据", value: "~/.skm")
-                Text("Skill、Prompt、部署状态继续与命令行共享；App 不直接修改 YAML。")
+                Text("Skill、Prompt 和部署状态与命令行共享。")
                     .font(.caption)
+                    .disabled(model.isLoading)
                     .foregroundStyle(.secondary)
             }
 
@@ -89,23 +94,23 @@ struct UpdatesSettingsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
-                Text("软件更新").font(.largeTitle.bold())
+                PanelHeader(title: String(localized: "软件更新"), subtitle: String(localized: "保持最新，获得体验改进与问题修复。"), symbol: "arrow.down.circle", tint: .indigo)
                 GroupBox("版本与更新") {
                     HStack {
                         VStack(alignment: .leading, spacing: 6) {
-                            Text(model.updateStatus ?? String(localized: "Sparkle 2 可验证并安装签名更新；未配置发布公钥时回退为 GitHub Releases 版本检查。"))
+                            Text(model.updateStatus ?? String(localized: "检查是否有新版本可供下载。"))
                             Text("当前版本：\(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev")")
                                 .font(.caption).foregroundStyle(.secondary)
                         }
                         Spacer()
                         Button("检查更新") { Task { await model.checkForUpdates() } }
                             .buttonStyle(.borderedProminent)
+                            .disabled(model.isLoading)
                     }
                     .padding(8)
                 }
             }
-            .padding(26)
-            .frame(maxWidth: 820, alignment: .leading)
+            .readingLayout()
         }
         .navigationTitle("软件更新")
     }

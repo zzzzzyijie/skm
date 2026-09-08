@@ -21,6 +21,8 @@ final class SKMUITests: XCTestCase {
 
     override func tearDownWithError() throws {
         if let temporaryRoot {
+            let suite = "SKMUITests.\(temporaryRoot.lastPathComponent)"
+            UserDefaults(suiteName: suite)?.removePersistentDomain(forName: suite)
             try? FileManager.default.removeItem(at: temporaryRoot)
         }
     }
@@ -252,6 +254,81 @@ final class SKMUITests: XCTestCase {
     }
 
     @MainActor
+    func testPromptDraftProtectionAndVariablePreview() {
+        let app = application(language: "zh-Hans")
+        app.launch()
+        defer { app.terminate() }
+        XCTAssertTrue(app.staticTexts["还没有 Skill"].waitForExistence(timeout: 10))
+        app.typeKey("2", modifierFlags: .command)
+        app.typeKey("n", modifierFlags: .command)
+        let name = app.textFields["prompt-name-field"]
+        XCTAssertTrue(name.waitForExistence(timeout: 3))
+        name.click()
+        paste("draft-protection", into: name)
+        let description = app.textFields["prompt-description-field"]
+        description.click()
+        paste("Reusable review instructions", into: description)
+        let editor = app.textViews["prompt-body-editor"]
+        editor.click()
+        paste("# Review\n\nA reusable review prompt.", into: editor)
+        capture(app, name: "prompt-editor")
+
+        app.buttons["取消"].click()
+        XCTAssertTrue(app.buttons["继续编辑"].waitForExistence(timeout: 3))
+        capture(app, name: "discard-confirmation")
+        app.windows.buttons["继续编辑"].firstMatch.click()
+        XCTAssertEqual(name.value as? String, "draft-protection")
+        app.typeKey("s", modifierFlags: .command)
+        XCTAssertTrue(app.staticTexts["draft-protection"].waitForExistence(timeout: 8))
+        let render = app.buttons["填写变量"]
+        XCTAssertTrue(render.waitForExistence(timeout: 5))
+        capture(app, name: "prompt-detail")
+        render.click()
+        XCTAssertTrue(app.staticTexts["没有变量"].waitForExistence(timeout: 5))
+        let copy = app.sheets.buttons["复制"]
+        XCTAssertTrue(copy.waitForExistence(timeout: 5))
+        XCTAssertTrue(copy.isEnabled)
+        capture(app, name: "prompt-render")
+        app.typeKey(.escape, modifierFlags: [])
+        XCTAssertTrue(render.waitForExistence(timeout: 3))
+    }
+
+    @MainActor
+    func testSettingsAndSheetsInBothAppearances() {
+        for appearance in ["Aqua", "DarkAqua"] {
+            let app = application(language: appearance == "Aqua" ? "zh-Hans" : "en")
+            app.launchEnvironment["SKM_TEST_APPEARANCE"] = appearance
+            app.launch()
+            XCTAssertTrue(app.descendants(matching: .any)["navigation-skills"].waitForExistence(timeout: 10))
+            capture(app, name: "\(appearance)-library")
+            app.typeKey("n", modifierFlags: .command)
+            XCTAssertTrue(app.sheets.firstMatch.waitForExistence(timeout: 3))
+            capture(app, name: "\(appearance)-add-skill")
+            app.typeKey(.escape, modifierFlags: [])
+            app.descendants(matching: .any)["skills-manage-tags-button"].click()
+            XCTAssertTrue(app.sheets.firstMatch.waitForExistence(timeout: 3))
+            capture(app, name: "\(appearance)-tags")
+            app.windows.buttons[appearance == "Aqua" ? "完成" : "Done"].firstMatch.click()
+            app.descendants(matching: .any)["open-settings"].click()
+            for section in ["general", "fileAccess", "agents", "sources", "gitSync", "updates"] {
+                let row = app.descendants(matching: .any)["settings-\(section)"]
+                XCTAssertTrue(row.waitForExistence(timeout: 5))
+                row.click()
+                capture(app, name: "\(appearance)-settings-\(section)")
+            }
+            app.terminate()
+        }
+    }
+
+    @MainActor
+    private func capture(_ app: XCUIApplication, name: String) {
+        let attachment = XCTAttachment(screenshot: app.windows.firstMatch.screenshot())
+        attachment.name = name
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+
+    @MainActor
     private func application(language: String) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["-AppleLanguages", "(\(language))"]
@@ -260,6 +337,7 @@ final class SKMUITests: XCTestCase {
             "SKM_USER_HOME": temporaryRoot.appendingPathComponent("user").path,
             "SKM_PROJECT": temporaryRoot.appendingPathComponent("project").path,
             "SKM_SKIP_WELCOME": "1",
+            "SKM_PREFERENCES_SUITE": "SKMUITests.\(temporaryRoot.lastPathComponent)",
         ]
         return app
     }

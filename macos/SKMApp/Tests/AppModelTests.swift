@@ -103,6 +103,20 @@ final class AppModelTests: XCTestCase {
         XCTAssertFalse(AppModel.isVersion("0.5.0", newerThan: "0.5.1"))
     }
 
+    func testProjectDetailsOnlyPublishForTheSelectedProject() async {
+        let core = StubCore(responses: [
+            "projects.get": #"{"project":{"id":"first","path":"/tmp/first"},"exists":true,"activations":[],"manifest":{"version":1,"skills":[]},"scan":{"scannedAt":"","skillCount":0,"agentCounts":{},"agents":[],"skills":[]},"plan":{"digest":"","operations":[]}}"#,
+        ])
+        let model = AppModel(core: core, preferences: isolatedPreferences(), monitorsFiles: false)
+        model.selectedProjectID = "second"
+        await model.loadProjectDetails("first")
+        XCTAssertNil(model.projectDetails)
+
+        model.selectedProjectID = "first"
+        await model.loadProjectDetails("first")
+        XCTAssertEqual(model.projectDetails?.project.id, "first")
+    }
+
     private func isolatedPreferences() -> UserDefaults {
         let suiteName = "SKMTests.\(UUID().uuidString)"
         let preferences = UserDefaults(suiteName: suiteName)!

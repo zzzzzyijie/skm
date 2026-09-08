@@ -60,7 +60,7 @@ struct SkillsListView: View {
                             if isAllGroupExpanded {
                                 ForEach(visibleSkills) { skill in
                                     SkillSummaryRow(skill: skill)
-                                        .padding(.leading, 28)
+                                        .padding(.leading, 8)
                                         .listRowInsets(EdgeInsets(top: 3, leading: 12, bottom: 3, trailing: 12))
                                         .accessibilityIdentifier("skill-row-\(skill.id)")
                                         .tag(skill.id)
@@ -94,7 +94,7 @@ struct SkillsListView: View {
                                 if expandedTags.contains(group.tag) {
                                     ForEach(group.items) { skill in
                                         SkillSummaryRow(skill: skill)
-                                            .padding(.leading, 28)
+                                            .padding(.leading, 8)
                                             .listRowInsets(EdgeInsets(top: 3, leading: 12, bottom: 3, trailing: 12))
                                             .accessibilityIdentifier("skill-row-\(skill.id)")
                                             .tag(skill.id)
@@ -117,9 +117,11 @@ struct SkillsListView: View {
                             }
                         }
                     }
+                    .listStyle(.inset)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            CollectionFooter(count: visibleSkills.count, symbol: "square.stack.3d.up")
         }
         .navigationTitle("Skills")
         .toolbar {
@@ -165,6 +167,7 @@ struct SkillsListView: View {
 /// 一体化滚动布局：顶部标题与元数据、Agent 激活卡片区、Markdown 正文渲染、底部路径与来源信息。
 /// 提供 QuickLook 快捷预览、在线编辑（SkillEditorSheet，内含历史版本回滚）与删除安全确认。
 struct SkillDetailView: View {
+    @Environment(\.openSettings) private var openSettings
     @Bindable var model: AppModel
     @State private var details: SkillDetails?
     @State private var showsEditor = false
@@ -189,19 +192,13 @@ struct SkillDetailView: View {
                         markdownSection
                             .padding(20)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 12))
-                            .overlay {
-                                RoundedRectangle(cornerRadius: 12)
-                                    .strokeBorder(Color.primary.opacity(0.07), lineWidth: 0.5)
-                            }
+                            .skmSurface()
 
                         // ── 底部元数据 ──
                         footerSection(summary)
                             .padding(.top, 20)
                     }
-                    .padding(26)
-                    .frame(maxWidth: 820, alignment: .leading)
-                    .frame(maxWidth: .infinity, alignment: .center)
+                    .readingLayout()
                 }
                 .task(id: "\(id):\(summary.hash)") { await loadDetails(id) }
                 .toolbar {
@@ -210,6 +207,7 @@ struct SkillDetailView: View {
                             Button("快速查看", systemImage: "eye") { Task { await showQuickLook() } }
                             if details?.editable ?? summary.editable {
                                 Button("编辑", systemImage: "pencil") { showsEditor = true }
+                                    .disabled(details == nil)
                             }
                             Button("在 Finder 中显示", systemImage: "folder") { revealInFinder(summary) }
                             Button("删除", systemImage: "trash", role: .destructive) { confirmsDelete = true }
@@ -233,7 +231,7 @@ struct SkillDetailView: View {
                     model.consumeCommand(command.id)
                 }
             } else {
-                ContentUnavailableView("选择一个 Skill", systemImage: "square.stack.3d.up")
+                ContentUnavailableView("选择一个 Skill", systemImage: "square.stack.3d.up", description: Text("在左侧选择内容，阅读说明并管理 Agent 激活。"))
             }
         }
     }
@@ -243,9 +241,16 @@ struct SkillDetailView: View {
     private func headerSection(_ skill: SkillSummary) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             // 标题行
-            HStack(alignment: .center, spacing: 10) {
-                Text(skill.name).font(.system(size: 26, weight: .bold))
+            HStack(alignment: .top, spacing: 14) {
+                Image(systemName: "square.stack.3d.up")
+                    .font(.title2)
+                    .foregroundStyle(Color.accentColor)
+                    .frame(width: 48, height: 48)
+                    .background(Color.accentColor.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
+                    .accessibilityHidden(true)
+                Text(skill.name).font(.largeTitle.bold())
                     .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 HealthBadge(health: skill.health)
             }
 
@@ -302,6 +307,11 @@ struct SkillDetailView: View {
                     Text("还没有已管理的 Agent，请先在设置中启用。")
                         .font(.callout)
                         .foregroundStyle(Color.secondary)
+                    Spacer()
+                    Button("管理 Agents") {
+                        model.settingsSection = .agents
+                        openSettings()
+                    }
                 }
                 .padding(12)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -377,8 +387,15 @@ struct SkillDetailView: View {
     // MARK: - 辅助方法
 
     private func loadDetails(_ id: String) async {
-        do { details = try await model.skillDetails(id) }
-        catch { model.errorMessage = error.localizedDescription }
+        details = nil
+        do {
+            let loaded = try await model.skillDetails(id)
+            guard !Task.isCancelled, model.selectedSkillID == id else { return }
+            details = loaded
+        } catch {
+            guard !Task.isCancelled, model.selectedSkillID == id else { return }
+            model.errorMessage = error.localizedDescription
+        }
     }
 
     private func showQuickLook() async {
@@ -442,7 +459,7 @@ private struct AgentToggleCard: View {
                     .stroke(isEnabled ? Color.accentColor.opacity(0.35) : Color.primary.opacity(0.08), lineWidth: 1)
             )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SelectionCardButtonStyle())
         .disabled(isLoading)
         .accessibilityValue(isEnabled ? Text("已启用") : Text("未启用"))
     }
@@ -464,17 +481,11 @@ struct MarkdownBodyView: View {
                         .fontWeight(.bold)
                         .padding(.top, level <= 2 ? 8 : 4)
                 case .codeBlock(let code):
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        Text(code)
-                            .font(.system(.callout, design: .monospaced))
-                            .textSelection(.enabled)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                    .padding(12)
-                    .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 8))
+                    CodeBlockView(code: code)
                 case .paragraph(let text):
                     Text(attributedString(from: text))
                         .font(.body)
+                        .lineSpacing(5)
                         .textSelection(.enabled)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -614,13 +625,18 @@ struct AddSkillSheet: View {
             minWidth: mode == 1 && wizardStep == 1 ? 660 : 560,
             minHeight: mode == 1 && wizardStep == 1 ? 480 : 400
         )
+        .sheetChrome(model: model)
+        .interactiveDismissDisabled(isScanning || model.isLoading)
     }
 
     private var headerView: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text(mode == 1 && wizardStep == 1 ? String(localized: "选择要导入的 Skill") : String(localized: "添加 Skill"))
-                    .font(.title2.bold())
+                PanelHeader(
+                    title: mode == 1 && wizardStep == 1 ? String(localized: "选择要导入的 Skill") : String(localized: "添加 Skill"),
+                    subtitle: String(localized: "把常用技能收进资料库，随时用于你的 Agent 和项目。"),
+                    symbol: "square.stack.3d.up"
+                )
                 Spacer()
                 if mode == 1 {
                     Text(wizardStep == 0 ? "1/2 步：输入来源" : "2/2 步：勾选技能")
@@ -638,6 +654,7 @@ struct AddSkillSheet: View {
                     Text("Git / 命令").tag(1)
                 }
                 .pickerStyle(.segmented)
+                .disabled(isScanning || model.isLoading)
             }
         }
     }
@@ -648,6 +665,8 @@ struct AddSkillSheet: View {
                 TextField("Skill 目录或 ZIP", text: $path)
                 Button("选择…") { chooseLocalSkill() }
             }
+            .padding(16)
+            .skmSurface()
             TagSelector(model: model, selectedTags: $tags, accessibilityIdentifier: "add-skill-tags")
             Text("本地内容会被验证并写入 SKM 的不可变对象库。")
                 .font(.caption).foregroundStyle(.secondary)
@@ -657,6 +676,8 @@ struct AddSkillSheet: View {
             HStack {
                 Spacer()
                 Button("取消", role: .cancel) { dismiss() }
+                    .keyboardShortcut(.cancelAction)
+                    .disabled(model.isLoading || isScanning)
                 Button("导入") {
                     Task {
                         await model.addLocalSkill(path: path, tags: tags)
@@ -664,7 +685,8 @@ struct AddSkillSheet: View {
                     }
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(path.trimmingCharacters(in: .whitespaces).isEmpty)
+                .keyboardShortcut(.defaultAction)
+                .disabled(path.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || model.isLoading)
             }
         }
     }
@@ -682,6 +704,8 @@ struct AddSkillSheet: View {
             HStack {
                 Spacer()
                 Button("取消", role: .cancel) { dismiss() }
+                    .keyboardShortcut(.cancelAction)
+                    .disabled(model.isLoading || isScanning)
                 Button {
                     Task { await startPreview() }
                 } label: {
@@ -696,6 +720,7 @@ struct AddSkillSheet: View {
                     }
                 }
                 .buttonStyle(.borderedProminent)
+                .keyboardShortcut(.defaultAction)
                 .disabled(remote.trimmingCharacters(in: .whitespaces).isEmpty || isScanning)
             }
         }
@@ -773,15 +798,18 @@ struct AddSkillSheet: View {
                 Button("上一步", systemImage: "arrow.left") {
                     wizardStep = 0
                 }
-                .disabled(model.isLoading)
+                .disabled(model.isLoading || isScanning)
 
                 Spacer()
 
                 Button("取消", role: .cancel) { dismiss() }
+                    .keyboardShortcut(.cancelAction)
+                    .disabled(model.isLoading || isScanning)
                 Button(String(format: String(localized: "导入所选技能 (%lld)"), locale: .current, selectedPaths.count)) {
                     Task { await confirmImport() }
                 }
                 .buttonStyle(.borderedProminent)
+                .keyboardShortcut(.defaultAction)
                 .disabled(selectedPaths.isEmpty || model.isLoading)
             }
         }
@@ -891,7 +919,9 @@ private struct SkillCandidateRow: View {
                     .stroke(isSelected ? Color.accentColor.opacity(0.35) : Color.clear, lineWidth: 1)
             )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SelectionCardButtonStyle())
+        .accessibilityLabel(candidate.name)
+        .accessibilityValue(isSelected ? String(localized: "已选择") : String(localized: "未选择"))
         .disabled(!candidate.valid)
     }
 }
@@ -909,6 +939,7 @@ struct SkillEditorSheet: View {
     @State private var baseHash: String
     @State private var latest: SkillDetails?
     @State private var showsHistory = false
+    @State private var confirmsDiscard = false
 
     init(model: AppModel, details: SkillDetails) {
         self.model = model
@@ -920,10 +951,10 @@ struct SkillEditorSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("编辑 \(details.name)").font(.title2.bold())
+            PanelHeader(title: String(localized: "编辑 \(details.name)"), subtitle: String(localized: "编辑 Markdown 原文，保存后更新资料库。"), symbol: "square.and.pencil")
             TextEditor(text: $content)
                 .font(.system(.body, design: .monospaced))
-                .border(.separator)
+                .editorSurface()
             TagSelector(model: model, selectedTags: $tags, accessibilityIdentifier: "edit-skill-tags")
             if let latest {
                 GroupBox("检测到并发修改") {
@@ -961,20 +992,38 @@ struct SkillEditorSheet: View {
 
                 Spacer()
 
-                Text("保存时校验 baseHash 防止并发冲突。")
+                Text("保存时会检查外部修改，保护你的编辑内容。")
                     .font(.caption).foregroundStyle(.secondary)
-                Button("取消", role: .cancel) { dismiss() }
+                Button("取消", role: .cancel) { requestDismiss() }
+                    .keyboardShortcut(.cancelAction)
+                    .disabled(model.isLoading)
                 Button("保存") {
                     Task { await save() }
                 }
                 .buttonStyle(.borderedProminent)
+                .keyboardShortcut("s", modifiers: .command)
+                .disabled(model.isLoading || content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
         }
         .padding(24)
         .frame(minWidth: 720, minHeight: 560)
+        .sheetChrome(model: model)
+        .interactiveDismissDisabled(hasChanges || model.isLoading)
+        .confirmationDialog("放弃未保存的更改？", isPresented: $confirmsDiscard) {
+            Button("放弃更改", role: .destructive) { dismiss() }
+            Button("继续编辑", role: .cancel) { }
+        } message: {
+            Text("关闭后，本次未保存的编辑将丢失。")
+        }
         .sheet(isPresented: $showsHistory, onDismiss: { Task { await reloadDetails() } }) {
             HistorySheet(model: model, kind: "skill", itemID: details.id, title: details.name)
         }
+    }
+
+    private var hasChanges: Bool { content != details.content || tags != details.tags }
+
+    private func requestDismiss() {
+        if hasChanges { confirmsDiscard = true } else { dismiss() }
     }
 
     private func save() async {
@@ -990,6 +1039,7 @@ struct SkillEditorSheet: View {
     private func reloadDetails() async {
         do {
             let refreshed = try await model.skillDetails(details.id)
+            guard refreshed.hash != baseHash else { return }
             content = refreshed.content
             tags = refreshed.tags
             baseHash = refreshed.hash
