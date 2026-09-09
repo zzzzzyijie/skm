@@ -239,16 +239,18 @@ struct StatusPill: View {
     }
 }
 
-/// 主窗口顶部工具栏按钮的统一尺寸与对称留白。
-///
-/// 保留原生 `Label` 语义，让 macOS 仍可在“仅图标”和“图标和文本”之间切换；
-/// regular 控件尺寸与上下等量留白可避免图标和文本模式显得局促。
+/// 主窗口顶部工具栏按钮使用统一的正方形槽位，确保单按钮为圆形、按钮组为等高胶囊。
 private struct TopToolbarActionModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
+            .labelStyle(.iconOnly)
             .buttonStyle(.borderless)
             .controlSize(.regular)
-            .padding(.vertical, 2)
+            .frame(
+                width: SKMDesign.toolbarActionSize,
+                height: SKMDesign.toolbarActionSize
+            )
+            .contentShape(Rectangle())
     }
 }
 
