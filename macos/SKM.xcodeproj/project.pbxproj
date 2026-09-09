@@ -44,6 +44,7 @@
 		E2A97B6A3F3445B3C7C92E68 /* PromptsViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A31D5DC3D0B1C74CA854A593 /* PromptsViews.swift */; };
 		E789670D7BD7FCBF3E6D9884 /* CodeBlockView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56F4800B996F27776D005556 /* CodeBlockView.swift */; };
 		EDF7A073596CFA3FFC20EE47 /* SKMApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2802B0E8AB8EFD1728F8C910 /* SKMApp.swift */; };
+		EE3144970030F3523BC9897D /* SidebarNavigationButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21FE3F50AEC320EBF97E27F1 /* SidebarNavigationButton.swift */; };
 		F414ECF3C7108F46856EE347 /* ModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 563C8963967743430C0ACAB0 /* ModelsTests.swift */; };
 /* End PBXBuildFile section */
 
@@ -105,6 +106,7 @@
 		19FCDAC7FF254EBCA9F8F78C /* AgentsViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentsViews.swift; sourceTree = "<group>"; };
 		1FB22256EEC751C92BD208FB /* TagGroupHeader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagGroupHeader.swift; sourceTree = "<group>"; };
 		20709688D10BA879FDCA531B /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
+		21FE3F50AEC320EBF97E27F1 /* SidebarNavigationButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarNavigationButton.swift; sourceTree = "<group>"; };
 		2802B0E8AB8EFD1728F8C910 /* SKMApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SKMApp.swift; sourceTree = "<group>"; };
 		32A2DA6658A101CFB7A62977 /* Localizable.xcstrings */ = {isa = PBXFileReference; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		37872FA8150C4D8CFF7FB6A6 /* TuistAssets+SKM.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TuistAssets+SKM.swift"; sourceTree = "<group>"; };
@@ -180,6 +182,7 @@
 				E58F665593E8DCC13790995F /* RootView.swift */,
 				E842AF3F5053B918ACC0D566 /* SelectionCardButtonStyle.swift */,
 				E7D5ED73DEC697DC570DD504 /* SheetChrome.swift */,
+				21FE3F50AEC320EBF97E27F1 /* SidebarNavigationButton.swift */,
 				2802B0E8AB8EFD1728F8C910 /* SKMApp.swift */,
 				6949D72AE0AB63E2CA7E5F11 /* SurfaceStyle.swift */,
 			);
@@ -501,6 +504,7 @@
 				EDF7A073596CFA3FFC20EE47 /* SKMApp.swift in Sources */,
 				BBF3D1A8ABD1123182814613 /* SelectionCardButtonStyle.swift in Sources */,
 				43B0F97EC65379B9D2032BE6 /* SheetChrome.swift in Sources */,
+				EE3144970030F3523BC9897D /* SidebarNavigationButton.swift in Sources */,
 				C490F877B4384F857218C5A2 /* SurfaceStyle.swift in Sources */,
 				7413D065476DEF2CA7DB5D8F /* CoreClient.swift in Sources */,
 				5CB541B83F2903AF41D137DF /* FileChangeMonitor.swift in Sources */,

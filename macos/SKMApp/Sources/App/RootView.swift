@@ -6,6 +6,12 @@ import SwiftUI
 struct RootView: View {
     @Bindable var model: AppModel
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var sidebarSelection: AppSection
+
+    init(model: AppModel) {
+        self.model = model
+        _sidebarSelection = State(initialValue: model.section)
+    }
 
     var body: some View {
         Group {
@@ -54,6 +60,7 @@ struct RootView: View {
                 .background(SKMDesign.canvas)
         }
         .navigationSplitViewStyle(.balanced)
+        .toolbar(removing: .sidebarToggle)
     }
 
     /// Core 启动连接状态视图：加载中旋转菊花 或 启动失败诊断重试视图
@@ -84,38 +91,49 @@ struct RootView: View {
     }
 
     private var sidebar: some View {
-        List(selection: $model.section) {
-            Section("资料库") {
-                ForEach(AppSection.allCases) { section in
-                    HStack(spacing: 10) {
-                        Image(systemName: section.symbol)
-                            .symbolRenderingMode(.hierarchical)
-                            .foregroundStyle(model.section == section ? Color.primary : Color.accentColor)
-                            .frame(width: 20)
-                            .accessibilityHidden(true)
-                        Text(section.rawValue)
-                        Spacer()
-                        Text(collectionCount(section), format: .number)
-                            .font(.caption.monospacedDigit())
-                            .foregroundStyle(.secondary)
-                    }
-                    .padding(.vertical, 5)
-                    .accessibilityElement(children: .combine)
-                    .accessibilityIdentifier("navigation-\(section.rawValue.lowercased())")
-                    .tag(section)
-                }
+        List {
+            ForEach(AppSection.allCases) { section in
+                SidebarNavigationButton(
+                    title: section.rawValue,
+                    systemImage: section.symbol,
+                    isSelected: sidebarSelection == section,
+                    count: collectionCount(section),
+                    action: { selectSidebarSection(section) }
+                )
+                .listRowInsets(EdgeInsets(
+                    top: 1,
+                    leading: 0,
+                    bottom: 1,
+                    trailing: 0
+                ))
+                .listRowBackground(Color.clear)
+                .accessibilityIdentifier("navigation-\(section.rawValue.lowercased())")
             }
         }
         .listStyle(.sidebar)
+        .onChange(of: model.section) { _, section in
+            guard sidebarSelection != section else { return }
+            sidebarSelection = section
+        }
         .safeAreaInset(edge: .bottom) {
             VStack(spacing: 0) {
                 Divider()
                 SidebarBottomToolbar(model: model)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
             }
         }
         .navigationTitle("SKM")
+    }
+
+    private func selectSidebarSection(_ section: AppSection) {
+        guard sidebarSelection != section else { return }
+
+        // Paint the lightweight sidebar selection before rebuilding both content columns.
+        sidebarSelection = section
+        Task { @MainActor in
+            await Task.yield()
+            guard sidebarSelection == section, model.section != section else { return }
+            model.section = section
+        }
     }
 
     private func collectionCount(_ section: AppSection) -> Int {
@@ -321,24 +339,30 @@ struct SettingsView: View {
 
     var body: some View {
         NavigationSplitView {
-            List(SettingsSection.allCases, selection: $model.settingsSection) { section in
-                HStack(spacing: 10) {
-                    Image(systemName: section.symbol)
-                        .font(.callout.weight(.medium))
-                        .foregroundStyle(.white)
-                        .frame(width: 26, height: 26)
-                        .background(settingsTint(section), in: RoundedRectangle(cornerRadius: 6))
-                        .accessibilityHidden(true)
-                    Text(section.title)
-                }
-                    .padding(.vertical, 3)
-                    .tag(section)
-                    .accessibilityElement(children: .combine)
+            List {
+                ForEach(SettingsSection.allCases) { section in
+                    SidebarNavigationButton(
+                        title: section.title,
+                        systemImage: section.symbol,
+                        isSelected: model.settingsSection == section,
+                        action: {
+                            guard model.settingsSection != section else { return }
+                            model.settingsSection = section
+                        }
+                    )
+                    .listRowInsets(EdgeInsets(
+                        top: 1,
+                        leading: 0,
+                        bottom: 1,
+                        trailing: 0
+                    ))
+                    .listRowBackground(Color.clear)
                     .accessibilityIdentifier("settings-\(section.rawValue)")
+                }
             }
             .listStyle(.sidebar)
             .navigationTitle("设置")
-            .navigationSplitViewColumnWidth(min: 170, ideal: 190, max: 230)
+            .navigationSplitViewColumnWidth(min: 180, ideal: 210, max: 250)
         } detail: {
             detail
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -358,17 +382,6 @@ struct SettingsView: View {
             set: { if !$0 { model.errorMessage = nil } }
         )) { } message: {
             Text(model.errorMessage ?? "")
-        }
-    }
-
-    private func settingsTint(_ section: SettingsSection) -> Color {
-        switch section {
-        case .general: .gray
-        case .fileAccess: .orange
-        case .agents: .purple
-        case .sources: .green
-        case .gitSync: .blue
-        case .updates: .indigo
         }
     }
 
@@ -409,7 +422,7 @@ private struct SidebarBottomToolbar: View {
                     } else {
                         Image(systemName: "arrow.triangle.2.circlepath")
                             .font(.system(size: 13, weight: .medium))
-                            .foregroundStyle(model.workspace?.configured == true ? Color.accentColor : Color.secondary)
+                            .foregroundStyle(.secondary)
                             .frame(width: 16, height: 16)
                     }
                 }
@@ -441,8 +454,9 @@ private struct SidebarBottomToolbar: View {
                 .foregroundStyle(.tertiary)
                 .accessibilityHidden(true)
         }
-        .padding(.horizontal, 4)
-        .padding(.vertical, 4)
+        .padding(.leading, 21)
+        .padding(.trailing, 26)
+        .padding(.vertical, 7)
     }
 
     private var syncHelpText: String {
