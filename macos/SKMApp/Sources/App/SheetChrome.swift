@@ -26,7 +26,7 @@ struct SheetChrome: ViewModifier {
                 } else if model.isLoading {
                     HStack(spacing: 10) {
                         ProgressView().controlSize(.small)
-                        Text(model.statusMessage ?? String(localized: "正在应用更改…"))
+                        Text(model.statusMessage ?? AppLocalization.string("正在应用更改…"))
                             .font(.callout).foregroundStyle(.secondary)
                         Spacer()
                     }

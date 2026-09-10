@@ -6,6 +6,7 @@ import SwiftUI
 struct SKMApp: App {
     /// 全局应用状态 ViewModel
     @State private var model = AppModel()
+    @State private var preferences = AppPreferences()
 
     init() {
         ToolbarMenuFilter.install()
@@ -15,7 +16,8 @@ struct SKMApp: App {
         // 主应用程序窗口
         Window("SKM", id: "main") {
             RootView(model: model)
-                .preferredColorScheme(testColorScheme)
+                .environment(\.locale, preferences.language.locale)
+                .preferredColorScheme(testColorScheme ?? preferences.appearance.colorScheme)
                 .frame(minWidth: 980, minHeight: 640)
                 .task { await model.start() }
                 .onDisappear { Task { await model.stop() } }
@@ -56,8 +58,9 @@ struct SKMApp: App {
 
         // macOS 标准偏好设置窗口（Cmd+,）
         Settings {
-            SettingsView(model: model)
-                .preferredColorScheme(testColorScheme)
+            SettingsView(model: model, preferences: preferences)
+                .environment(\.locale, preferences.language.locale)
+                .preferredColorScheme(testColorScheme ?? preferences.appearance.colorScheme)
                 .frame(minWidth: 780, minHeight: 560)
         }
     }
@@ -76,18 +79,18 @@ struct SKMApp: App {
     /// 根据当前所选业务分区动态返回“新建”按钮文案
     private var newItemTitle: String {
         switch model.section {
-        case .skills: String(localized: "添加 Skill")
-        case .prompts: String(localized: "新建 Prompt")
-        case .projects: String(localized: "添加项目")
+        case .skills: AppLocalization.string("添加 Skill")
+        case .prompts: AppLocalization.string("新建 Prompt")
+        case .projects: AppLocalization.string("添加项目")
         }
     }
 
     /// 根据当前所选业务分区动态返回“导入”按钮文案
     private var importTitle: String {
         switch model.section {
-        case .prompts: String(localized: "导入 Prompt…")
-        case .projects: String(localized: "添加项目…")
-        default: String(localized: "导入 Skill…")
+        case .prompts: AppLocalization.string("导入 Prompt…")
+        case .projects: AppLocalization.string("添加项目…")
+        default: AppLocalization.string("导入 Skill…")
         }
     }
 

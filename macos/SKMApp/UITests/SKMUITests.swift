@@ -67,6 +67,38 @@ final class SKMUITests: XCTestCase {
     }
 
     @MainActor
+    func testSettingsSidebarUpdatesImmediatelyWhenLanguageChanges() {
+        let app = application(language: "zh-Hans")
+        app.launch()
+        defer { app.terminate() }
+
+        XCTAssertTrue(app.descendants(matching: .any)["open-settings"].waitForExistence(timeout: 10))
+        app.descendants(matching: .any)["open-settings"].click()
+
+        let languagePicker = app.popUpButtons["settings-language"]
+        XCTAssertTrue(languagePicker.waitForExistence(timeout: 5))
+        languagePicker.click()
+        app.menuItems["English"].click()
+
+        assertSettingsSidebar(
+            app,
+            labels: ["General", "Permission Access", "Agent Management", "Skill Sources", "Git Sync", "Software Updates"]
+        )
+        XCTAssertTrue(app.staticTexts["Your skills, prompts, and projects, together."].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.windows["General"].exists)
+
+        app.popUpButtons["settings-language"].click()
+        app.menuItems["Simplified Chinese"].click()
+
+        assertSettingsSidebar(
+            app,
+            labels: ["通用", "权限访问", "Agent 管理", "技能来源", "Git 同步", "软件更新"]
+        )
+        XCTAssertTrue(app.staticTexts["你的 Skills、Prompts 与项目，一处管理。"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.windows["通用"].exists)
+    }
+
+    @MainActor
     func testChineseSkillAgentAndPromptWriteFlow() throws {
         let skillDirectory = temporaryRoot.appendingPathComponent("fixture-skill", isDirectory: true)
         try FileManager.default.createDirectory(at: skillDirectory, withIntermediateDirectories: true)
@@ -326,6 +358,15 @@ final class SKMUITests: XCTestCase {
         attachment.name = name
         attachment.lifetime = .keepAlways
         add(attachment)
+    }
+
+    @MainActor
+    private func assertSettingsSidebar(_ app: XCUIApplication, labels: [String]) {
+        for (section, label) in zip(["general", "fileAccess", "agents", "sources", "gitSync", "updates"], labels) {
+            let row = app.descendants(matching: .any)["settings-\(section)"]
+            XCTAssertTrue(row.waitForExistence(timeout: 3))
+            XCTAssertEqual(row.label, label)
+        }
     }
 
     @MainActor

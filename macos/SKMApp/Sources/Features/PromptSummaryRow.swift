@@ -11,7 +11,7 @@ struct PromptSummaryRow: View {
                 .lineLimit(1)
                 .truncationMode(.middle)
 
-            Text(prompt.description.isEmpty ? String(localized: "无描述") : prompt.description)
+            Text(prompt.description.isEmpty ? AppLocalization.string("无描述") : prompt.description)
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .lineLimit(2)
@@ -33,14 +33,14 @@ struct PromptSummaryRow: View {
 
     private var accessibilityLabel: String {
         let tags = prompt.tags.isEmpty
-            ? String(localized: "无标签")
+            ? AppLocalization.string("无标签")
             : String(
-                format: String(localized: "标签 %@"),
+                format: AppLocalization.string("标签 %@"),
                 locale: .current,
-                prompt.tags.joined(separator: String(localized: "、"))
+                prompt.tags.joined(separator: AppLocalization.string("、"))
             )
         return String(
-            format: String(localized: "%1$@，来源 %2$@，%3$@"),
+            format: AppLocalization.string("%1$@，来源 %2$@，%3$@"),
             locale: .current,
             prompt.name,
             prompt.source,

@@ -29,7 +29,7 @@ struct ProjectSkillImportSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
-            PanelHeader(title: String(localized: "从我的 Skill 里导入"), subtitle: String(localized: "选择一个 Skill 和要使用它的 Agent。提交前会先展示文件变更预览。"), symbol: "square.and.arrow.down")
+            PanelHeader(title: AppLocalization.string("从我的 Skill 里导入"), subtitle: AppLocalization.string("选择一个 Skill 和要使用它的 Agent。提交前会先展示文件变更预览。"), symbol: "square.and.arrow.down")
 
             if model.skills.isEmpty {
                 ContentUnavailableView(
@@ -120,9 +120,9 @@ struct ProjectSkillImportSheet: View {
 
     private var deploymentHelp: String {
         if deploymentMode == "symlink" {
-            return String(localized: "软链接：跟随个人 Library 保持同步，库中改动会自动反映到项目中。")
+            return AppLocalization.string("软链接：跟随个人 Library 保持同步，库中改动会自动反映到项目中。")
         }
-        return String(localized: "复制：创建独立副本，项目可脱离 SKM 单独使用，后续不随 Library 自动更新。")
+        return AppLocalization.string("复制：创建独立副本，项目可脱离 SKM 单独使用，后续不随 Library 自动更新。")
     }
 
     private func toggleAgent(_ id: String) {
@@ -164,7 +164,7 @@ private struct AgentSelectionButton: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(agent.name)
                         .foregroundStyle(.primary)
-                    Text(agent.detected ? String(localized: "已检测") : String(localized: "未检测"))
+                    Text(agent.detected ? AppLocalization.string("已检测") : AppLocalization.string("未检测"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -183,6 +183,6 @@ private struct AgentSelectionButton: View {
         }
         .buttonStyle(SelectionCardButtonStyle())
         .accessibilityLabel(agent.name)
-        .accessibilityValue(isSelected ? String(localized: "已选择") : String(localized: "未选择"))
+        .accessibilityValue(isSelected ? AppLocalization.string("已选择") : AppLocalization.string("未选择"))
     }
 }

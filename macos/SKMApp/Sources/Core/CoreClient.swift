@@ -34,28 +34,28 @@ enum CoreClientError: LocalizedError, Sendable {
     var errorDescription: String? {
         switch self {
         case .executableMissing:
-            String(localized: "App 中缺少 skm-core，请重新构建或安装 SKM。")
+            AppLocalization.string("App 中缺少 skm-core，请重新构建或安装 SKM。")
         case let .processStopped(message):
             message.isEmpty
-                ? String(localized: "SKM Core 已停止。")
+                ? AppLocalization.string("SKM Core 已停止。")
                 : String(
-                    format: String(localized: "SKM Core 已停止。\n%@"),
+                    format: AppLocalization.string("SKM Core 已停止。\n%@"),
                     locale: .current,
                     message
                 )
         case .malformedResponse:
-            String(localized: "SKM Core 返回了无法识别的数据。")
+            AppLocalization.string("SKM Core 返回了无法识别的数据。")
         case .requestTimedOut:
-            String(localized: "SKM Core 请求超时，已停止无响应的 Core。")
+            AppLocalization.string("SKM Core 请求超时，已停止无响应的 Core。")
         case let .protocolMismatch(version):
             String(
-                format: String(localized: "Core 协议版本 %lld 与 App 不兼容。"),
+                format: AppLocalization.string("Core 协议版本 %lld 与 App 不兼容。"),
                 locale: .current,
                 version
             )
         case let .versionMismatch(app, core):
             String(
-                format: String(localized: "App 版本 %1$@ 与 Core 版本 %2$@ 不一致，请重新安装 SKM。"),
+                format: AppLocalization.string("App 版本 %1$@ 与 Core 版本 %2$@ 不一致，请重新安装 SKM。"),
                 locale: .current,
                 app,
                 core

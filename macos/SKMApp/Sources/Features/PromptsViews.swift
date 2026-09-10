@@ -43,7 +43,7 @@ struct PromptsListView: View {
                     List(selection: $model.selectedPromptID) {
                         if !visiblePrompts.isEmpty {
                             TagGroupHeader(
-                                title: String(localized: "全部"),
+                                title: AppLocalization.string("全部"),
                                 systemImage: "text.bubble",
                                 count: visiblePrompts.count,
                                 isExpanded: isAllGroupExpanded
@@ -113,7 +113,7 @@ struct PromptsListView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             CollectionFooter(count: visiblePrompts.count, symbol: "text.bubble")
         }
-        .navigationTitle("Prompts")
+        .navigationTitle(AppLocalization.string("Prompts"))
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
                 Group {
@@ -304,7 +304,7 @@ struct PromptDetailView: View {
         guard let body = details?.body else { return }
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(body, forType: .string)
-        model.announce(String(localized: "Prompt 已复制"))
+        model.announce(AppLocalization.string("Prompt 已复制"))
     }
 
     private func showQuickLook() async {
@@ -321,7 +321,7 @@ struct PromptDetailView: View {
         if panel.runModal() == .OK, let url = panel.url {
             do {
                 try content.write(to: url, atomically: true, encoding: .utf8)
-                model.announce(String(localized: "Prompt 已导出"))
+                model.announce(AppLocalization.string("Prompt 已导出"))
             } catch {
                 model.errorMessage = error.localizedDescription
             }
@@ -359,7 +359,7 @@ struct PromptEditorSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            PanelHeader(title: details == nil ? String(localized: "新建 Prompt") : String(localized: "编辑 Prompt"), subtitle: String(localized: "把好用的提示词保存为可复用模板。"), symbol: "text.badge.plus", tint: .purple)
+            PanelHeader(title: details == nil ? AppLocalization.string("新建 Prompt") : AppLocalization.string("编辑 Prompt"), subtitle: AppLocalization.string("把好用的提示词保存为可复用模板。"), symbol: "text.badge.plus", tint: .purple)
             Form {
                 TextField("名称", text: $name)
                     .focused($nameFocused)
@@ -491,10 +491,10 @@ struct PromptEditorSheet: View {
 
     private var variableHint: String {
         if description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            return String(localized: "请填写名称、描述和正文后保存。")
+            return AppLocalization.string("请填写名称、描述和正文后保存。")
         }
         let names = variables.map { $0.name.trimmingCharacters(in: .whitespacesAndNewlines) }
-        if Set(names).count != names.count { return String(localized: "变量名不能重复。") }
-        return String(localized: "变量可在正文中使用 {{name}}。secret 类型只在内存中参与渲染。")
+        if Set(names).count != names.count { return AppLocalization.string("变量名不能重复。") }
+        return AppLocalization.string("变量可在正文中使用 {{name}}。secret 类型只在内存中参与渲染。")
     }
 }

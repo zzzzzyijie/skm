@@ -96,15 +96,15 @@ enum TagManagementTarget {
 
     var title: String {
         switch self {
-        case .skills: return String(localized: "Skill 标签管理")
-        case .prompts: return String(localized: "Prompt 标签管理")
+        case .skills: return AppLocalization.string("Skill 标签管理")
+        case .prompts: return AppLocalization.string("Prompt 标签管理")
         }
     }
 
     var itemNoun: String {
         switch self {
-        case .skills: return String(localized: "个 Skill")
-        case .prompts: return String(localized: "个 Prompt")
+        case .skills: return AppLocalization.string("个 Skill")
+        case .prompts: return AppLocalization.string("个 Prompt")
         }
     }
 }
@@ -162,7 +162,7 @@ struct TagManagementSheet: View {
         .sheetChrome(model: model)
         .onExitCommand { if search.isEmpty { dismiss() } else { search = "" } }
         .confirmationDialog(
-            String(format: String(localized: "确定要移除标签“%@”吗？"), tagToDelete ?? ""),
+            String(format: AppLocalization.string("确定要移除标签“%@”吗？"), tagToDelete ?? ""),
             isPresented: Binding(
                 get: { tagToDelete != nil },
                 set: { if !$0 { tagToDelete = nil } }
@@ -195,7 +195,7 @@ struct TagManagementSheet: View {
 
     private var header: some View {
         HStack(spacing: 12) {
-            PanelHeader(title: target.title, subtitle: String(format: String(localized: "共 %lld 个标签"), allTagCounts.count), symbol: "tag")
+            PanelHeader(title: target.title, subtitle: String(format: AppLocalization.string("共 %lld 个标签"), allTagCounts.count), symbol: "tag")
             Spacer()
             Button("添加标签", systemImage: "plus") {
                 newCreatedTag = ""
@@ -234,7 +234,7 @@ struct TagManagementSheet: View {
 
                             Spacer()
 
-                            Text(String(format: String(localized: "%lld %@"), item.count, target.itemNoun))
+                            Text(String(format: AppLocalization.string("%lld %@"), item.count, target.itemNoun))
                                 .font(.caption.monospacedDigit())
                                 .foregroundStyle(.secondary)
                                 .padding(.horizontal, 7)
@@ -256,7 +256,7 @@ struct TagManagementSheet: View {
                                     .foregroundStyle(.red)
                             }
                             .buttonStyle(.plain)
-                            .accessibilityLabel(String(localized: "移除标签") + " " + item.tag)
+                            .accessibilityLabel(AppLocalization.string("移除标签") + " " + item.tag)
                             .help("移除标签")
                             .frame(width: 28, height: 28)
                             .padding(.leading, 4)
@@ -283,8 +283,8 @@ struct TagManagementSheet: View {
 
     private var renameSheet: some View {
         VStack(alignment: .leading, spacing: 14) {
-            PanelHeader(title: String(localized: "重命名 / 合并标签"), subtitle: "", symbol: "tag")
-            Text(String(format: String(localized: "将原标签“%@”更新为新名称："), editingTag ?? ""))
+            PanelHeader(title: AppLocalization.string("重命名 / 合并标签"), subtitle: "", symbol: "tag")
+            Text(String(format: AppLocalization.string("将原标签“%@”更新为新名称："), editingTag ?? ""))
                 .font(.callout).foregroundStyle(.secondary)
             TextField("新标签名称", text: $newTagName)
                 .textFieldStyle(.roundedBorder)
@@ -324,7 +324,7 @@ struct TagManagementSheet: View {
 
     private var addTagSheet: some View {
         VStack(alignment: .leading, spacing: 14) {
-            PanelHeader(title: String(localized: "添加新标签"), subtitle: "", symbol: "tag.fill")
+            PanelHeader(title: AppLocalization.string("添加新标签"), subtitle: "", symbol: "tag.fill")
             Text("输入标签名称。添加后将进入全局标签池，可在录入或编辑条目时选择使用。")
                 .font(.callout).foregroundStyle(.secondary)
 

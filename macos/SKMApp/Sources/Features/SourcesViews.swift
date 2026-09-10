@@ -5,6 +5,7 @@ import SwiftUI
 /// 提供单源单独更新、批量“更新所有来源”以及安全移除功能。
 struct SourcesSettingsView: View {
     @Bindable var model: AppModel
+    let language: AppLanguage
     @State private var showsAddSource = false
     @State private var sourceToRemove: SourceModel?
     @State private var confirmsRemoval = false
@@ -13,7 +14,7 @@ struct SourcesSettingsView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
                 VStack(alignment: .leading, spacing: 16) {
-                    PanelHeader(title: String(localized: "技能来源"), subtitle: String(localized: "通过团队或社区 Git 仓库获取并更新 Skills。认证继续由系统 Git 管理。"), symbol: "arrow.triangle.branch", tint: .green)
+                    PanelHeader(title: AppLocalization.string("技能来源"), subtitle: AppLocalization.string("通过团队或社区 Git 仓库获取并更新 Skills。认证继续由系统 Git 管理。"), symbol: "arrow.triangle.branch", tint: .green)
                     HStack {
                     Button("更新所有来源", systemImage: "arrow.triangle.2.circlepath") {
                         Task { await model.syncSources() }
@@ -55,7 +56,7 @@ struct SourcesSettingsView: View {
                     GroupBox("最近一次同步") {
                         VStack(alignment: .leading, spacing: 10) {
                             Text(String(
-                                format: String(localized: "成功 %lld · 失败 %lld · 更新 %lld 个 Skills"),
+                                format: AppLocalization.string("成功 %lld · 失败 %lld · 更新 %lld 个 Skills"),
                                 locale: .current,
                                 result.updated,
                                 result.failed,
@@ -74,10 +75,11 @@ struct SourcesSettingsView: View {
             }
             .readingLayout()
         }
-        .navigationTitle("技能来源")
+        .environment(\.locale, language.locale)
+        .navigationTitle(AppLocalization.string("技能来源"))
         .sheet(isPresented: $showsAddSource) { AddSourceSheet(model: model) }
         .confirmationDialog(
-            String(format: String(localized: "移除 %@？"), locale: .current, sourceToRemove?.name ?? ""),
+            String(format: AppLocalization.string("移除 %@？"), locale: .current, sourceToRemove?.name ?? ""),
             isPresented: $confirmsRemoval
         ) {
             if let sourceToRemove {
@@ -133,7 +135,7 @@ private struct SourceSettingsRow: View {
 
     private var status: String {
         let ref = source.ref ?? "HEAD"
-        let revision = source.revision.map { String($0.prefix(10)) } ?? String(localized: "尚未同步")
+        let revision = source.revision.map { String($0.prefix(10)) } ?? AppLocalization.string("尚未同步")
         return "\(ref) · \(revision)"
     }
 }
@@ -144,7 +146,7 @@ struct SourcesListView: View {
 
     var body: some View {
         content
-        .navigationTitle("Sources")
+        .navigationTitle(AppLocalization.string("Sources"))
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
                 Group {
@@ -191,7 +193,7 @@ private struct SourceRow: View {
     }
 
     private var revision: String {
-        source.revision.map { String($0.prefix(10)) } ?? String(localized: "尚未同步")
+        source.revision.map { String($0.prefix(10)) } ?? AppLocalization.string("尚未同步")
     }
 }
 
@@ -211,8 +213,8 @@ struct SourceDetailView: View {
                     GroupBox("Source 配置") {
                         VStack(alignment: .leading, spacing: 10) {
                             LabeledContent("分支 / Ref", value: source.ref ?? "HEAD")
-                            LabeledContent("Revision", value: source.revision ?? String(localized: "尚未同步"))
-                            LabeledContent("路径", value: source.paths?.joined(separator: ", ") ?? String(localized: "自动发现"))
+                            LabeledContent("Revision", value: source.revision ?? AppLocalization.string("尚未同步"))
+                            LabeledContent("路径", value: source.paths?.joined(separator: ", ") ?? AppLocalization.string("自动发现"))
                             LabeledContent("标签", value: source.tags.joined(separator: ", "))
                         }
                         .padding(8)
@@ -226,7 +228,7 @@ struct SourceDetailView: View {
                     if let result = model.sourceSyncResult {
                         GroupBox("最近一次统一同步") {
                             VStack(alignment: .leading, spacing: 8) {
-                                Text(String(format: String(localized: "成功 %lld · 失败 %lld · 更新 %lld 个 Skills"), locale: .current, result.updated, result.failed, result.skillCount))
+                                Text(String(format: AppLocalization.string("成功 %lld · 失败 %lld · 更新 %lld 个 Skills"), locale: .current, result.updated, result.failed, result.skillCount))
                                 ForEach(result.results) { item in
                                     SourceSyncRow(item: item)
                                 }
@@ -302,7 +304,7 @@ struct AddSourceSheet: View {
 
     private var headerView: some View {
         HStack {
-            PanelHeader(title: wizardStep == 0 ? String(localized: "添加 Skill Source") : String(localized: "选择要导入的 Skill"), subtitle: "", symbol: "arrow.triangle.branch", tint: .green)
+            PanelHeader(title: wizardStep == 0 ? AppLocalization.string("添加 Skill Source") : AppLocalization.string("选择要导入的 Skill"), subtitle: "", symbol: "arrow.triangle.branch", tint: .green)
             Spacer()
             Text(wizardStep == 0 ? "1/2 步：输入仓库" : "2/2 步：勾选技能")
                 .font(.caption)
@@ -374,7 +376,7 @@ struct AddSourceSheet: View {
 
                 HStack {
                     let validCandidates = preview.skills.filter(\.valid)
-                    Text(String(format: String(localized: "已选择 %lld / %lld 个可用技能"), locale: .current, selectedPaths.count, validCandidates.count))
+                    Text(String(format: AppLocalization.string("已选择 %lld / %lld 个可用技能"), locale: .current, selectedPaths.count, validCandidates.count))
                         .font(.callout)
                         .foregroundStyle(.secondary)
                     Spacer()
@@ -427,7 +429,7 @@ struct AddSourceSheet: View {
                 Button("取消", role: .cancel) { dismiss() }
                     .keyboardShortcut(.cancelAction)
                     .disabled(model.isLoading || isScanning)
-                Button(String(format: String(localized: "添加并导入 (%lld)"), locale: .current, selectedPaths.count)) {
+                Button(String(format: AppLocalization.string("添加并导入 (%lld)"), locale: .current, selectedPaths.count)) {
                     Task { await confirmImport() }
                 }
                 .buttonStyle(.borderedProminent)
@@ -533,7 +535,7 @@ private struct SourceSkillCandidateRow: View {
         }
         .buttonStyle(SelectionCardButtonStyle())
         .accessibilityLabel(candidate.name)
-        .accessibilityValue(isSelected ? String(localized: "已选择") : String(localized: "未选择"))
+        .accessibilityValue(isSelected ? AppLocalization.string("已选择") : AppLocalization.string("未选择"))
         .disabled(!candidate.valid)
     }
 }

@@ -76,6 +76,32 @@ final class AppModelTests: XCTestCase {
         )
     }
 
+    func testAppPreferencesPersistLanguageAndAppearance() {
+        defer { AppLocalization.configure(language: .system) }
+        let defaults = isolatedPreferences()
+        let preferences = AppPreferences(defaults: defaults)
+
+        XCTAssertEqual(preferences.language, .system)
+        XCTAssertEqual(preferences.appearance, .system)
+
+        preferences.language = .english
+        preferences.appearance = .dark
+
+        let restored = AppPreferences(defaults: defaults)
+        XCTAssertEqual(restored.language, .english)
+        XCTAssertEqual(restored.appearance, .dark)
+    }
+
+    func testAppLocalizationSwitchesLanguagesUsingCachedContext() {
+        defer { AppLocalization.configure(language: .system) }
+
+        AppLocalization.configure(language: .english)
+        XCTAssertEqual(AppLocalization.string("通用"), "General")
+
+        AppLocalization.configure(language: .simplifiedChinese)
+        XCTAssertEqual(AppLocalization.string("通用"), "通用")
+    }
+
     func testRegisterCustomTagTrimsAndDeduplicatesGlobalPool() {
         let preferences = isolatedPreferences()
         let model = AppModel(core: StubCore(), preferences: preferences, monitorsFiles: false)

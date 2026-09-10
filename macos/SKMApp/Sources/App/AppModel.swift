@@ -1,6 +1,7 @@
 import AppKit
 import Foundation
 import Observation
+import SwiftUI
 
 /// 主界面业务分区（左侧主导航栏）
 enum AppSection: String, CaseIterable, Identifiable {
@@ -12,6 +13,14 @@ enum AppSection: String, CaseIterable, Identifiable {
     case projects = "Projects"
 
     var id: String { rawValue }
+
+    var title: LocalizedStringKey {
+        switch self {
+        case .skills: "Skills"
+        case .prompts: "Prompts"
+        case .projects: "Projects"
+        }
+    }
 
     var symbol: String {
         switch self {
@@ -39,14 +48,14 @@ enum SettingsSection: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
-    var title: String {
+    var title: LocalizedStringKey {
         switch self {
-        case .general: String(localized: "通用")
-        case .fileAccess: String(localized: "权限访问")
-        case .agents: String(localized: "Agent 管理")
-        case .sources: String(localized: "技能来源")
-        case .gitSync: String(localized: "Git 同步")
-        case .updates: String(localized: "软件更新")
+        case .general: "通用"
+        case .fileAccess: "权限访问"
+        case .agents: "Agent 管理"
+        case .sources: "技能来源"
+        case .gitSync: "Git 同步"
+        case .updates: "软件更新"
         }
     }
 
@@ -146,7 +155,7 @@ final class AppModel {
     func start() async {
         guard handshake == nil, !isLoading else { return }
         isLoading = true
-        statusMessage = String(localized: "正在连接 Core…")
+        statusMessage = AppLocalization.string("正在连接 Core…")
         startupErrorMessage = nil
         defer { isLoading = false }
         do {
@@ -175,7 +184,7 @@ final class AppModel {
 
     /// 手动全量刷新所有业务数据
     func refresh() async {
-        await perform(String(localized: "正在刷新…")) { try await self.reload() }
+        await perform(AppLocalization.string("正在刷新…")) { try await self.reload() }
     }
 
     /// 发布状态提示文案，并在 2.5 秒后自动清除，同时触发 macOS VoiceOver 辅助功能播报
@@ -260,7 +269,7 @@ final class AppModel {
     func copyDiagnostics() {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(diagnosticText, forType: .string)
-        announce(String(localized: "诊断信息已复制"))
+        announce(AppLocalization.string("诊断信息已复制"))
     }
 
     func exportDiagnostics() {
@@ -269,7 +278,7 @@ final class AppModel {
         guard panel.runModal() == .OK, let url = panel.url else { return }
         do {
             try diagnosticText.write(to: url, atomically: true, encoding: .utf8)
-            announce(String(localized: "诊断信息已导出"))
+            announce(AppLocalization.string("诊断信息已导出"))
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -287,7 +296,7 @@ final class AppModel {
 
     /// 导入本地目录或 ZIP 压缩包作为 Skill
     func addLocalSkill(path: String, tags: [String]) async {
-        await mutate(success: String(localized: "Skill 已导入")) {
+        await mutate(success: AppLocalization.string("Skill 已导入")) {
             let _: MutationSkill = try await self.core.call("skills.add", params: AddSkillParams(path: path, tags: tags, source: "local"))
         }
     }
@@ -307,7 +316,7 @@ final class AppModel {
         paths: [String]? = nil,
         tags: [String] = []
     ) async -> Bool {
-        await mutateResult(success: String(localized: "Skills 已从 Git 仓库导入")) {
+        await mutateResult(success: AppLocalization.string("Skills 已从 Git 仓库导入")) {
             let _: AddSourceResponse = try await self.core.call(
                 "sources.add",
                 params: AddSourceParams(input: input, name: name, ref: ref, paths: paths, tags: tags)
@@ -318,14 +327,14 @@ final class AppModel {
     /// 在线更新 Skill 内容（带基于 baseHash 的乐观并发冲突检测）
     @discardableResult
     func updateSkill(id: String, content: String, baseHash: String, tags: [String]) async -> Bool {
-        await mutateResult(success: String(localized: "Skill 已保存并重新部署"), handlesConflict: true) {
+        await mutateResult(success: AppLocalization.string("Skill 已保存并重新部署"), handlesConflict: true) {
             let _: SkillUpdateResponse = try await self.core.call("skills.update", params: UpdateSkillParams(id: id, content: content, baseHash: baseHash, tags: tags))
         }
     }
 
     /// 移除指定 Skill（若有已生效部署将阻止或提示）
     func removeSkill(id: String) async {
-        await mutate(success: String(localized: "Skill 已移除")) {
+        await mutate(success: AppLocalization.string("Skill 已移除")) {
             let _: MutationSkill = try await self.core.call("skills.remove", params: IDParams(id: id))
             self.selectedSkillID = nil
         }
@@ -333,7 +342,7 @@ final class AppModel {
 
     /// 针对指定 Agent 启用或停用全局 Skill
     func setSkill(_ skillID: String, agentID: String, enabled: Bool) async {
-        await mutate(success: enabled ? String(localized: "已为 Agent 启用") : String(localized: "已停用")) {
+        await mutate(success: enabled ? AppLocalization.string("已为 Agent 启用") : AppLocalization.string("已停用")) {
             if enabled {
                 let _: PlanModel = try await self.core.call("activations.enable", params: ActivationParams(skills: [skillID], agents: [agentID], mode: "auto"))
             } else {
@@ -351,21 +360,21 @@ final class AppModel {
     func configureAgent(_ id: String, enabled: Bool) async {
         var selected = Set(agents.filter(\.configured).map(\.id))
         if enabled { selected.insert(id) } else { selected.remove(id) }
-        await mutate(success: String(localized: "Agent 配置已更新")) {
+        await mutate(success: AppLocalization.string("Agent 配置已更新")) {
             let _: [AgentModel] = try await self.core.call("agents.configure", params: ConfigureAgentsParams(agents: Array(selected).sorted()))
         }
     }
 
     /// 保存自定义 Agent 适配器路径配置
     func saveCustomAgent(id: String, name: String, path: String) async {
-        await mutate(success: String(localized: "自定义 Agent 已保存")) {
+        await mutate(success: AppLocalization.string("自定义 Agent 已保存")) {
             let _: [AgentModel] = try await self.core.call("agents.custom.save", params: CustomAgentParams(id: id, name: name, skillsPath: path))
         }
     }
 
     /// 删除自定义 Agent 适配器
     func deleteCustomAgent(id: String) async {
-        await mutate(success: String(localized: "自定义 Agent 已删除")) {
+        await mutate(success: AppLocalization.string("自定义 Agent 已删除")) {
             let _: StatusResponse = try await self.core.call("agents.custom.delete", params: IDParams(id: id))
             self.selectedAgentID = nil
         }
@@ -382,7 +391,7 @@ final class AppModel {
         variables: [PromptVariable],
         baseHash: String?
     ) async -> Bool {
-        await mutateResult(success: id == nil ? String(localized: "Prompt 已创建") : String(localized: "Prompt 已保存"), handlesConflict: true) {
+        await mutateResult(success: id == nil ? AppLocalization.string("Prompt 已创建") : AppLocalization.string("Prompt 已保存"), handlesConflict: true) {
             let params = PromptWriteParams(id: id, content: nil, name: name, description: description, tags: tags, body: body, variables: variables, source: "local", baseHash: baseHash)
             let _: PromptSummary = try await self.core.call(id == nil ? "prompts.create" : "prompts.update", params: params)
         }
@@ -390,7 +399,7 @@ final class AppModel {
 
     /// 导入外部 Markdown 文本为 Prompt
     func importPrompt(content: String) async {
-        await mutate(success: String(localized: "Prompt 已导入")) {
+        await mutate(success: AppLocalization.string("Prompt 已导入")) {
             let params = PromptWriteParams(id: nil, content: content, name: "", description: "", tags: [], body: "", variables: [], source: "local", baseHash: nil)
             let _: PromptSummary = try await self.core.call("prompts.create", params: params)
         }
@@ -414,7 +423,7 @@ final class AppModel {
     /// 回滚到指定的历史版本
     @discardableResult
     func rollbackHistory(kind: String, itemID: String, entryID: String) async -> Bool {
-        await mutateResult(success: String(localized: "历史版本已恢复"), handlesConflict: true) {
+        await mutateResult(success: AppLocalization.string("历史版本已恢复"), handlesConflict: true) {
             let _: HistoryRollbackResponse = try await self.core.call(
                 "history.rollback",
                 params: HistoryEntryParams(kind: kind, itemId: itemID, entryId: entryID)
@@ -424,7 +433,7 @@ final class AppModel {
 
     /// 移除 Prompt 模板
     func removePrompt(id: String) async {
-        await mutate(success: String(localized: "Prompt 已移除")) {
+        await mutate(success: AppLocalization.string("Prompt 已移除")) {
             let _: PromptSummary = try await self.core.call("prompts.remove", params: IDParams(id: id))
             self.selectedPromptID = nil
         }
@@ -432,7 +441,7 @@ final class AppModel {
 
     /// 加载并扫描指定项目的内部 Skills 与各 Agent 部署情况
     func loadProjectDetails(_ id: String) async {
-        await perform(String(localized: "正在扫描项目…")) {
+        await perform(AppLocalization.string("正在扫描项目…")) {
             let details: ProjectDetails = try await self.core.call("projects.get", params: IDParams(id: id))
             guard !Task.isCancelled, self.selectedProjectID == id else { return }
             self.projectDetails = details
@@ -441,14 +450,14 @@ final class AppModel {
 
     /// 登记本机项目目录
     func addProject(path: String, name: String) async {
-        await mutate(success: String(localized: "项目已登记")) {
+        await mutate(success: AppLocalization.string("项目已登记")) {
             let _: RegisteredProject = try await self.core.call("projects.add", params: AddProjectParams(path: path, name: name))
         }
     }
 
     /// 注销项目登记（不删除项目源码文件）
     func unregisterProject(id: String) async {
-        await mutate(success: String(localized: "项目已注销")) {
+        await mutate(success: AppLocalization.string("项目已注销")) {
             let _: RegisteredProject = try await self.core.call("projects.unregister", params: IDParams(id: id))
             self.selectedProjectID = nil
             self.projectDetails = nil
@@ -458,7 +467,7 @@ final class AppModel {
     /// 部署 Skill 到指定项目（支持 dryRun 预演预览与真实应用）
     func deployProject(project: String, skill: String, agents: [String], mode: String, dryRun: Bool) async {
         let succeeded = await mutateResult(
-            success: dryRun ? String(localized: "部署预览已生成") : String(localized: "项目部署已完成"),
+            success: dryRun ? AppLocalization.string("部署预览已生成") : AppLocalization.string("项目部署已完成"),
             reloads: !dryRun
         ) {
             let response: ProjectDeployResponse = try await self.core.call(
@@ -475,7 +484,7 @@ final class AppModel {
 
     /// 解除项目内 Skill 与各 Agent 的部署绑定
     func unlinkProject(project: String, skill: String, agents: [String]) async {
-        let succeeded = await mutateResult(success: String(localized: "项目 Skill 已解绑")) {
+        let succeeded = await mutateResult(success: AppLocalization.string("项目 Skill 已解绑")) {
             let _: StatusResponse = try await self.core.call(
                 "projects.unlink",
                 params: ProjectUnlinkParams(project: project, skill: skill, agents: agents, force: false)
@@ -486,7 +495,7 @@ final class AppModel {
 
     /// 迁移项目内已有的散装 Skill 为 SKM 受管格式
     func migrateProjectSkill(project: String, skill: String, agent: String, mode: String, removeSource: Bool) async {
-        let succeeded = await mutateResult(success: String(localized: "项目 Skill 已迁移")) {
+        let succeeded = await mutateResult(success: AppLocalization.string("项目 Skill 已迁移")) {
             let _: ProjectMigrateResponse = try await self.core.call(
                 "projects.migrate",
                 params: ProjectMigrateParams(project: project, skill: skill, agent: agent, mode: mode, removeSource: removeSource, tags: [])
@@ -497,7 +506,7 @@ final class AppModel {
 
     /// 固定项目依赖（在项目清单中声明 Require）
     func requireProjectSkill(project: String, skill: String, agents: [String], mode: String) async {
-        let succeeded = await mutateResult(success: String(localized: "项目依赖已固定")) {
+        let succeeded = await mutateResult(success: AppLocalization.string("项目依赖已固定")) {
             let _: ProjectAdvancedResponse = try await self.core.call(
                 "projects.require",
                 params: ProjectRequireParams(project: project, skill: skill, agents: agents, mode: mode, apply: false)
@@ -508,7 +517,7 @@ final class AppModel {
 
     /// 将 Skill 源码直接 Vendor 拷贝到项目中
     func vendorProjectSkill(project: String, skill: String, agents: [String], mode: String) async {
-        let succeeded = await mutateResult(success: String(localized: "Skill 已 Vendor 到项目")) {
+        let succeeded = await mutateResult(success: AppLocalization.string("Skill 已 Vendor 到项目")) {
             let _: ProjectAdvancedResponse = try await self.core.call(
                 "projects.vendor",
                 params: ProjectVendorParams(project: project, skill: skill, agents: agents, mode: mode, tags: [], apply: false)
@@ -519,7 +528,7 @@ final class AppModel {
 
     /// 根据项目清单（Manifest）应用并修复所有依赖部署
     func applyProjectManifest(project: String, force: Bool = false) async {
-        let succeeded = await mutateResult(success: String(localized: "项目清单已应用")) {
+        let succeeded = await mutateResult(success: AppLocalization.string("项目清单已应用")) {
             let _: ProjectAdvancedResponse = try await self.core.call(
                 "projects.apply",
                 params: ProjectApplyParams(project: project, force: force)
@@ -530,7 +539,7 @@ final class AppModel {
 
     /// 移除项目清单中的特定条目
     func removeProjectEntry(project: String, entry: String, force: Bool = false) async {
-        let succeeded = await mutateResult(success: String(localized: "项目清单条目已移除")) {
+        let succeeded = await mutateResult(success: AppLocalization.string("项目清单条目已移除")) {
             let _: ProjectAdvancedResponse = try await self.core.call(
                 "projects.entry.remove",
                 params: ProjectEntryRemoveParams(project: project, entry: entry, force: force)
@@ -565,7 +574,7 @@ final class AppModel {
         paths: [String]? = nil,
         tags: [String] = []
     ) async -> Bool {
-        await mutateResult(success: String(localized: "Git Source 已添加")) {
+        await mutateResult(success: AppLocalization.string("Git Source 已添加")) {
             let _: AddSourceResponse = try await self.core.call(
                 "sources.add",
                 params: AddSourceParams(input: input, name: name, ref: ref, paths: paths, tags: tags)
@@ -575,14 +584,14 @@ final class AppModel {
 
     /// 更新指定的单个 Git 技能源
     func updateSource(name: String) async {
-        await mutate(success: String(localized: "Git Source 已更新")) {
+        await mutate(success: AppLocalization.string("Git Source 已更新")) {
             let _: SourceUpdateResponse = try await self.core.call("sources.update", params: SourceNamesParams(names: [name]))
         }
     }
 
     /// 移除 Git 技能源
     func removeSource(name: String) async {
-        await mutate(success: String(localized: "Git Source 已移除")) {
+        await mutate(success: AppLocalization.string("Git Source 已移除")) {
             let _: SourceRemovalResponse = try await self.core.call("sources.remove", params: IDParams(id: name))
             self.selectedSourceID = nil
         }
@@ -590,14 +599,14 @@ final class AppModel {
 
     /// 批量拉取并同步所有 Git 来源
     func syncSources() async {
-        await mutate(success: String(localized: "所有 Git Sources 已同步")) {
+        await mutate(success: AppLocalization.string("所有 Git Sources 已同步")) {
             self.sourceSyncResult = try await self.core.call("sources.sync", params: EmptyParams())
         }
     }
 
     /// 配置个人 Git 工作区（绑定同步远端）
     func configureWorkspace(url: String, ref: String, root: String) async {
-        await mutate(success: String(localized: "个人工作区已配置")) {
+        await mutate(success: AppLocalization.string("个人工作区已配置")) {
             let _: WorkspaceView = try await self.core.call(
                 "workspace.configure",
                 params: WorkspaceConfigureParams(url: url, ref: ref, root: root.isEmpty ? nil : root)
@@ -607,7 +616,7 @@ final class AppModel {
 
     /// 预演个人工作区双向同步差异
     func previewWorkspace() async {
-        await perform(String(localized: "正在预览同步…")) {
+        await perform(AppLocalization.string("正在预览同步…")) {
             self.workspacePreview = try await self.core.call("workspace.preview", params: EmptyParams())
             self.workspaceResolutions = [:]
         }
@@ -615,7 +624,7 @@ final class AppModel {
 
     /// 执行个人工作区同步（应用冲突决议方案并提交推拉）
     func syncWorkspace() async {
-        let succeeded = await mutateResult(success: String(localized: "个人工作区同步完成")) {
+        let succeeded = await mutateResult(success: AppLocalization.string("个人工作区同步完成")) {
             let _: WorkspaceSyncResponse = try await self.core.call(
                 "workspace.sync",
                 params: WorkspaceSyncParams(resolutions: self.workspaceResolutions)
@@ -633,7 +642,7 @@ final class AppModel {
             await previewWorkspace()
             if let preview = workspacePreview {
                 if preview.changes.isEmpty {
-                    announce(String(localized: "已与远端保持完全同步"))
+                    announce(AppLocalization.string("已与远端保持完全同步"))
                 } else if preview.conflicts == 0 {
                     await syncWorkspace()
                 } else {
@@ -654,7 +663,7 @@ final class AppModel {
         let affected = skills.filter { $0.tags.contains(oldTag) }
         guard !affected.isEmpty else { return }
 
-        await perform(String(format: String(localized: "正在更新 %lld 个 Skill 的标签…"), affected.count)) {
+        await perform(String(format: AppLocalization.string("正在更新 %lld 个 Skill 的标签…"), affected.count)) {
             for summary in affected {
                 if let details: SkillDetails = try? await self.core.call("skills.get", params: IDParams(id: summary.id)) {
                     var newTags = details.tags.map { $0 == oldTag ? trimmedNew : $0 }
@@ -667,7 +676,7 @@ final class AppModel {
             }
             await self.refresh()
         }
-        announce(String(localized: "标签已更新"))
+        announce(AppLocalization.string("标签已更新"))
     }
 
     /// 批量从所有 Skill 中移除指定标签
@@ -675,7 +684,7 @@ final class AppModel {
         let affected = skills.filter { $0.tags.contains(tag) }
         guard !affected.isEmpty else { return }
 
-        await perform(String(format: String(localized: "正在从 %lld 个 Skill 中移除标签…"), affected.count)) {
+        await perform(String(format: AppLocalization.string("正在从 %lld 个 Skill 中移除标签…"), affected.count)) {
             for summary in affected {
                 if let details: SkillDetails = try? await self.core.call("skills.get", params: IDParams(id: summary.id)) {
                     let newTags = details.tags.filter { $0 != tag }
@@ -687,7 +696,7 @@ final class AppModel {
             }
             await self.refresh()
         }
-        announce(String(localized: "标签已移除"))
+        announce(AppLocalization.string("标签已移除"))
     }
 
     /// 批量重命名或合并 Prompt 标签
@@ -697,7 +706,7 @@ final class AppModel {
         let affected = prompts.filter { $0.tags.contains(oldTag) }
         guard !affected.isEmpty else { return }
 
-        await perform(String(format: String(localized: "正在更新 %lld 个 Prompt 的标签…"), affected.count)) {
+        await perform(String(format: AppLocalization.string("正在更新 %lld 个 Prompt 的标签…"), affected.count)) {
             for summary in affected {
                 if let details: PromptDetails = try? await self.core.call("prompts.get", params: IDParams(id: summary.id)) {
                     var newTags = details.tags.map { $0 == oldTag ? trimmedNew : $0 }
@@ -720,7 +729,7 @@ final class AppModel {
             }
             await self.refresh()
         }
-        announce(String(localized: "标签已更新"))
+        announce(AppLocalization.string("标签已更新"))
     }
 
     /// 批量从所有 Prompt 中移除指定标签
@@ -728,7 +737,7 @@ final class AppModel {
         let affected = prompts.filter { $0.tags.contains(tag) }
         guard !affected.isEmpty else { return }
 
-        await perform(String(format: String(localized: "正在从 %lld 个 Prompt 中移除标签…"), affected.count)) {
+        await perform(String(format: AppLocalization.string("正在从 %lld 个 Prompt 中移除标签…"), affected.count)) {
             for summary in affected {
                 if let details: PromptDetails = try? await self.core.call("prompts.get", params: IDParams(id: summary.id)) {
                     let newTags = details.tags.filter { $0 != tag }
@@ -750,7 +759,7 @@ final class AppModel {
             }
             await self.refresh()
         }
-        announce(String(localized: "标签已移除"))
+        announce(AppLocalization.string("标签已移除"))
     }
 
     private static let customTagsStorageKey = "skm.custom.tags"
@@ -777,7 +786,7 @@ final class AppModel {
 
     /// 运行系统 Doctor 健康诊断
     func runDoctor() async {
-        await perform(String(localized: "正在运行诊断…")) {
+        await perform(AppLocalization.string("正在运行诊断…")) {
             self.doctorChecks = try await self.core.call("system.doctor", params: EmptyParams())
         }
     }
@@ -785,11 +794,11 @@ final class AppModel {
     /// 检查软件更新（优先 Sparkle，次选 GitHub Releases API）
     func checkForUpdates() async {
         if SparkleUpdater.shared.isConfigured {
-            updateStatus = String(localized: "已打开安全更新检查窗口")
+            updateStatus = AppLocalization.string("已打开安全更新检查窗口")
             SparkleUpdater.shared.checkForUpdates()
             return
         }
-        updateStatus = String(localized: "正在检查更新…")
+        updateStatus = AppLocalization.string("正在检查更新…")
         do {
             let url = URL(string: "https://api.github.com/repos/zzzzzyijie/skm/releases/latest")!
             var request = URLRequest(url: url)
@@ -801,10 +810,10 @@ final class AppModel {
             let release = try JSONDecoder().decode(GitHubRelease.self, from: data)
             let current = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.0.0"
             updateStatus = Self.isVersion(release.tagName, newerThan: current)
-                ? String(format: String(localized: "发现新版本 %@"), locale: .current, release.tagName)
-                : String(localized: "当前已是最新版本")
+                ? String(format: AppLocalization.string("发现新版本 %@"), locale: .current, release.tagName)
+                : AppLocalization.string("当前已是最新版本")
         } catch {
-            updateStatus = String(format: String(localized: "检查更新失败：%@"), locale: .current, error.localizedDescription)
+            updateStatus = String(format: AppLocalization.string("检查更新失败：%@"), locale: .current, error.localizedDescription)
         }
     }
 
@@ -864,7 +873,7 @@ final class AppModel {
             Task { @MainActor in
                 do {
                     try await self.reload()
-                    self.announce(String(localized: "检测到 CLI 变更，已刷新"))
+                    self.announce(AppLocalization.string("检测到 CLI 变更，已刷新"))
                 } catch {
                     self.errorMessage = error.localizedDescription
                 }
@@ -888,7 +897,7 @@ final class AppModel {
     }
 
     private func mutate(success: String, operation: () async throws -> Void) async {
-        await perform(String(localized: "正在应用更改…")) {
+        await perform(AppLocalization.string("正在应用更改…")) {
             try await operation()
             try await self.reload()
             self.announce(success)
@@ -903,7 +912,7 @@ final class AppModel {
         operation: () async throws -> Void
     ) async -> Bool {
         isLoading = true
-        statusMessage = String(localized: "正在应用更改…")
+        statusMessage = AppLocalization.string("正在应用更改…")
         errorMessage = nil
         lastErrorKind = nil
         defer { isLoading = false }

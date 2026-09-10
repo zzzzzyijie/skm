@@ -10,6 +10,8 @@
 		0C79DA33D91EAE8D0A4F3553 /* InspectorGroupBoxStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47C137E66A78A167670D4AFE /* InspectorGroupBoxStyle.swift */; };
 		1106670EBC61298B38943484 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D56DEEB6D28F2D9D5398609B /* Assets.xcassets */; };
 		1C0F2792556C4FB4B69120B1 /* SKMUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 925BF8832F4F69FCAB6ECE74 /* SKMUITests.swift */; };
+		1F56503D07C98F44A76DE615 /* AppLocalization.swift in Sources */ = {isa = PBXBuildFile; fileRef = C12DD918931794B758DAE072 /* AppLocalization.swift */; };
+		2B1BDAD225876184D3D7FC2B /* AppAppearance.swift in Sources */ = {isa = PBXBuildFile; fileRef = 878805978825602762366CFB /* AppAppearance.swift */; };
 		2FE381984829C4049976FB3D /* DesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1D31710ABED56CEAB0F7D67 /* DesignSystem.swift */; };
 		396B6DD9A88BDA9C3DBDA4D5 /* PromptSummaryRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1074881C2DD9367A14D9076B /* PromptSummaryRow.swift */; };
 		3BD30DBC41B24FDF9CA5E7E0 /* DiagnosticsViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBA02051547FBD0A3CAF0EAF /* DiagnosticsViews.swift */; };
@@ -24,6 +26,7 @@
 		7413D065476DEF2CA7DB5D8F /* CoreClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 429783E93603296CB2D7CB42 /* CoreClient.swift */; };
 		78ACAAFA032D10D67A330BE5 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E40BC7CB40783A97247789F /* Models.swift */; };
 		7B3CE6EDA1AB17E230733180 /* CollectionFooter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E030C3F38A850897DC57359 /* CollectionFooter.swift */; };
+		849D466F42B7FD04DEC7EA51 /* AppLocalizationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E211D548729521AFFE5FB68 /* AppLocalizationStore.swift */; };
 		84D9A7B9C97070C47EF3E3E1 /* SparkleUpdater.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA350D100C89E308AB417EA4 /* SparkleUpdater.swift */; };
 		905C944DD4A4A6BBC00F6426 /* ProjectAccessStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2483C4BCEAEDDD8CE184879 /* ProjectAccessStatus.swift */; };
 		919DCF2691386FBE7BFB1648 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = 6BD7A66D76F77CCA9DDC0956 /* Sparkle */; };
@@ -31,6 +34,7 @@
 		9F549DC12757A782F7B5AA03 /* TuistBundle+SKM.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FE6F8EA1789EACD76C69584 /* TuistBundle+SKM.swift */; };
 		9FDDA2849C51B2419F28CE50 /* AppModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D911E9F0468B541067E4B286 /* AppModelTests.swift */; };
 		A59F9AC65EC3577FF5D8CA74 /* AgentsViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19FCDAC7FF254EBCA9F8F78C /* AgentsViews.swift */; };
+		BB00EFE2EC0E36C6E662EC76 /* LanguageAppearanceSettingsSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = E16A977263907B73EC763483 /* LanguageAppearanceSettingsSection.swift */; };
 		BBF3D1A8ABD1123182814613 /* SelectionCardButtonStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = E842AF3F5053B918ACC0D566 /* SelectionCardButtonStyle.swift */; };
 		C490F877B4384F857218C5A2 /* SurfaceStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6949D72AE0AB63E2CA7E5F11 /* SurfaceStyle.swift */; };
 		C9B9B1E200AB7B41C7565D5D /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E58F665593E8DCC13790995F /* RootView.swift */; };
@@ -45,7 +49,9 @@
 		E789670D7BD7FCBF3E6D9884 /* CodeBlockView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56F4800B996F27776D005556 /* CodeBlockView.swift */; };
 		EDF7A073596CFA3FFC20EE47 /* SKMApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2802B0E8AB8EFD1728F8C910 /* SKMApp.swift */; };
 		EE3144970030F3523BC9897D /* SidebarNavigationButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21FE3F50AEC320EBF97E27F1 /* SidebarNavigationButton.swift */; };
+		EF294630BD70A2D09DB48782 /* AppPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF91BB337F7AC21ECAA1A7E8 /* AppPreferences.swift */; };
 		F414ECF3C7108F46856EE347 /* ModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 563C8963967743430C0ACAB0 /* ModelsTests.swift */; };
+		F7D4623E4AD58ECB572B9C85 /* AppLanguage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25EDCBF308CB9CC58E04535D /* AppLanguage.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -107,6 +113,7 @@
 		1FB22256EEC751C92BD208FB /* TagGroupHeader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagGroupHeader.swift; sourceTree = "<group>"; };
 		20709688D10BA879FDCA531B /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
 		21FE3F50AEC320EBF97E27F1 /* SidebarNavigationButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarNavigationButton.swift; sourceTree = "<group>"; };
+		25EDCBF308CB9CC58E04535D /* AppLanguage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLanguage.swift; sourceTree = "<group>"; };
 		2802B0E8AB8EFD1728F8C910 /* SKMApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SKMApp.swift; sourceTree = "<group>"; };
 		32A2DA6658A101CFB7A62977 /* Localizable.xcstrings */ = {isa = PBXFileReference; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		37872FA8150C4D8CFF7FB6A6 /* TuistAssets+SKM.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TuistAssets+SKM.swift"; sourceTree = "<group>"; };
@@ -126,20 +133,25 @@
 		76395AA4D3CDB13A2EA08F96 /* WorkspaceViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceViews.swift; sourceTree = "<group>"; };
 		7E40BC7CB40783A97247789F /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
 		82654FEC2F213C35924EBDFB /* SKMUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SKMUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		878805978825602762366CFB /* AppAppearance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppAppearance.swift; sourceTree = "<group>"; };
 		8A3742F40E78420077C423A6 /* SkillsViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillsViews.swift; sourceTree = "<group>"; };
+		8E211D548729521AFFE5FB68 /* AppLocalizationStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLocalizationStore.swift; sourceTree = "<group>"; };
 		925BF8832F4F69FCAB6ECE74 /* SKMUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SKMUITests.swift; sourceTree = "<group>"; };
 		9585417417B2663EA125A498 /* ProjectSkillImportSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectSkillImportSheet.swift; sourceTree = "<group>"; };
 		9AD20F122D4A8DEB8587E1AF /* ProjectAccessSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectAccessSettingsView.swift; sourceTree = "<group>"; };
 		A31D5DC3D0B1C74CA854A593 /* PromptsViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptsViews.swift; sourceTree = "<group>"; };
 		AA350D100C89E308AB417EA4 /* SparkleUpdater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SparkleUpdater.swift; sourceTree = "<group>"; };
 		BB6FCBC6C244094C7D0648A4 /* SKMUITests-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "SKMUITests-Info.plist"; sourceTree = "<group>"; };
+		C12DD918931794B758DAE072 /* AppLocalization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLocalization.swift; sourceTree = "<group>"; };
 		C8B9870A04BD844142411527 /* PanelHeader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PanelHeader.swift; sourceTree = "<group>"; };
 		D56DEEB6D28F2D9D5398609B /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		D911E9F0468B541067E4B286 /* AppModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModelTests.swift; sourceTree = "<group>"; };
+		E16A977263907B73EC763483 /* LanguageAppearanceSettingsSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanguageAppearanceSettingsSection.swift; sourceTree = "<group>"; };
 		E58F665593E8DCC13790995F /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		E7D5ED73DEC697DC570DD504 /* SheetChrome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SheetChrome.swift; sourceTree = "<group>"; };
 		E842AF3F5053B918ACC0D566 /* SelectionCardButtonStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectionCardButtonStyle.swift; sourceTree = "<group>"; };
 		EBA02051547FBD0A3CAF0EAF /* DiagnosticsViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiagnosticsViews.swift; sourceTree = "<group>"; };
+		EF91BB337F7AC21ECAA1A7E8 /* AppPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppPreferences.swift; sourceTree = "<group>"; };
 		F1D31710ABED56CEAB0F7D67 /* DesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignSystem.swift; sourceTree = "<group>"; };
 		F2483C4BCEAEDDD8CE184879 /* ProjectAccessStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectAccessStatus.swift; sourceTree = "<group>"; };
 		FE1364B3F26E98BFC6EAB5A9 /* SKMTests-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "SKMTests-Info.plist"; sourceTree = "<group>"; };
@@ -174,7 +186,12 @@
 		02F15441FAF91E9102D96F6A /* App */ = {
 			isa = PBXGroup;
 			children = (
+				878805978825602762366CFB /* AppAppearance.swift */,
+				25EDCBF308CB9CC58E04535D /* AppLanguage.swift */,
+				C12DD918931794B758DAE072 /* AppLocalization.swift */,
+				8E211D548729521AFFE5FB68 /* AppLocalizationStore.swift */,
 				20709688D10BA879FDCA531B /* AppModel.swift */,
+				EF91BB337F7AC21ECAA1A7E8 /* AppPreferences.swift */,
 				3E030C3F38A850897DC57359 /* CollectionFooter.swift */,
 				F1D31710ABED56CEAB0F7D67 /* DesignSystem.swift */,
 				47C137E66A78A167670D4AFE /* InspectorGroupBoxStyle.swift */,
@@ -245,6 +262,7 @@
 				19FCDAC7FF254EBCA9F8F78C /* AgentsViews.swift */,
 				56F4800B996F27776D005556 /* CodeBlockView.swift */,
 				EBA02051547FBD0A3CAF0EAF /* DiagnosticsViews.swift */,
+				E16A977263907B73EC763483 /* LanguageAppearanceSettingsSection.swift */,
 				3A58F83E890D35697F62B82B /* Phase3Views.swift */,
 				9AD20F122D4A8DEB8587E1AF /* ProjectAccessSettingsView.swift */,
 				9585417417B2663EA125A498 /* ProjectSkillImportSheet.swift */,
@@ -495,7 +513,12 @@
 			files = (
 				DDF27EC8381E6AC6FD5162E8 /* TuistAssets+SKM.swift in Sources */,
 				9F549DC12757A782F7B5AA03 /* TuistBundle+SKM.swift in Sources */,
+				2B1BDAD225876184D3D7FC2B /* AppAppearance.swift in Sources */,
+				F7D4623E4AD58ECB572B9C85 /* AppLanguage.swift in Sources */,
+				1F56503D07C98F44A76DE615 /* AppLocalization.swift in Sources */,
+				849D466F42B7FD04DEC7EA51 /* AppLocalizationStore.swift in Sources */,
 				DB4764650C774C5DD15C0660 /* AppModel.swift in Sources */,
+				EF294630BD70A2D09DB48782 /* AppPreferences.swift in Sources */,
 				7B3CE6EDA1AB17E230733180 /* CollectionFooter.swift in Sources */,
 				2FE381984829C4049976FB3D /* DesignSystem.swift in Sources */,
 				0C79DA33D91EAE8D0A4F3553 /* InspectorGroupBoxStyle.swift in Sources */,
@@ -515,6 +538,7 @@
 				A59F9AC65EC3577FF5D8CA74 /* AgentsViews.swift in Sources */,
 				E789670D7BD7FCBF3E6D9884 /* CodeBlockView.swift in Sources */,
 				3BD30DBC41B24FDF9CA5E7E0 /* DiagnosticsViews.swift in Sources */,
+				BB00EFE2EC0E36C6E662EC76 /* LanguageAppearanceSettingsSection.swift in Sources */,
 				721F009D1D6F5C349F5E6D6E /* Phase3Views.swift in Sources */,
 				9E53801E2B3685C530A3707D /* ProjectAccessSettingsView.swift in Sources */,
 				4D8B9384A3049702862DF2C4 /* ProjectSkillImportSheet.swift in Sources */,

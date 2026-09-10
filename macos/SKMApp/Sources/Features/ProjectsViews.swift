@@ -63,7 +63,7 @@ struct ProjectsListView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             CollectionFooter(count: filteredProjects.count, symbol: "folder")
         }
-        .navigationTitle("Projects")
+        .navigationTitle(AppLocalization.string("Projects"))
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button("添加项目", systemImage: "plus") {
@@ -107,7 +107,7 @@ struct AddProjectSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            PanelHeader(title: String(localized: "添加项目"), subtitle: String(localized: "连接本机项目，集中查看和部署它的 Skills。"), symbol: "folder.badge.plus")
+            PanelHeader(title: AppLocalization.string("添加项目"), subtitle: AppLocalization.string("连接本机项目，集中查看和部署它的 Skills。"), symbol: "folder.badge.plus")
             Form {
                 HStack {
                     TextField("项目目录", text: $path)
@@ -260,17 +260,17 @@ struct ProjectDetailView: View {
     private func projectOverview(_ details: ProjectDetails) -> some View {
         HStack(spacing: 12) {
             MetricCard(
-                title: String(localized: "项目 Skills"),
+                title: AppLocalization.string("项目 Skills"),
                 value: details.scan.skillCount.description,
                 symbol: "square.stack.3d.up"
             )
             MetricCard(
-                title: String(localized: "使用中的 Agent"),
+                title: AppLocalization.string("使用中的 Agent"),
                 value: details.scan.agents.filter { $0.skillCount > 0 }.count.description,
                 symbol: "cpu"
             )
             MetricCard(
-                title: String(localized: "受管 Skill"),
+                title: AppLocalization.string("受管 Skill"),
                 value: details.activations.count.description,
                 symbol: "checkmark.shield"
             )
@@ -451,7 +451,7 @@ private struct ProjectMigrationSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            PanelHeader(title: String(localized: "迁移 \(skill.name)"), subtitle: String(localized: "把项目中的技能加入个人资料库。"), symbol: "tray.and.arrow.down")
+            PanelHeader(title: AppLocalization.string("迁移 \(skill.name)"), subtitle: AppLocalization.string("把项目中的技能加入个人资料库。"), symbol: "tray.and.arrow.down")
             Picker("来源 Agent", selection: $agent) {
                 ForEach(skill.agents, id: \.self) { Text($0).tag($0) }
             }

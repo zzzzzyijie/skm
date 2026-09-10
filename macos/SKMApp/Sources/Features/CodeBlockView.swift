@@ -11,7 +11,7 @@ struct CodeBlockView: View {
                 Image(systemName: "chevron.left.forwardslash.chevron.right")
                     .accessibilityHidden(true)
                 Spacer()
-                Button(copied ? String(localized: "已复制") : String(localized: "复制"), systemImage: copied ? "checkmark" : "doc.on.doc", action: copy)
+                Button(copied ? AppLocalization.string("已复制") : AppLocalization.string("复制"), systemImage: copied ? "checkmark" : "doc.on.doc", action: copy)
                     .buttonStyle(.borderless)
                     .help("复制代码")
             }

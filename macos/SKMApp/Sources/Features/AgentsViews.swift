@@ -58,6 +58,7 @@ struct AgentIconView: View {
 /// 并支持添加、编辑与删除指向特定目录的自定义 Agent 适配器。
 struct AgentsSettingsView: View {
     @Bindable var model: AppModel
+    let language: AppLanguage
     @State private var showsEditor = false
     @State private var editingAgent: AgentModel?
     @State private var agentToDelete: AgentModel?
@@ -95,7 +96,7 @@ struct AgentsSettingsView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 26) {
                 VStack(alignment: .leading, spacing: 16) {
-                    PanelHeader(title: "Agents", subtitle: String(localized: "管理支持的 AI 工具。启用后，你可以从 Skill 详情中一键部署。"), symbol: "cpu", tint: .purple)
+                    PanelHeader(title: "Agents", subtitle: AppLocalization.string("管理支持的 AI 工具。启用后，你可以从 Skill 详情中一键部署。"), symbol: "cpu", tint: .purple)
                     Button("添加自定义 Agent", systemImage: "plus") {
                         editingAgent = nil
                         showsEditor = true
@@ -105,19 +106,19 @@ struct AgentsSettingsView: View {
 
                 HStack(spacing: 10) {
                     AgentSummaryPill(
-                        title: String(localized: "已启用"),
+                        title: AppLocalization.string("已启用"),
                         value: configuredCount,
                         systemImage: "checkmark.circle.fill",
                         tint: .accentColor
                     )
                     AgentSummaryPill(
-                        title: String(localized: "本机已检测"),
+                        title: AppLocalization.string("本机已检测"),
                         value: detectedCount,
                         systemImage: "desktopcomputer",
                         tint: .green
                     )
                     AgentSummaryPill(
-                        title: String(localized: "全部 Agent"),
+                        title: AppLocalization.string("全部 Agent"),
                         value: model.agents.count,
                         systemImage: "cpu",
                         tint: .secondary
@@ -135,15 +136,15 @@ struct AgentsSettingsView: View {
                     LazyVStack(alignment: .leading, spacing: 22) {
                         if !configuredAgents.isEmpty {
                             agentSection(
-                                title: String(localized: "已启用"),
-                                subtitle: String(localized: "这些 Agent 可以使用我的 Skill"),
+                                title: AppLocalization.string("已启用"),
+                                subtitle: AppLocalization.string("这些 Agent 可以使用我的 Skill"),
                                 agents: configuredAgents
                             )
                         }
                         if !availableAgents.isEmpty {
                             agentSection(
-                                title: String(localized: "其他 Agent"),
-                                subtitle: String(localized: "启用后即可统一部署和更新"),
+                                title: AppLocalization.string("其他 Agent"),
+                                subtitle: AppLocalization.string("启用后即可统一部署和更新"),
                                 agents: availableAgents
                             )
                         }
@@ -152,12 +153,13 @@ struct AgentsSettingsView: View {
             }
             .readingLayout()
         }
-        .navigationTitle("Agent 管理")
+        .environment(\.locale, language.locale)
+        .navigationTitle(AppLocalization.string("Agent 管理"))
         .sheet(isPresented: $showsEditor, onDismiss: { editingAgent = nil }) {
             CustomAgentSheet(model: model, agent: editingAgent)
         }
         .confirmationDialog(
-            String(format: String(localized: "删除 %@？"), locale: .current, agentToDelete?.name ?? ""),
+            String(format: AppLocalization.string("删除 %@？"), locale: .current, agentToDelete?.name ?? ""),
             isPresented: $confirmsDelete
         ) {
             if let agentToDelete {
@@ -253,7 +255,7 @@ private struct AgentSettingsRow: View {
                             .background(.quaternary, in: Capsule())
                     }
                 }
-                Text(agent.path ?? String(localized: "未提供 Skill 路径"))
+                Text(agent.path ?? AppLocalization.string("未提供 Skill 路径"))
                     .font(.caption.monospaced())
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
@@ -322,8 +324,8 @@ private struct AgentStateBadge: View {
     }
 
     private var title: String {
-        if agent.configured { return String(localized: "已启用") }
-        return agent.detected ? String(localized: "已检测") : String(localized: "未检测")
+        if agent.configured { return AppLocalization.string("已启用") }
+        return agent.detected ? AppLocalization.string("已检测") : AppLocalization.string("未检测")
     }
 
     private var symbol: String {
@@ -360,8 +362,8 @@ struct AgentsListView: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(agent.name).fontWeight(.medium)
                     Text(agent.configured
-                         ? String(localized: "已启用")
-                         : (agent.detected ? String(localized: "已检测") : String(localized: "未检测")))
+                         ? AppLocalization.string("已启用")
+                         : (agent.detected ? AppLocalization.string("已检测") : AppLocalization.string("未检测")))
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer()
@@ -372,7 +374,7 @@ struct AgentsListView: View {
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(agentAccessibilityLabel(agent))
         }
-        .navigationTitle("Agents")
+        .navigationTitle(AppLocalization.string("Agents"))
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button("添加自定义 Agent", systemImage: "plus") { showsCustomAgent = true }
@@ -396,7 +398,7 @@ struct AgentDetailView: View {
                         AgentIconView(agentId: agent.id, isCustom: agent.custom, size: 64)
                         VStack(alignment: .leading, spacing: 5) {
                             Text(agent.name).font(.largeTitle.bold())
-                            Text(agent.custom ? String(localized: "自定义 Agent") : String(localized: "内置 Agent"))
+                            Text(agent.custom ? AppLocalization.string("自定义 Agent") : AppLocalization.string("内置 Agent"))
                                 .foregroundStyle(.secondary)
                         }
                     }
@@ -410,11 +412,11 @@ struct AgentDetailView: View {
                     }
                     GroupBox("路径") {
                         VStack(alignment: .leading, spacing: 10) {
-                            LabeledContent("Skill 目录", value: agent.path ?? String(localized: "未提供"))
+                            LabeledContent("Skill 目录", value: agent.path ?? AppLocalization.string("未提供"))
                             LabeledContent("格式", value: agent.format ?? "—")
                             LabeledContent(
                                 "本机检测",
-                                value: agent.detected ? String(localized: "已检测") : String(localized: "未检测")
+                                value: agent.detected ? AppLocalization.string("已检测") : AppLocalization.string("未检测")
                             )
                         }
                         .textSelection(.enabled)
@@ -465,7 +467,7 @@ struct CustomAgentSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            PanelHeader(title: agent == nil ? String(localized: "添加自定义 Agent") : String(localized: "编辑自定义 Agent"), subtitle: String(localized: "为你的 AI 工具指定 Skill 存放位置。"), symbol: "cpu", tint: .purple)
+            PanelHeader(title: agent == nil ? AppLocalization.string("添加自定义 Agent") : AppLocalization.string("编辑自定义 Agent"), subtitle: AppLocalization.string("为你的 AI 工具指定 Skill 存放位置。"), symbol: "cpu", tint: .purple)
             Form {
                 TextField("标识", text: $id, prompt: Text("my-agent"))
                     .disabled(agent != nil)
@@ -501,12 +503,12 @@ struct CustomAgentSheet: View {
 }
 
 private func agentAccessibilityLabel(_ agent: AgentModel) -> String {
-    let kind = agent.custom ? String(localized: "自定义 Agent") : String(localized: "内置 Agent")
+    let kind = agent.custom ? AppLocalization.string("自定义 Agent") : AppLocalization.string("内置 Agent")
     let status = agent.configured
-        ? String(localized: "已启用")
-        : (agent.detected ? String(localized: "已检测未启用") : String(localized: "未检测"))
+        ? AppLocalization.string("已启用")
+        : (agent.detected ? AppLocalization.string("已检测未启用") : AppLocalization.string("未检测"))
     return String(
-        format: String(localized: "%1$@，%2$@，%3$@"),
+        format: AppLocalization.string("%1$@，%2$@，%3$@"),
         locale: .current,
         agent.name,
         kind,

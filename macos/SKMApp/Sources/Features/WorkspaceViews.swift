@@ -10,7 +10,7 @@ struct WorkspaceSidebarView: View {
             Label("同步预览", systemImage: "list.bullet.rectangle")
                 .foregroundStyle(model.workspacePreview == nil ? .secondary : .primary)
         }
-        .navigationTitle("Git 同步")
+        .navigationTitle(AppLocalization.string("Git 同步"))
     }
 }
 
@@ -22,6 +22,7 @@ struct WorkspaceSidebarView: View {
 /// 3. 执行同步：提交变更并拉取合并。
 struct WorkspaceDetailView: View {
     @Bindable var model: AppModel
+    let language: AppLanguage
     @State private var url = ""
     @State private var ref = "main"
     @State private var root = ""
@@ -29,7 +30,7 @@ struct WorkspaceDetailView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
-                PanelHeader(title: String(localized: "个人 Git 同步"), subtitle: String(localized: "通过私人 Git 仓库在多台设备间同步 Skills、Prompts 和 Source 配置。认证信息不会写入 SKM。"), symbol: "arrow.triangle.2.circlepath.icloud")
+                PanelHeader(title: AppLocalization.string("个人 Git 同步"), subtitle: AppLocalization.string("通过私人 Git 仓库在多台设备间同步 Skills、Prompts 和 Source 配置。认证信息不会写入 SKM。"), symbol: "arrow.triangle.2.circlepath.icloud")
                 configuration
                 if model.workspace?.configured == true {
                     syncControls
@@ -40,8 +41,9 @@ struct WorkspaceDetailView: View {
             }
             .readingLayout()
         }
+        .environment(\.locale, language.locale)
         .task { loadConfiguration() }
-        .navigationTitle("Git 同步")
+        .navigationTitle(AppLocalization.string("Git 同步"))
     }
 
     private var configuration: some View {
@@ -59,7 +61,7 @@ struct WorkspaceDetailView: View {
                             .font(.caption.monospaced()).foregroundStyle(.secondary)
                     }
                     Spacer()
-                    Button(model.workspace?.configured == true ? String(localized: "保存并测试连接") : String(localized: "配置并测试连接")) {
+                    Button(model.workspace?.configured == true ? AppLocalization.string("保存并测试连接") : AppLocalization.string("配置并测试连接")) {
                         Task { await model.configureWorkspace(url: url, ref: ref, root: root) }
                     }
                     .accessibilityIdentifier("workspace-configure-button")
@@ -172,10 +174,10 @@ private struct WorkspaceChangeRow: View {
 
     private var actionLabel: String {
         switch change.action {
-        case "upload": String(localized: "上传")
-        case "download": String(localized: "下载")
-        case "delete-local", "delete-remote": String(localized: "删除")
-        default: String(localized: "冲突")
+        case "upload": AppLocalization.string("上传")
+        case "download": AppLocalization.string("下载")
+        case "delete-local", "delete-remote": AppLocalization.string("删除")
+        default: AppLocalization.string("冲突")
         }
     }
 }

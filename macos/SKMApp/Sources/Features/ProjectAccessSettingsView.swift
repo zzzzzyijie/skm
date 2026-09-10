@@ -3,6 +3,7 @@ import SwiftUI
 
 struct ProjectAccessSettingsView: View {
     @Bindable var model: AppModel
+    let language: AppLanguage
 
     private var readableProjectCount: Int {
         model.projects.count { ProjectAccessStatus(project: $0).canRead }
@@ -17,8 +18,8 @@ struct ProjectAccessSettingsView: View {
     }
 
     private var summaryTitle: String {
-        if model.projects.isEmpty { return String(localized: "尚无项目需要检查") }
-        return allProjectsReadable ? String(localized: "所有项目均可读取") : String(localized: "部分项目需要处理")
+        if model.projects.isEmpty { return AppLocalization.string("尚无项目需要检查") }
+        return allProjectsReadable ? AppLocalization.string("所有项目均可读取") : AppLocalization.string("部分项目需要处理")
     }
 
     private var summarySymbol: String {
@@ -30,7 +31,7 @@ struct ProjectAccessSettingsView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
                 VStack(alignment: .leading, spacing: 16) {
-                    PanelHeader(title: String(localized: "权限访问"), subtitle: String(localized: "检查项目目录的读取状态，管理 macOS 文件访问权限。"), symbol: "folder.badge.gearshape", tint: .orange)
+                    PanelHeader(title: AppLocalization.string("权限访问"), subtitle: AppLocalization.string("检查项目目录的读取状态，管理 macOS 文件访问权限。"), symbol: "folder.badge.gearshape", tint: .orange)
                     Button("重新检查", systemImage: "arrow.clockwise", action: refreshAccess)
                         .disabled(model.isLoading)
                 }
@@ -110,7 +111,8 @@ struct ProjectAccessSettingsView: View {
             }
             .readingLayout()
         }
-        .navigationTitle("权限访问")
+        .environment(\.locale, language.locale)
+        .navigationTitle(AppLocalization.string("权限访问"))
     }
 
     private func refreshAccess() {
@@ -119,13 +121,13 @@ struct ProjectAccessSettingsView: View {
 
     private func reauthorize(_ project: ProjectModel) {
         let panel = NSOpenPanel()
-        panel.title = String(localized: "重新授权项目目录")
+        panel.title = AppLocalization.string("重新授权项目目录")
         panel.message = String(
-            format: String(localized: "请选择已登记的项目目录“%@”。"),
+            format: AppLocalization.string("请选择已登记的项目目录“%@”。"),
             locale: .current,
             project.id
         )
-        panel.prompt = String(localized: "授权")
+        panel.prompt = AppLocalization.string("授权")
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         panel.canCreateDirectories = false
@@ -136,7 +138,7 @@ struct ProjectAccessSettingsView: View {
         let selectedPath = selectedURL.resolvingSymlinksInPath().standardizedFileURL.path
         let registeredPath = URL(fileURLWithPath: project.path).resolvingSymlinksInPath().standardizedFileURL.path
         guard selectedPath == registeredPath else {
-            model.errorMessage = String(localized: "请选择当前已登记的同一个项目目录；如项目已移动，请在 Projects 中注销后重新添加。")
+            model.errorMessage = AppLocalization.string("请选择当前已登记的同一个项目目录；如项目已移动，请在 Projects 中注销后重新添加。")
             return
         }
 
@@ -144,10 +146,10 @@ struct ProjectAccessSettingsView: View {
             await model.refresh()
             guard let refreshed = model.projects.first(where: { $0.id == project.id }),
                   ProjectAccessStatus(project: refreshed).canRead else {
-                model.errorMessage = String(localized: "仍无法读取该目录。请检查 macOS 文件与文件夹设置，或 Finder 中的共享与权限。")
+                model.errorMessage = AppLocalization.string("仍无法读取该目录。请检查 macOS 文件与文件夹设置，或 Finder 中的共享与权限。")
                 return
             }
-            model.announce(String(localized: "项目文件访问已恢复"))
+            model.announce(AppLocalization.string("项目文件访问已恢复"))
         }
     }
 

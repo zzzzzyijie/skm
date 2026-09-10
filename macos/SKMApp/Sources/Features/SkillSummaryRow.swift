@@ -19,7 +19,7 @@ struct SkillSummaryRow: View {
                     .fixedSize()
             }
 
-            Text(skill.description.isEmpty ? String(localized: "无描述") : skill.description)
+            Text(skill.description.isEmpty ? AppLocalization.string("无描述") : skill.description)
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .lineLimit(2)
@@ -42,14 +42,14 @@ struct SkillSummaryRow: View {
     private var accessibilityLabel: String {
         let source = skill.source.isEmpty ? "local" : skill.source
         let tags = skill.tags.isEmpty
-            ? String(localized: "无标签")
+            ? AppLocalization.string("无标签")
             : String(
-                format: String(localized: "标签 %@"),
+                format: AppLocalization.string("标签 %@"),
                 locale: .current,
-                skill.tags.joined(separator: String(localized: "、"))
+                skill.tags.joined(separator: AppLocalization.string("、"))
             )
         return String(
-            format: String(localized: "%1$@，来源 %2$@，%3$@，健康状态 %4$@"),
+            format: AppLocalization.string("%1$@，来源 %2$@，%3$@，健康状态 %4$@"),
             locale: .current,
             skill.name,
             source,

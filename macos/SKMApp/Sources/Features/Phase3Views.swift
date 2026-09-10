@@ -140,7 +140,7 @@ struct PromptRenderSheet: View {
                 }
             }
             .formStyle(.grouped)
-            .navigationTitle("填写变量")
+            .navigationTitle(AppLocalization.string("填写变量"))
             .toolbar {
                 Button("渲染") { Task { await render() } }
                     .buttonStyle(.borderedProminent)
@@ -150,7 +150,7 @@ struct PromptRenderSheet: View {
         } detail: {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
-                    PanelHeader(title: details.name, subtitle: String(localized: "填写变量并预览最终内容。"), symbol: "text.bubble", tint: .purple)
+                    PanelHeader(title: details.name, subtitle: AppLocalization.string("填写变量并预览最终内容。"), symbol: "text.bubble", tint: .purple)
                     Spacer()
                     Button("复制", systemImage: "doc.on.doc") { copyRendered() }
                         .disabled(rendered.isEmpty || !missing.isEmpty)
@@ -244,7 +244,7 @@ struct PromptRenderSheet: View {
     private func copyRendered() {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(rendered, forType: .string)
-        model.announce(String(localized: "渲染结果已复制"))
+        model.announce(AppLocalization.string("渲染结果已复制"))
     }
 }
 
@@ -268,7 +268,7 @@ struct HistorySheet: View {
         NavigationSplitView {
             List(entries, selection: $selectedID) { entry in
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(entry.current == true ? String(localized: "当前版本") : historyReason(entry.reason))
+                    Text(entry.current == true ? AppLocalization.string("当前版本") : historyReason(entry.reason))
                         .fontWeight(.medium)
                     Text(historyDate(entry.createdAt))
                         .font(.caption).foregroundStyle(.secondary)
@@ -283,11 +283,11 @@ struct HistorySheet: View {
                     ContentUnavailableView("暂无历史版本", systemImage: "clock", description: Text("保存修改后，会在这里保留历史快照。"))
                 }
             }
-            .navigationTitle("历史")
+            .navigationTitle(AppLocalization.string("历史"))
         } detail: {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
-                    PanelHeader(title: title, subtitle: String(localized: "选择历史版本后与当前内容比较。"), symbol: "clock.arrow.circlepath")
+                    PanelHeader(title: title, subtitle: AppLocalization.string("选择历史版本后与当前内容比较。"), symbol: "clock.arrow.circlepath")
                     Spacer()
                     Button("恢复此版本", systemImage: "arrow.uturn.backward") { confirmsRestore = true }
                         .buttonStyle(.borderedProminent)
@@ -298,7 +298,7 @@ struct HistorySheet: View {
                         .foregroundStyle(.orange)
                 }
                 ScrollView([.horizontal, .vertical]) {
-                    Text(diff.isEmpty ? String(localized: "请选择一个历史版本。") : diff)
+                    Text(diff.isEmpty ? AppLocalization.string("请选择一个历史版本。") : diff)
                         .font(.body.monospaced())
                         .textSelection(.enabled)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -362,7 +362,7 @@ struct HistorySheet: View {
     }
 
     private func historyReason(_ reason: String) -> String {
-        reason == "rollback" ? String(localized: "回滚前") : String(localized: "编辑前")
+        reason == "rollback" ? AppLocalization.string("回滚前") : AppLocalization.string("编辑前")
     }
 
     private func historyDate(_ value: String) -> String {

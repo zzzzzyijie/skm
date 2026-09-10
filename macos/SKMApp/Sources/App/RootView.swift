@@ -39,7 +39,7 @@ struct RootView: View {
         )) {
             Button("好", role: .cancel) { model.errorMessage = nil }
         } message: {
-            Text(model.errorMessage ?? String(localized: "未知错误"))
+            Text(model.errorMessage ?? AppLocalization.string("未知错误"))
         }
         .sheet(isPresented: $model.showsWelcome) {
             WelcomeView(model: model)
@@ -78,7 +78,7 @@ struct RootView: View {
             ContentUnavailableView {
                 Label("无法启动 SKM", systemImage: "exclamationmark.triangle")
             } description: {
-                Text(model.startupErrorMessage ?? String(localized: "Core 启动失败"))
+                Text(model.startupErrorMessage ?? AppLocalization.string("Core 启动失败"))
             } actions: {
                 HStack {
                     Button("复制诊断信息") { model.copyDiagnostics() }
@@ -94,7 +94,7 @@ struct RootView: View {
         List {
             ForEach(AppSection.allCases) { section in
                 SidebarNavigationButton(
-                    title: section.rawValue,
+                    title: section.title,
                     systemImage: section.symbol,
                     isSelected: sidebarSelection == section,
                     count: collectionCount(section),
@@ -121,7 +121,7 @@ struct RootView: View {
                 SidebarBottomToolbar(model: model)
             }
         }
-        .navigationTitle("SKM")
+        .navigationTitle(AppLocalization.string("SKM"))
     }
 
     private func selectSidebarSection(_ section: AppSection) {
@@ -272,11 +272,11 @@ struct WelcomeView: View {
                 .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 8) {
-                Text(model.hasExistingData ? String(localized: "欢迎回来") : String(localized: "欢迎使用 SKM"))
+                Text(model.hasExistingData ? AppLocalization.string("欢迎回来") : AppLocalization.string("欢迎使用 SKM"))
                     .font(.largeTitle.bold())
                 Text(model.hasExistingData
-                     ? String(localized: "已检测到现有的 ~/.skm 资料库，可以直接继续使用，无需导入或迁移。")
-                     : String(localized: "管理本机的 Skills、Prompts 和 Agent 部署。SKM 不会自动启用任何 Agent。"))
+                     ? AppLocalization.string("已检测到现有的 ~/.skm 资料库，可以直接继续使用，无需导入或迁移。")
+                     : AppLocalization.string("管理本机的 Skills、Prompts 和 Agent 部署。SKM 不会自动启用任何 Agent。"))
                     .font(.title3)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -302,7 +302,7 @@ struct WelcomeView: View {
                     openSettings()
                 }
                 Spacer()
-                Button(model.hasExistingData ? String(localized: "继续使用现有资料库") : String(localized: "开始使用")) {
+                Button(model.hasExistingData ? AppLocalization.string("继续使用现有资料库") : AppLocalization.string("开始使用")) {
                     model.completeWelcome()
                 }
                 .buttonStyle(.borderedProminent)
@@ -338,8 +338,11 @@ private struct WelcomeMetric: View {
 
 struct SettingsView: View {
     @Bindable var model: AppModel
+    @Bindable var preferences: AppPreferences
 
     var body: some View {
+        let language = preferences.language
+
         NavigationSplitView {
             List {
                 ForEach(SettingsSection.allCases) { section in
@@ -363,10 +366,13 @@ struct SettingsView: View {
                 }
             }
             .listStyle(.sidebar)
-            .navigationTitle("设置")
+            .navigationTitle(AppLocalization.string("设置", language: language))
             .navigationSplitViewColumnWidth(min: 180, ideal: 210, max: 250)
         } detail: {
-            detail
+            // Keep the detail view's identity and state intact. Passing language as a value
+            // input invalidates only its rendered content; `.id(language)` would rebuild
+            // native controls and rerun lifecycle tasks on every switch.
+            detail(language: language)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(SKMDesign.canvas)
         }
@@ -388,14 +394,14 @@ struct SettingsView: View {
     }
 
     @ViewBuilder
-    private var detail: some View {
+    private func detail(language: AppLanguage) -> some View {
         switch model.settingsSection {
-        case .general: GeneralSettingsView(model: model)
-        case .fileAccess: ProjectAccessSettingsView(model: model)
-        case .agents: AgentsSettingsView(model: model)
-        case .sources: SourcesSettingsView(model: model)
-        case .gitSync: WorkspaceDetailView(model: model)
-        case .updates: UpdatesSettingsView(model: model)
+        case .general: GeneralSettingsView(model: model, preferences: preferences, language: language)
+        case .fileAccess: ProjectAccessSettingsView(model: model, language: language)
+        case .agents: AgentsSettingsView(model: model, language: language)
+        case .sources: SourcesSettingsView(model: model, language: language)
+        case .gitSync: WorkspaceDetailView(model: model, language: language)
+        case .updates: UpdatesSettingsView(model: model, language: language)
         }
     }
 }
@@ -446,9 +452,9 @@ private struct SidebarBottomToolbar: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(String(localized: "偏好设置 (⌘,)"))
+            .accessibilityLabel(AppLocalization.string("偏好设置 (⌘,)"))
             .accessibilityIdentifier("open-settings")
-            .help(String(localized: "偏好设置 (⌘,)"))
+            .help(AppLocalization.string("偏好设置 (⌘,)"))
 
             Spacer()
             Text("SKM")
@@ -463,14 +469,14 @@ private struct SidebarBottomToolbar: View {
 
     private var syncHelpText: String {
         if model.isLoading {
-            return String(localized: "正在同步…")
+            return AppLocalization.string("正在同步…")
         }
         if model.workspace?.configured == true {
             if let revision = model.workspace?.state?.revision, !revision.isEmpty {
-                return String(format: String(localized: "一键同步 (Rev: %@)"), String(revision.prefix(7)))
+                return String(format: AppLocalization.string("一键同步 (Rev: %@)"), String(revision.prefix(7)))
             }
-            return String(localized: "一键同步个人工作区")
+            return AppLocalization.string("一键同步个人工作区")
         }
-        return String(localized: "未配置 Git 同步，点击前往设置")
+        return AppLocalization.string("未配置 Git 同步，点击前往设置")
     }
 }

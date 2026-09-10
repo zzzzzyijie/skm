@@ -8,13 +8,18 @@ import SwiftUI
 /// 4. 诊断报告：生成自动脱敏的系统诊断报告并支持一键复制与导出。
 struct GeneralSettingsView: View {
     @Bindable var model: AppModel
+    @Bindable var preferences: AppPreferences
+    let language: AppLanguage
 
     var body: some View {
         Form {
             Section {
-                PanelHeader(title: "SKM", subtitle: String(localized: "你的 Skills、Prompts 与项目，一处管理。"), symbol: "square.stack.3d.up")
+                PanelHeader(title: "SKM", subtitle: AppLocalization.string("你的 Skills、Prompts 与项目，一处管理。"), symbol: "square.stack.3d.up")
                     .padding(.vertical, 8)
             }
+
+            LanguageAppearanceSettingsSection(preferences: preferences)
+
             Section("版本") {
                 LabeledContent("App", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev")
             }
@@ -31,7 +36,7 @@ struct GeneralSettingsView: View {
                 LabeledContent("技能来源", value: String(model.sources.count))
                 LabeledContent(
                     "个人 Git 同步",
-                    value: model.workspace?.configured == true ? String(localized: "已配置") : String(localized: "未配置")
+                    value: model.workspace?.configured == true ? AppLocalization.string("已配置") : AppLocalization.string("未配置")
                 )
                 LabeledContent(
                     "已管理 Agent",
@@ -82,7 +87,8 @@ struct GeneralSettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .navigationTitle("通用")
+        .environment(\.locale, language.locale)
+        .navigationTitle(AppLocalization.string("通用"))
     }
 }
 
@@ -90,15 +96,16 @@ struct GeneralSettingsView: View {
 /// 展示当前版本、Sparkle 2 签名升级状态与手动检查更新。
 struct UpdatesSettingsView: View {
     @Bindable var model: AppModel
+    let language: AppLanguage
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
-                PanelHeader(title: String(localized: "软件更新"), subtitle: String(localized: "保持最新，获得体验改进与问题修复。"), symbol: "arrow.down.circle", tint: .indigo)
+                PanelHeader(title: AppLocalization.string("软件更新"), subtitle: AppLocalization.string("保持最新，获得体验改进与问题修复。"), symbol: "arrow.down.circle", tint: .indigo)
                 GroupBox("版本与更新") {
                     HStack {
                         VStack(alignment: .leading, spacing: 6) {
-                            Text(model.updateStatus ?? String(localized: "检查是否有新版本可供下载。"))
+                            Text(model.updateStatus ?? AppLocalization.string("检查是否有新版本可供下载。"))
                             Text("当前版本：\(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev")")
                                 .font(.caption).foregroundStyle(.secondary)
                         }
@@ -112,6 +119,7 @@ struct UpdatesSettingsView: View {
             }
             .readingLayout()
         }
-        .navigationTitle("软件更新")
+        .environment(\.locale, language.locale)
+        .navigationTitle(AppLocalization.string("软件更新"))
     }
 }

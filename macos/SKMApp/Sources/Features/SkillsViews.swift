@@ -48,7 +48,7 @@ struct SkillsListView: View {
                     List(selection: $model.selectedSkillID) {
                         if !visibleSkills.isEmpty {
                             TagGroupHeader(
-                                title: String(localized: "全部"),
+                                title: AppLocalization.string("全部"),
                                 systemImage: "square.stack.3d.up",
                                 count: visibleSkills.count,
                                 isExpanded: isAllGroupExpanded
@@ -123,7 +123,7 @@ struct SkillsListView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             CollectionFooter(count: visibleSkills.count, symbol: "square.stack.3d.up")
         }
-        .navigationTitle("Skills")
+        .navigationTitle(AppLocalization.string("Skills"))
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
                 Group {
@@ -255,7 +255,7 @@ struct SkillDetailView: View {
             }
 
             // 描述
-            Text(skill.description.isEmpty ? String(localized: "无描述") : skill.description)
+            Text(skill.description.isEmpty ? AppLocalization.string("无描述") : skill.description)
                 .font(.title3)
                 .foregroundStyle(.secondary)
 
@@ -327,7 +327,7 @@ struct SkillDetailView: View {
                             Task { await model.setSkill(skill.id, agentID: agent.id, enabled: enabled) }
                         }
                         .accessibilityLabel(String(
-                            format: String(localized: "为 %1$@ 启用 %2$@"),
+                            format: AppLocalization.string("为 %1$@ 启用 %2$@"),
                             locale: .current,
                             agent.name,
                             skill.name
@@ -437,7 +437,7 @@ private struct AgentToggleCard: View {
                         Circle()
                             .fill(agent.detected ? Color.green : Color.orange)
                             .frame(width: 6, height: 6)
-                        Text(agent.detected ? String(localized: "已安装") : String(localized: "未检测到"))
+                        Text(agent.detected ? AppLocalization.string("已安装") : AppLocalization.string("未检测到"))
                             .font(.caption2)
                             .foregroundStyle(Color.secondary)
                     }
@@ -633,8 +633,8 @@ struct AddSkillSheet: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 PanelHeader(
-                    title: mode == 1 && wizardStep == 1 ? String(localized: "选择要导入的 Skill") : String(localized: "添加 Skill"),
-                    subtitle: String(localized: "把常用技能收进资料库，随时用于你的 Agent 和项目。"),
+                    title: mode == 1 && wizardStep == 1 ? AppLocalization.string("选择要导入的 Skill") : AppLocalization.string("添加 Skill"),
+                    subtitle: AppLocalization.string("把常用技能收进资料库，随时用于你的 Agent 和项目。"),
                     symbol: "square.stack.3d.up"
                 )
                 Spacer()
@@ -752,7 +752,7 @@ struct AddSkillSheet: View {
 
                 HStack {
                     let validCandidates = preview.skills.filter(\.valid)
-                    Text(String(format: String(localized: "已选择 %lld / %lld 个可用技能"), locale: .current, selectedPaths.count, validCandidates.count))
+                    Text(String(format: AppLocalization.string("已选择 %lld / %lld 个可用技能"), locale: .current, selectedPaths.count, validCandidates.count))
                         .font(.callout)
                         .foregroundStyle(.secondary)
                     Spacer()
@@ -805,7 +805,7 @@ struct AddSkillSheet: View {
                 Button("取消", role: .cancel) { dismiss() }
                     .keyboardShortcut(.cancelAction)
                     .disabled(model.isLoading || isScanning)
-                Button(String(format: String(localized: "导入所选技能 (%lld)"), locale: .current, selectedPaths.count)) {
+                Button(String(format: AppLocalization.string("导入所选技能 (%lld)"), locale: .current, selectedPaths.count)) {
                     Task { await confirmImport() }
                 }
                 .buttonStyle(.borderedProminent)
@@ -921,7 +921,7 @@ private struct SkillCandidateRow: View {
         }
         .buttonStyle(SelectionCardButtonStyle())
         .accessibilityLabel(candidate.name)
-        .accessibilityValue(isSelected ? String(localized: "已选择") : String(localized: "未选择"))
+        .accessibilityValue(isSelected ? AppLocalization.string("已选择") : AppLocalization.string("未选择"))
         .disabled(!candidate.valid)
     }
 }
@@ -951,7 +951,7 @@ struct SkillEditorSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            PanelHeader(title: String(localized: "编辑 \(details.name)"), subtitle: String(localized: "编辑 Markdown 原文，保存后更新资料库。"), symbol: "square.and.pencil")
+            PanelHeader(title: AppLocalization.string("编辑 \(details.name)"), subtitle: AppLocalization.string("编辑 Markdown 原文，保存后更新资料库。"), symbol: "square.and.pencil")
             TextEditor(text: $content)
                 .font(.system(.body, design: .monospaced))
                 .editorSurface()
@@ -1091,11 +1091,11 @@ struct HealthBadge: View {
 
 func healthLabel(_ health: String) -> String {
     switch health {
-    case "available": String(localized: "可用")
-    case "changed": String(localized: "已变更")
-    case "missing": String(localized: "缺失")
-    case "unreachable": String(localized: "不可访问")
-    default: String(localized: "无效")
+    case "available": AppLocalization.string("可用")
+    case "changed": AppLocalization.string("已变更")
+    case "missing": AppLocalization.string("缺失")
+    case "unreachable": AppLocalization.string("不可访问")
+    default: AppLocalization.string("无效")
     }
 }
 

@@ -2,7 +2,7 @@ import SwiftUI
 
 /// A precisely aligned, keyboard-focusable row shared by the library and Settings sidebars.
 struct SidebarNavigationButton: View {
-    let title: String
+    let title: LocalizedStringKey
     let systemImage: String
     let isSelected: Bool
     var count: Int?
