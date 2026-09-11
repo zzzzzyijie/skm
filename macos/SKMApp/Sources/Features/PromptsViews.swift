@@ -172,83 +172,29 @@ struct PromptsListView: View {
 /// PromptDetailView - 提示词详情视图
 /// 展示提示词变量列表与 Markdown 正文，提供 QuickLook 预览、一键复制与导出 .md 文件。
 struct PromptDetailView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Bindable var model: AppModel
     @State private var details: PromptDetails?
     @State private var showsEditor = false
     @State private var confirmsDelete = false
     @State private var showsRender = false
+    @State private var showsCopiedFeedback = false
+    @State private var copyFeedbackTask: Task<Void, Never>?
 
     var body: some View {
         Group {
             if let id = model.selectedPromptID, let prompt = model.prompts.first(where: { $0.id == id }) {
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 22) {
-                        // ── 标题 & 描述 ──
-                        PanelHeader(
-                            title: prompt.name,
-                            subtitle: prompt.description,
-                            tint: .purple
-                        )
+                    VStack(alignment: .leading, spacing: SKMDesign.sectionSpacing) {
+                        promptHeader(prompt)
 
-                        // ── 元信息（来源 · 标签） ──
-                        HStack(spacing: 16) {
-                            Label(prompt.source, systemImage: "archivebox")
-                            if !prompt.tags.isEmpty {
-                                Label(prompt.tags.joined(separator: " · "), systemImage: "tag")
-                            }
-                        }
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
+                        Divider()
 
-                        // ── 变量区 ──
                         if let variables = prompt.variables, !variables.isEmpty {
-                            GroupBox("变量") {
-                                VStack(alignment: .leading, spacing: 10) {
-                                    ForEach(variables, id: \.name) { variable in
-                                        HStack {
-                                            Text("{{\(variable.name)}}").font(.body.monospaced())
-                                            Spacer()
-                                            if variable.required == true { Text("必填").foregroundStyle(.secondary) }
-                                        }
-                                    }
-                                }.padding(4)
-                            }
+                            variablesSection(variables)
                         }
 
-                        // ── 内容区（Markdown 渲染 + 右上角复制） ──
-                        GroupBox {
-                            VStack(alignment: .leading, spacing: 14) {
-                                HStack {
-                                    Text("Markdown").font(.caption.monospaced()).foregroundStyle(.secondary)
-                                    Spacer()
-                                    Button("复制 Prompt 内容", systemImage: "doc.on.doc", action: copyBody)
-                                        .labelStyle(.iconOnly)
-                                        .buttonStyle(.borderless)
-                                        .help("复制 Prompt 内容")
-                                        .disabled(details == nil)
-                                }
-                                Divider()
-                                Group {
-                                    if let body = details?.body {
-                                        if body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                                            Text("此 Prompt 没有正文内容。")
-                                                .foregroundStyle(.secondary)
-                                                .italic()
-                                        } else {
-                                            MarkdownBodyView(markdown: body)
-                                        }
-                                    } else {
-                                        HStack(spacing: 8) {
-                                            ProgressView().controlSize(.small)
-                                            Text("正在读取…").foregroundStyle(.secondary)
-                                        }
-                                    }
-                                }
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                            }
-                        } label: {
-                            Text("内容")
-                        }
+                        contentSection
                     }
                     .readingLayout()
                 }
@@ -290,6 +236,122 @@ struct PromptDetailView: View {
                 ContentUnavailableView("选择一个 Prompt", systemImage: "text.bubble", description: Text("在左侧选择模板，填写变量或复制到你的工作流程。"))
             }
         }
+        .onDisappear {
+            copyFeedbackTask?.cancel()
+        }
+    }
+
+    private func promptHeader(_ prompt: PromptSummary) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(prompt.name)
+                .font(.title.bold())
+                .textSelection(.enabled)
+
+            if !prompt.description.isEmpty {
+                Text(prompt.description)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            if !prompt.tags.isEmpty {
+                LazyVGrid(
+                    columns: [GridItem(.adaptive(minimum: 72, maximum: 180), spacing: 6, alignment: .leading)],
+                    alignment: .leading,
+                    spacing: 6
+                ) {
+                    ForEach(prompt.tags, id: \.self) { tag in
+                        Text(tag)
+                            .skmMetadataPill()
+                            .fixedSize()
+                    }
+                }
+            }
+
+            Label(prompt.source, systemImage: "archivebox")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func variablesSection(_ variables: [PromptVariable]) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("变量")
+                    .font(.headline)
+                Text(variables.count, format: .number)
+                    .monospacedDigit()
+                    .skmMetadataPill(tint: .secondary)
+                Spacer()
+            }
+
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(variables, id: \.name) { variable in
+                    HStack(spacing: 12) {
+                        Text("{{\(variable.name)}}")
+                            .font(.body.monospaced())
+                        Spacer()
+                        if variable.required == true {
+                            Text("必填")
+                                .skmMetadataPill()
+                        }
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+
+                    if variable.name != variables.last?.name {
+                        Divider()
+                    }
+                }
+            }
+            .skmSurface(radius: SKMDesign.compactCardRadius)
+        }
+    }
+
+    private var contentSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 10) {
+                Text("内容")
+                    .font(.headline)
+
+                Spacer()
+
+                if showsCopiedFeedback {
+                    Label("已复制", systemImage: "checkmark.circle.fill")
+                        .font(.caption)
+                        .foregroundStyle(SKMDesign.successTint)
+                        .transition(.opacity)
+                }
+
+                Button("复制 Prompt 内容", systemImage: showsCopiedFeedback ? "checkmark" : "doc.on.doc", action: copyBody)
+                    .labelStyle(.iconOnly)
+                    .buttonStyle(.borderless)
+                    .help("复制 Prompt 内容")
+                    .disabled(details == nil)
+            }
+
+            Group {
+                if let body = details?.body {
+                    if body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        Text("此 Prompt 没有正文内容。")
+                            .foregroundStyle(.secondary)
+                            .italic()
+                    } else {
+                        MarkdownBodyView(markdown: body)
+                    }
+                } else {
+                    HStack(spacing: 8) {
+                        ProgressView().controlSize(.small)
+                        Text("正在读取…").foregroundStyle(.secondary)
+                    }
+                }
+            }
+            .padding(18)
+            .frame(maxWidth: .infinity, minHeight: 180, alignment: .topLeading)
+            .skmSurface(radius: SKMDesign.compactCardRadius)
+        }
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.15), value: showsCopiedFeedback)
     }
 
     private func loadDetails(_ id: String) async {
@@ -309,6 +371,13 @@ struct PromptDetailView: View {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(body, forType: .string)
         model.announce(AppLocalization.string("Prompt 已复制"))
+        copyFeedbackTask?.cancel()
+        showsCopiedFeedback = true
+        copyFeedbackTask = Task {
+            try? await Task.sleep(for: .seconds(1.5))
+            guard !Task.isCancelled else { return }
+            showsCopiedFeedback = false
+        }
     }
 
     private func showQuickLook() async {

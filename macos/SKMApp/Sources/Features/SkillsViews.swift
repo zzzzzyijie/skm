@@ -177,26 +177,19 @@ struct SkillDetailView: View {
         Group {
             if let id = model.selectedSkillID, let summary = model.skills.first(where: { $0.id == id }) {
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 0) {
-                        // ── 顶部：标题、描述、标签与元数据 ──
+                    VStack(alignment: .leading, spacing: SKMDesign.sectionSpacing) {
                         headerSection(summary)
 
-                        // ── Agent 激活卡片区 ──
+                        Divider()
+
                         agentSection(summary)
-                            .padding(.top, 20)
 
-                        // ── 分隔线 ──
-                        Divider().padding(.vertical, 20)
+                        Divider()
 
-                        // ── Markdown 正文 ──
                         markdownSection
-                            .padding(20)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .skmSurface()
 
-                        // ── 底部元数据 ──
                         footerSection(summary)
-                            .padding(.top, 20)
                     }
                     .readingLayout()
                 }
@@ -239,47 +232,49 @@ struct SkillDetailView: View {
     // MARK: - 顶部：标题、描述、标签、元数据
 
     private func headerSection(_ skill: SkillSummary) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // 标题行
-            HStack(alignment: .top, spacing: 14) {
-                Text(skill.name).font(.largeTitle.bold())
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .firstTextBaseline, spacing: 14) {
+                Text(skill.name)
+                    .font(.title.bold())
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                HealthBadge(health: skill.health)
+                Label(
+                    healthLabel(skill.health),
+                    systemImage: skill.health == "available" ? "checkmark.circle.fill" : "exclamationmark.triangle.fill"
+                )
+                .skmMetadataPill(tint: skill.health == "available" ? SKMDesign.successTint : SKMDesign.tagTint)
             }
 
-            // 描述
             Text(skill.description.isEmpty ? AppLocalization.string("无描述") : skill.description)
-                .font(.title3)
+                .font(.callout)
                 .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
 
-            // Fallback 警告
             if skill.usingFallback == true {
                 Label("源目录当前不可用，正在读取安全快照", systemImage: "exclamationmark.triangle.fill")
                     .font(.callout)
                     .foregroundStyle(.orange)
             }
 
-            // 标签（capsule 样式）
             if !skill.tags.isEmpty {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), alignment: .leading)], alignment: .leading, spacing: 6) {
+                LazyVGrid(
+                    columns: [GridItem(.adaptive(minimum: 72, maximum: 180), spacing: 6, alignment: .leading)],
+                    alignment: .leading,
+                    spacing: 6
+                ) {
                     ForEach(skill.tags, id: \.self) { tag in
                         Text(tag)
-                            .font(.caption)
-                            .padding(.horizontal, 7)
-                            .padding(.vertical, 3)
-                            .background(Color.accentColor.opacity(0.1), in: Capsule())
-                            .foregroundStyle(Color.accentColor)
+                            .skmMetadataPill()
+                            .fixedSize()
                     }
                 }
             }
 
-            // 来源元信息
             Label(
                 skill.source.isEmpty ? "local" : skill.source,
                 systemImage: skill.source == "git" ? "arrow.triangle.branch" : "externaldrive"
             )
-            .font(.callout)
+            .font(.caption)
             .foregroundStyle(.secondary)
         }
     }
@@ -290,7 +285,6 @@ struct SkillDetailView: View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Agent 激活")
                 .font(.headline)
-                .foregroundStyle(Color.secondary)
 
             let configuredAgents = model.agents.filter(\.configured)
 
@@ -307,9 +301,9 @@ struct SkillDetailView: View {
                         openSettings()
                     }
                 }
-                .padding(12)
+                .padding(14)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color.primary.opacity(0.03), in: RoundedRectangle(cornerRadius: 10))
+                .skmSurface(radius: SKMDesign.compactCardRadius)
             } else {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: SKMDesign.agentCardMinimumWidth), spacing: 10)], spacing: 10) {
                     ForEach(configuredAgents) { agent in
@@ -358,6 +352,8 @@ struct SkillDetailView: View {
 
     private func footerSection(_ skill: SkillSummary) -> some View {
         VStack(alignment: .leading, spacing: 8) {
+            Divider()
+
             if let reason = skill.editReason, !skill.editable {
                 Label(reason, systemImage: "lock.fill")
                     .font(.callout)
@@ -373,9 +369,7 @@ struct SkillDetailView: View {
                     .textSelection(.enabled)
             }
         }
-        .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.primary.opacity(0.03), in: RoundedRectangle(cornerRadius: 8))
     }
 
     // MARK: - 辅助方法
@@ -407,7 +401,7 @@ struct SkillDetailView: View {
 
 // MARK: - AgentToggleCard
 
-/// Agent 激活卡片组件 — 水平排列的可点击卡片，替代原 Toggle 列表
+/// Agent 激活卡片组件 — 保留整卡命中区域，并以紧凑开关呈现启用状态。
 private struct AgentToggleCard: View {
     let agent: AgentModel
     let isEnabled: Bool
@@ -419,12 +413,12 @@ private struct AgentToggleCard: View {
             onToggle(!isEnabled)
         } label: {
             HStack(spacing: 10) {
-                AgentIconView(agentId: agent.id, isCustom: agent.custom, size: 28)
+                AgentIconView(agentId: agent.id, isCustom: agent.custom, size: 24)
                     .accessibilityHidden(true)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(agent.name)
-                        .font(.callout.weight(.medium))
+                        .font(.callout.bold())
                         .foregroundStyle(isEnabled ? Color.primary : Color.secondary)
                         .lineLimit(1)
                         .truncationMode(.tail)
@@ -435,26 +429,41 @@ private struct AgentToggleCard: View {
                             .fill(agent.detected ? Color.green : Color.orange)
                             .frame(width: 6, height: 6)
                         Text(agent.detected ? AppLocalization.string("已安装") : AppLocalization.string("未检测到"))
-                            .font(.caption2)
+                            .font(.caption)
                             .foregroundStyle(Color.secondary)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-                Image(systemName: isEnabled ? "checkmark.circle.fill" : "circle")
-                    .font(.title3)
-                    .foregroundStyle(isEnabled ? Color.accentColor : Color.secondary)
+                if isLoading {
+                    ProgressView()
+                        .controlSize(.small)
+                        .frame(width: 32)
+                } else {
+                    ZStack {
+                        Capsule()
+                            .fill(isEnabled ? Color.accentColor : Color.secondary.opacity(0.24))
+                        Circle()
+                            .fill(.white)
+                            .padding(2)
+                            .offset(x: isEnabled ? 7 : -7)
+                            .shadow(color: .black.opacity(0.16), radius: 1, y: 0.5)
+                    }
+                    .frame(width: 32, height: 18)
                     .accessibilityHidden(true)
+                }
             }
-            .padding(12)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .frame(minHeight: 54)
             .background(
-                isEnabled ? Color.accentColor.opacity(0.08) : Color.primary.opacity(0.03),
-                in: RoundedRectangle(cornerRadius: 10)
+                isEnabled ? Color.accentColor.opacity(0.055) : SKMDesign.surface,
+                in: RoundedRectangle(cornerRadius: SKMDesign.compactCardRadius)
             )
-            .overlay(
-                RoundedRectangle(cornerRadius: 10)
-                    .stroke(isEnabled ? Color.accentColor.opacity(0.35) : Color.primary.opacity(0.08), lineWidth: 1)
-            )
+            .overlay {
+                RoundedRectangle(cornerRadius: SKMDesign.compactCardRadius)
+                    .strokeBorder(isEnabled ? Color.accentColor.opacity(0.3) : Color.primary.opacity(0.075), lineWidth: 0.5)
+            }
         }
         .buttonStyle(SelectionCardButtonStyle())
         .disabled(isLoading)

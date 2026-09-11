@@ -274,6 +274,7 @@ final class SKMUITests: XCTestCase {
         let importButton = app.buttons["从我的 Skill 里导入"].firstMatch
         XCTAssertTrue(importButton.waitForExistence(timeout: 8))
         XCTAssertFalse(app.staticTexts["项目清单"].exists)
+        capture(app, name: "project-detail")
         importButton.click()
         XCTAssertTrue(app.staticTexts["我的 Skill 为空"].waitForExistence(timeout: 5))
         app.buttons["取消"].click()
@@ -289,8 +290,10 @@ final class SKMUITests: XCTestCase {
         urlField.click()
         paste(workspaceRemote.path, into: urlField)
         app.buttons["workspace-configure-button"].click()
-        XCTAssertTrue(app.buttons["workspace-preview-button"].waitForExistence(timeout: 8))
-        app.buttons["workspace-preview-button"].click()
+        let previewButton = app.buttons["workspace-preview-button"]
+        XCTAssertTrue(previewButton.waitForExistence(timeout: 8))
+        app.activate()
+        previewButton.click()
         XCTAssertTrue(app.staticTexts["同步预览"].waitForExistence(timeout: 8))
         XCTAssertTrue(app.staticTexts["没有需要同步的更改"].exists)
     }
@@ -325,6 +328,8 @@ final class SKMUITests: XCTestCase {
         let render = app.buttons["填写变量"]
         XCTAssertTrue(render.waitForExistence(timeout: 5))
         capture(app, name: "prompt-detail")
+        app.buttons["复制 Prompt 内容"].click()
+        XCTAssertTrue(app.staticTexts["已复制"].waitForExistence(timeout: 2))
         render.click()
         XCTAssertTrue(app.staticTexts["没有变量"].waitForExistence(timeout: 5))
         let copy = app.sheets.buttons["复制"]

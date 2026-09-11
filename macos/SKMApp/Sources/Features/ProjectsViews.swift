@@ -33,25 +33,42 @@ struct ProjectsListView: View {
                 } else if filteredProjects.isEmpty {
                     ContentUnavailableView.search(text: search)
                 } else {
-                    List(filteredProjects, selection: $model.selectedProjectID) { project in
-                        HStack(alignment: .top, spacing: 10) {
-                            Image(systemName: "folder.fill")
-                                .font(.title2)
-                                .foregroundStyle(Color.accentColor)
-                                .accessibilityHidden(true)
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(project.id).bold()
-                            Text(project.path)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
-                                .truncationMode(.middle)
+                    List(filteredProjects) { project in
+                        let isSelected = model.selectedProjectID == project.id
+
+                        Button {
+                            model.selectedProjectID = project.id
+                        } label: {
+                            HStack(alignment: .center, spacing: 10) {
+                                Image(systemName: "folder.fill")
+                                    .font(.body)
+                                    .foregroundStyle(Color.accentColor)
+                                    .frame(width: 30, height: 30)
+                                    .background(Color.accentColor.opacity(0.09), in: RoundedRectangle(cornerRadius: 7))
+                                    .accessibilityHidden(true)
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(project.id).bold()
+                                    Text(project.path)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                        .lineLimit(1)
+                                        .truncationMode(.middle)
+                                }
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 7)
+                            .background(
+                                isSelected ? Color.accentColor.opacity(0.12) : Color.clear,
+                                in: RoundedRectangle(cornerRadius: SKMDesign.compactCardRadius)
+                            )
+                            .contentShape(Rectangle())
                         }
-                        }
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 10)
-                        .tag(project.id)
+                        .buttonStyle(.plain)
+                        .listRowInsets(EdgeInsets(top: 3, leading: 6, bottom: 3, trailing: 6))
+                        .listRowBackground(Color.clear)
                         .accessibilityElement(children: .combine)
+                        .accessibilityAddTraits(isSelected ? .isSelected : [])
                         .contextMenu {
                             Button("在 Finder 中显示") { NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: project.path) }
                             Divider()
@@ -170,7 +187,7 @@ struct ProjectDetailView: View {
                 let access = ProjectAccessStatus(project: project)
                 if access.canRead {
                     ScrollView {
-                        VStack(alignment: .leading, spacing: 24) {
+                        VStack(alignment: .leading, spacing: SKMDesign.sectionSpacing) {
                             if let details = model.projectDetails, details.project.id == id {
                                 header(project, details: details)
                                 projectOverview(details)
@@ -234,21 +251,28 @@ struct ProjectDetailView: View {
     }
 
     private func header(_ project: ProjectModel, details: ProjectDetails?) -> some View {
-        VStack(alignment: .leading, spacing: 18) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text(project.id).font(.largeTitle.bold())
-                Label(project.path, systemImage: "folder")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                    .textSelection(.enabled)
+        VStack(alignment: .leading, spacing: 10) {
+            Text(project.id)
+                .font(.title.bold())
+                .textSelection(.enabled)
+
+            Label(project.path, systemImage: "folder")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .truncationMode(.middle)
+                .textSelection(.enabled)
+
+            HStack(spacing: 10) {
+                Label("可用", systemImage: "checkmark.circle.fill")
+                    .skmMetadataPill(tint: SKMDesign.successTint)
+
+                Button("从我的 Skill 里导入", systemImage: "square.and.arrow.down") {
+                    showsSkillImporter = true
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(details == nil)
             }
-            Button("从我的 Skill 里导入", systemImage: "square.and.arrow.down") {
-                showsSkillImporter = true
-            }
-            .buttonStyle(.borderedProminent)
-            .disabled(details == nil)
         }
         .sheet(isPresented: $showsSkillImporter) {
             if let details {
@@ -323,19 +347,16 @@ struct ProjectDetailView: View {
 
     private func scannedSkills(_ details: ProjectDetails) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack {
+            HStack(spacing: 8) {
                 Label("项目 Skills", systemImage: "shippingbox")
-                    .font(.title2.bold())
+                    .font(.headline)
                 Text(details.scan.skillCount.description)
-                    .font(.callout.monospacedDigit())
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(.quaternary, in: Capsule())
+                    .monospacedDigit()
+                    .skmMetadataPill(tint: .secondary)
                 Spacer()
             }
 
-            VStack(alignment: .leading, spacing: 0) {
+            LazyVStack(alignment: .leading, spacing: 10) {
                 if details.scan.skills.isEmpty {
                     ContentUnavailableView {
                         Label("项目中还没有 Skill", systemImage: "shippingbox")
@@ -348,6 +369,8 @@ struct ProjectDetailView: View {
                         .buttonStyle(.borderedProminent)
                     }
                         .frame(minHeight: 150)
+                        .frame(maxWidth: .infinity)
+                        .skmSurface(radius: SKMDesign.compactCardRadius)
                 } else {
                     ForEach(details.scan.skills) { skill in
                         ProjectSkillRow(
@@ -357,12 +380,12 @@ struct ProjectDetailView: View {
                             agents: details.scan.agents,
                             activations: details.activations
                         )
-                        if skill.id != details.scan.skills.last?.id { Divider() }
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 4)
+                        .skmSurface(radius: SKMDesign.compactCardRadius)
                     }
                 }
             }
-            .padding(.horizontal, 16)
-            .skmSurface()
         }
     }
 }
@@ -408,6 +431,8 @@ private struct ProjectSkillRow: View {
             Spacer()
             if let activation = activations.first(where: { $0.name == skill.id || $0.skillId == skill.librarySkillId }) {
                 Button("从项目移除", role: .destructive) { confirmsUnlink = true }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
                     .disabled(model.isLoading)
                     .confirmationDialog("从项目移除此 Skill？", isPresented: $confirmsUnlink) {
                         Button("从项目移除", role: .destructive) {
@@ -418,6 +443,8 @@ private struct ProjectSkillRow: View {
                     }
             } else if skill.librarySkillId == nil {
                 Button("存到我的 Skill") { showsMigration = true }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
             } else {
                 Label("已在我的 Skill", systemImage: "checkmark")
                     .font(.caption).foregroundStyle(.secondary)
@@ -501,13 +528,15 @@ struct MetricCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Label(title, systemImage: symbol)
-                .font(.callout)
+                .font(.caption)
                 .foregroundStyle(.secondary)
-            Text(value).font(.title.bold()).monospacedDigit()
+            Text(value)
+                .font(.title2.bold())
+                .monospacedDigit()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
-        .skmSurface()
+        .padding(14)
+        .skmSurface(radius: SKMDesign.compactCardRadius)
         .accessibilityElement(children: .combine)
     }
 }

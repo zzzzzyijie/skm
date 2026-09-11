@@ -5,6 +5,8 @@ struct PromptSummaryRow: View {
     let prompt: PromptSummary
 
     var body: some View {
+        let variableCount = prompt.variables?.count ?? 0
+
         VStack(alignment: .leading, spacing: 6) {
             Text(prompt.name)
                 .font(.body.weight(.semibold))
@@ -16,13 +18,28 @@ struct PromptSummaryRow: View {
                 .foregroundStyle(.secondary)
                 .lineLimit(2)
 
-            if !prompt.tags.isEmpty {
-                Label(prompt.tags.joined(separator: " · "), systemImage: "tag")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
+            HStack(spacing: 10) {
+                Label(prompt.source, systemImage: "archivebox")
                     .lineLimit(1)
-                    .truncationMode(.tail)
+
+                Spacer(minLength: 4)
+
+                Label {
+                    if variableCount == 0 {
+                        Text("没有变量")
+                    } else {
+                        HStack(spacing: 3) {
+                            Text(variableCount, format: .number)
+                            Text("变量")
+                        }
+                    }
+                } icon: {
+                    Image(systemName: "slider.horizontal.3")
+                }
+                .fixedSize()
             }
+            .font(.caption)
+            .foregroundStyle(.tertiary)
         }
         .padding(.vertical, 8)
         .frame(maxWidth: .infinity, alignment: .leading)

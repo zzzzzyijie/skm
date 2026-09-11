@@ -10,10 +10,10 @@ struct SurfaceStyle: ViewModifier {
             .background(SKMDesign.surface, in: RoundedRectangle(cornerRadius: radius))
             .overlay {
                 RoundedRectangle(cornerRadius: radius)
-                    .strokeBorder(Color.primary.opacity(contrast == .increased ? 0.4 : 0.09), lineWidth: 0.5)
+                    .strokeBorder(Color.primary.opacity(contrast == .increased ? 0.4 : 0.075), lineWidth: 0.5)
                     .allowsHitTesting(false)
             }
-            .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.025), radius: 3, y: 2)
+            .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.035), radius: 2, y: 1)
     }
 }
 
@@ -37,5 +37,13 @@ extension View {
                     .strokeBorder(.separator, lineWidth: 1)
                     .allowsHitTesting(false)
             }
+    }
+
+    func skmMetadataPill(tint: Color = SKMDesign.tagTint) -> some View {
+        font(.caption)
+            .foregroundStyle(tint)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(tint.opacity(0.11), in: Capsule())
     }
 }
