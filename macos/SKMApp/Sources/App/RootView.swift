@@ -343,32 +343,45 @@ struct SettingsView: View {
     var body: some View {
         let language = preferences.language
 
-        NavigationSplitView {
-            List {
-                ForEach(SettingsSection.allCases) { section in
-                    SidebarNavigationButton(
-                        title: section.title,
-                        systemImage: section.symbol,
-                        isSelected: model.settingsSection == section,
-                        action: {
-                            guard model.settingsSection != section else { return }
-                            model.settingsSection = section
-                        }
-                    )
-                    .listRowInsets(EdgeInsets(
-                        top: 1,
-                        leading: 0,
-                        bottom: 1,
-                        trailing: 0
-                    ))
-                    .listRowBackground(Color.clear)
-                    .accessibilityIdentifier("settings-\(section.rawValue)")
+        HStack(spacing: 0) {
+            VStack(alignment: .leading, spacing: 0) {
+                Text(AppLocalization.string("设置", language: language))
+                    .font(.title2.bold())
+                    .padding(.horizontal, 20)
+                    .padding(.top, 18)
+                    .padding(.bottom, 12)
+
+                List {
+                    ForEach(SettingsSection.allCases) { section in
+                        SidebarNavigationButton(
+                            title: section.title,
+                            systemImage: section.symbol,
+                            isSelected: model.settingsSection == section,
+                            action: {
+                                guard model.settingsSection != section else { return }
+                                model.settingsSection = section
+                            }
+                        )
+                        .listRowInsets(EdgeInsets(
+                            top: 1,
+                            leading: 0,
+                            bottom: 1,
+                            trailing: 0
+                        ))
+                        .listRowBackground(Color.clear)
+                        .accessibilityIdentifier("settings-\(section.rawValue)")
+                    }
                 }
+                .listStyle(.sidebar)
+                .scrollContentBackground(.hidden)
             }
-            .listStyle(.sidebar)
-            .navigationTitle(AppLocalization.string("设置", language: language))
-            .navigationSplitViewColumnWidth(min: 180, ideal: 210, max: 250)
-        } detail: {
+            .frame(width: SKMDesign.settingsSidebarWidth)
+            .frame(maxHeight: .infinity)
+            .background(.regularMaterial)
+            .accessibilityIdentifier("settings-sidebar")
+
+            Divider()
+
             // Keep the detail view's identity and state intact. Passing language as a value
             // input invalidates only its rendered content; `.id(language)` would rebuild
             // native controls and rerun lifecycle tasks on every switch.
@@ -378,7 +391,6 @@ struct SettingsView: View {
         }
         .groupBoxStyle(InspectorGroupBoxStyle())
         .textFieldStyle(.roundedBorder)
-        .toolbar(removing: .sidebarToggle)
         .overlay(alignment: .bottom) {
             if let status = model.statusMessage {
                 StatusPill(text: status, isLoading: model.isLoading)

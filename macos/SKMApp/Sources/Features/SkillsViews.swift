@@ -242,12 +242,6 @@ struct SkillDetailView: View {
         VStack(alignment: .leading, spacing: 12) {
             // 标题行
             HStack(alignment: .top, spacing: 14) {
-                Image(systemName: "square.stack.3d.up")
-                    .font(.title2)
-                    .foregroundStyle(Color.accentColor)
-                    .frame(width: 48, height: 48)
-                    .background(Color.accentColor.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
-                    .accessibilityHidden(true)
                 Text(skill.name).font(.largeTitle.bold())
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -317,7 +311,7 @@ struct SkillDetailView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(Color.primary.opacity(0.03), in: RoundedRectangle(cornerRadius: 10))
             } else {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 160), spacing: 10)], spacing: 10) {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: SKMDesign.agentCardMinimumWidth), spacing: 10)], spacing: 10) {
                     ForEach(configuredAgents) { agent in
                         AgentToggleCard(
                             agent: agent,
@@ -432,6 +426,9 @@ private struct AgentToggleCard: View {
                     Text(agent.name)
                         .font(.callout.weight(.medium))
                         .foregroundStyle(isEnabled ? Color.primary : Color.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .layoutPriority(1)
 
                     HStack(spacing: 4) {
                         Circle()
@@ -442,8 +439,8 @@ private struct AgentToggleCard: View {
                             .foregroundStyle(Color.secondary)
                     }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-                Spacer()
                 Image(systemName: isEnabled ? "checkmark.circle.fill" : "circle")
                     .font(.title3)
                     .foregroundStyle(isEnabled ? Color.accentColor : Color.secondary)
@@ -461,6 +458,7 @@ private struct AgentToggleCard: View {
         }
         .buttonStyle(SelectionCardButtonStyle())
         .disabled(isLoading)
+        .accessibilityIdentifier("skill-agent-\(agent.id)")
         .accessibilityValue(isEnabled ? Text("已启用") : Text("未启用"))
     }
 }

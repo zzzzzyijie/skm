@@ -184,7 +184,11 @@ struct PromptDetailView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 22) {
                         // ── 标题 & 描述 ──
-                        PanelHeader(title: prompt.name, subtitle: prompt.description, symbol: "text.bubble", tint: .purple)
+                        PanelHeader(
+                            title: prompt.name,
+                            subtitle: prompt.description,
+                            tint: .purple
+                        )
 
                         // ── 元信息（来源 · 标签） ──
                         HStack(spacing: 16) {

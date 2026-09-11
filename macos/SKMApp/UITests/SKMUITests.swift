@@ -75,6 +75,12 @@ final class SKMUITests: XCTestCase {
         XCTAssertTrue(app.descendants(matching: .any)["open-settings"].waitForExistence(timeout: 10))
         app.descendants(matching: .any)["open-settings"].click()
 
+        let settingsWindow = app.windows["通用"]
+        XCTAssertTrue(settingsWindow.waitForExistence(timeout: 5))
+        XCTAssertTrue(settingsWindow.descendants(matching: .any)["settings-sidebar"].exists)
+        XCTAssertFalse(settingsWindow.buttons["隐藏边栏"].exists)
+        XCTAssertFalse(settingsWindow.buttons["显示边栏"].exists)
+
         let languagePicker = app.popUpButtons["settings-language"]
         XCTAssertTrue(languagePicker.waitForExistence(timeout: 5))
         languagePicker.click()
@@ -152,6 +158,10 @@ final class SKMUITests: XCTestCase {
         let toggleIsOn = toggleValue == "1" || toggleValue == "on" || toggleValue == "true"
         if !toggleIsOn { managementToggle.click() }
         app.typeKey("w", modifierFlags: .command)
+
+        let agentCard = app.descendants(matching: .any)["skill-agent-codex"]
+        XCTAssertTrue(agentCard.waitForExistence(timeout: 5))
+        XCTAssertLessThan(agentCard.frame.height, 70)
 
         app.descendants(matching: .any)["navigation-prompts"].click()
         app.typeKey("n", modifierFlags: .command)
