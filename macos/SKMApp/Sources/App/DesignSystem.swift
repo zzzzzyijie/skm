@@ -11,6 +11,7 @@ enum SKMDesign {
     static let settingsSidebarWidth: CGFloat = 210
     static let agentCardMinimumWidth: CGFloat = 190
     static let toolbarActionSize: CGFloat = 28
+    static let toolbarActionPadding: CGFloat = 4
     static let readingWidth: CGFloat = 840
     static let canvas = Color(nsColor: .windowBackgroundColor)
     static let surface = Color(nsColor: .controlBackgroundColor)

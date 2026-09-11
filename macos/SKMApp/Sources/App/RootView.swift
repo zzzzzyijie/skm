@@ -239,7 +239,8 @@ struct StatusPill: View {
     }
 }
 
-/// 主窗口顶部工具栏按钮使用统一的正方形槽位，确保单按钮为圆形、按钮组为等高胶囊。
+/// 主窗口顶部工具栏按钮使用统一的正方形槽位和对称留白，
+/// 确保单按钮为正圆、按钮组为等高胶囊，并在图标与文本模式下留出舒适的底部空间。
 private struct TopToolbarActionModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
@@ -250,6 +251,7 @@ private struct TopToolbarActionModifier: ViewModifier {
                 width: SKMDesign.toolbarActionSize,
                 height: SKMDesign.toolbarActionSize
             )
+            .padding(SKMDesign.toolbarActionPadding)
             .contentShape(Rectangle())
     }
 }
