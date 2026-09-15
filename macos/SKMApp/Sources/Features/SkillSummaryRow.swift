@@ -5,10 +5,10 @@ struct SkillSummaryRow: View {
     let skill: SkillSummary
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 5) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(skill.name)
-                    .font(.body.weight(.semibold))
+                    .font(.system(size: 14, weight: .semibold))
                     .lineLimit(1)
                     .truncationMode(.middle)
                     .layoutPriority(1)
@@ -20,20 +20,24 @@ struct SkillSummaryRow: View {
             }
 
             Text(skill.description.isEmpty ? AppLocalization.string("无描述") : skill.description)
-                .font(.callout)
+                .font(.system(size: 12))
                 .foregroundStyle(.secondary)
                 .lineLimit(2)
 
             if !skill.tags.isEmpty {
                 Label(skill.tags.joined(separator: " · "), systemImage: "tag")
                     .font(.caption)
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .truncationMode(.tail)
             }
         }
-        .padding(.vertical, 8)
+        .padding(.top, 13)
+        .padding(.bottom, 16)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .overlay(alignment: .bottom) {
+            Rectangle().fill(SKMDesign.libraryBorder.opacity(0.45)).frame(height: 1)
+        }
         .contentShape(Rectangle())
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityLabel)

@@ -575,9 +575,6 @@
         }
       }
     },
-    "SKM" : {
-
-    },
     "SKM Core 已停止。" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -663,6 +660,9 @@
           }
         }
       }
+    },
+    "v%@" : {
+
     },
     "Vendor" : {
       "extractionState" : "stale",
@@ -1317,6 +1317,7 @@
       }
     },
     "内容" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3763,9 +3764,6 @@
         }
       }
     },
-    "此 Prompt 没有正文内容。" : {
-
-    },
     "此 Skill 没有正文内容。" : {
 
     },
@@ -3781,6 +3779,7 @@
       }
     },
     "没有变量" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {

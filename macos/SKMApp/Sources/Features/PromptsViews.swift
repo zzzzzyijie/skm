@@ -55,8 +55,7 @@ struct PromptsListView: View {
                             if isAllGroupExpanded {
                                 ForEach(visiblePrompts) { prompt in
                                     PromptSummaryRow(prompt: prompt)
-                                        .padding(.leading, 8)
-                                        .listRowInsets(EdgeInsets(top: 3, leading: 12, bottom: 3, trailing: 12))
+                                        .libraryListRow(isSelected: model.selectedPromptID == prompt.id)
                                         .accessibilityIdentifier("prompt-row-\(prompt.id)")
                                         .tag(prompt.id)
                                         .contextMenu {
@@ -87,8 +86,7 @@ struct PromptsListView: View {
                                 if expandedTags.contains(group.tag) {
                                     ForEach(group.items) { prompt in
                                         PromptSummaryRow(prompt: prompt)
-                                            .padding(.leading, 8)
-                                            .listRowInsets(EdgeInsets(top: 3, leading: 12, bottom: 3, trailing: 12))
+                                            .libraryListRow(isSelected: model.selectedPromptID == prompt.id)
                                             .accessibilityIdentifier("prompt-row-\(prompt.id)")
                                             .tag(prompt.id)
                                             .contextMenu {
@@ -108,14 +106,17 @@ struct PromptsListView: View {
                             }
                         }
                     }
+                    .listStyle(.plain)
+                    .contentMargins(.horizontal, 0, for: .scrollContent)
+                    .scrollContentBackground(.hidden)
+                    .environment(\.defaultMinListRowHeight, 28)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             CollectionFooter(count: visiblePrompts.count, symbol: "text.bubble")
         }
-        .navigationTitle(AppLocalization.string("Prompts"))
-        .toolbar {
-            ToolbarItemGroup(placement: .primaryAction) {
+        .safeAreaInset(edge: .top, spacing: 0) {
+            CollectionHeader(title: "Prompts") {
                 Group {
                     Button("标签管理", systemImage: "tag") {
                         showsTagManager = true
@@ -123,7 +124,7 @@ struct PromptsListView: View {
                     .help("集中管理 Prompt 标签")
                     .accessibilityIdentifier("prompts-manage-tags-button")
 
-                    Button("导入 Prompt", systemImage: "square.and.arrow.down") { importPrompt() }
+                    Button("导入 Prompt", systemImage: "bubble") { importPrompt() }
                     Button("新建 Prompt", systemImage: "plus") { showsNewPrompt = true }
                 }
                 .topToolbarActionStyle()
@@ -185,10 +186,8 @@ struct PromptDetailView: View {
         Group {
             if let id = model.selectedPromptID, let prompt = model.prompts.first(where: { $0.id == id }) {
                 ScrollView {
-                    VStack(alignment: .leading, spacing: SKMDesign.sectionSpacing) {
+                    VStack(alignment: .leading, spacing: SKMDesign.librarySectionSpacing) {
                         promptHeader(prompt)
-
-                        Divider()
 
                         if let variables = prompt.variables, !variables.isEmpty {
                             variablesSection(variables)
@@ -196,20 +195,20 @@ struct PromptDetailView: View {
 
                         contentSection
                     }
-                    .readingLayout()
+                    .libraryReadingLayout()
                 }
                 .task(id: "\(id):\(prompt.hash)") { await loadDetails(id) }
-                .toolbar {
-                    ToolbarItemGroup(placement: .primaryAction) {
+                .safeAreaInset(edge: .top, spacing: 0) {
+                    DetailToolbar(isLoading: model.isLoading) {
                         Group {
-                            Button("快速查看", systemImage: "eye") { Task { await showQuickLook() } }
-                            Button("复制", systemImage: "doc.on.doc", action: copyBody)
+                            Button("快速查看", systemImage: "eye.slash") { Task { await showQuickLook() } }
+                            Button("复制", systemImage: "paperclip", action: copyBody)
                                 .disabled(details == nil)
-                            Button("填写变量", systemImage: "slider.horizontal.3") { showsRender = true }
+                            Button("填写变量", systemImage: "tag") { showsRender = true }
                                 .disabled(details == nil)
-                            Button("导出", systemImage: "square.and.arrow.up") { exportPrompt(prompt.name) }
+                            Button("导出", systemImage: "bubble") { exportPrompt(prompt.name) }
                                 .disabled(details == nil)
-                            Button("编辑", systemImage: "pencil") { showsEditor = true }
+                            Button("编辑", systemImage: "tag") { showsEditor = true }
                                 .disabled(details == nil)
                             Button("删除", systemImage: "trash", role: .destructive) { confirmsDelete = true }
                         }
@@ -242,35 +241,34 @@ struct PromptDetailView: View {
     }
 
     private func promptHeader(_ prompt: PromptSummary) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 14) {
             Text(prompt.name)
-                .font(.title.bold())
+                .font(.system(size: 30, weight: .semibold))
                 .textSelection(.enabled)
 
             if !prompt.description.isEmpty {
                 Text(prompt.description)
-                    .font(.callout)
+                    .font(.system(size: 15))
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            if !prompt.tags.isEmpty {
-                LazyVGrid(
-                    columns: [GridItem(.adaptive(minimum: 72, maximum: 180), spacing: 6, alignment: .leading)],
-                    alignment: .leading,
-                    spacing: 6
-                ) {
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 18) {
+                    Label(prompt.source, systemImage: "folder").libraryMetadataPill()
                     ForEach(prompt.tags, id: \.self) { tag in
-                        Text(tag)
-                            .skmMetadataPill()
+                        Label(tag, systemImage: "tag")
+                            .libraryMetadataPill()
                             .fixedSize()
                     }
                 }
+                VStack(alignment: .leading, spacing: 10) {
+                    Label(prompt.source, systemImage: "folder").libraryMetadataPill()
+                    ForEach(prompt.tags, id: \.self) { tag in
+                        Label(tag, systemImage: "tag").libraryMetadataPill()
+                    }
+                }
             }
-
-            Label(prompt.source, systemImage: "archivebox")
-                .font(.caption)
-                .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -311,33 +309,16 @@ struct PromptDetailView: View {
 
     private var contentSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 10) {
-                Text("内容")
-                    .font(.headline)
-
-                Spacer()
-
-                if showsCopiedFeedback {
-                    Label("已复制", systemImage: "checkmark.circle.fill")
-                        .font(.caption)
-                        .foregroundStyle(SKMDesign.successTint)
-                        .transition(.opacity)
-                }
-
-                Button("复制 Prompt 内容", systemImage: showsCopiedFeedback ? "checkmark" : "doc.on.doc", action: copyBody)
-                    .labelStyle(.iconOnly)
-                    .buttonStyle(.borderless)
-                    .help("复制 Prompt 内容")
-                    .disabled(details == nil)
+            if showsCopiedFeedback {
+                Label("已复制", systemImage: "checkmark.circle")
+                    .font(.caption)
+                    .foregroundStyle(SKMDesign.successTint)
+                    .transition(.opacity)
             }
 
             Group {
                 if let body = details?.body {
-                    if body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                        Text("此 Prompt 没有正文内容。")
-                            .foregroundStyle(.secondary)
-                            .italic()
-                    } else {
+                    if !body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                         MarkdownBodyView(markdown: body)
                     }
                 } else {
@@ -347,9 +328,7 @@ struct PromptDetailView: View {
                     }
                 }
             }
-            .padding(18)
-            .frame(maxWidth: .infinity, minHeight: 180, alignment: .topLeading)
-            .skmSurface(radius: SKMDesign.compactCardRadius)
+            .frame(maxWidth: .infinity, alignment: .topLeading)
         }
         .animation(reduceMotion ? nil : .easeOut(duration: 0.15), value: showsCopiedFeedback)
     }

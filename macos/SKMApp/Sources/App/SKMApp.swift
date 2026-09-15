@@ -22,7 +22,8 @@ struct SKMApp: App {
                 .task { await model.start() }
                 .onDisappear { Task { await model.stop() } }
         }
-        .defaultSize(width: 1180, height: 760)
+        .defaultSize(width: 1400, height: 900)
+        .windowStyle(.hiddenTitleBar)
         .commands {
             // 文件菜单（新建 / 导入快捷键：Cmd+N / Cmd+O）
             CommandGroup(replacing: .newItem) {

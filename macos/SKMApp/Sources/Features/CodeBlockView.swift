@@ -4,34 +4,28 @@ import SwiftUI
 struct CodeBlockView: View {
     let code: String
     @State private var copied = false
+    @State private var isHovered = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack {
-                Image(systemName: "chevron.left.forwardslash.chevron.right")
-                    .accessibilityHidden(true)
-                Spacer()
-                Button(copied ? AppLocalization.string("已复制") : AppLocalization.string("复制"), systemImage: copied ? "checkmark" : "doc.on.doc", action: copy)
-                    .buttonStyle(.borderless)
-                    .help("复制代码")
-            }
-            .font(.caption)
-            .foregroundStyle(.secondary)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            Divider()
-            ScrollView(.horizontal) {
-                Text(code)
-                    .font(.callout.monospaced())
-                    .lineSpacing(4)
-                    .textSelection(.enabled)
-                    .padding(12)
-            }
+        ScrollView(.horizontal) {
+            Text(code)
+                .font(.system(size: 13, design: .monospaced))
+                .foregroundStyle(.secondary)
+                .lineSpacing(4)
+                .textSelection(.enabled)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
         }
-        .background(Color.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 8))
-        .overlay {
-            RoundedRectangle(cornerRadius: 8).strokeBorder(.separator, lineWidth: 0.5)
+        .background(SKMDesign.librarySelection, in: RoundedRectangle(cornerRadius: 6))
+        .overlay(alignment: .topTrailing) {
+            Button(copied ? AppLocalization.string("已复制") : AppLocalization.string("复制"), systemImage: copied ? "checkmark" : "doc.on.doc", action: copy)
+                .labelStyle(.iconOnly)
+                .buttonStyle(.borderless)
+                .help("复制代码")
+                .padding(8)
+                .opacity(isHovered || copied ? 1 : 0)
         }
+        .onHover { isHovered = $0 }
         .task(id: copied) {
             guard copied else { return }
             do { try await Task.sleep(for: .seconds(2)) } catch { return }

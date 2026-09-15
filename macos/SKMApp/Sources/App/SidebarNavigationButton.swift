@@ -16,7 +16,7 @@ struct SidebarNavigationButton: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 11) {
+            HStack(spacing: 9) {
                 Image(systemName: systemImage)
                     .symbolRenderingMode(.hierarchical)
                     .font(.body)
@@ -26,7 +26,6 @@ struct SidebarNavigationButton: View {
 
                 Text(title)
                     .font(.body)
-                    .bold(isSelected)
                     .foregroundStyle(isSelected ? .primary : .secondary)
                     .lineLimit(1)
 
@@ -35,18 +34,18 @@ struct SidebarNavigationButton: View {
                 if let count {
                     Text(count, format: .number)
                         .font(.callout.monospacedDigit())
-                        .foregroundStyle(isSelected ? .secondary : .tertiary)
+                        .foregroundStyle(.secondary)
                         .frame(minWidth: 24, alignment: .trailing)
                 }
             }
             .padding(.horizontal, SKMDesign.sidebarRowHorizontalPadding)
-            .frame(maxWidth: .infinity, minHeight: SKMDesign.sidebarRowHeight, alignment: .leading)
+            .frame(maxWidth: .infinity, minHeight: 32, alignment: .leading)
             .contentShape(Rectangle())
             .background {
-                RoundedRectangle(cornerRadius: SKMDesign.controlRadius)
+                RoundedRectangle(cornerRadius: 6)
                     .fill(backgroundFill)
                     .overlay {
-                        RoundedRectangle(cornerRadius: SKMDesign.controlRadius)
+                        RoundedRectangle(cornerRadius: 6)
                             .strokeBorder(borderColor, lineWidth: 0.5)
                     }
             }
@@ -73,7 +72,7 @@ struct SidebarNavigationButton: View {
 
     private var backgroundFill: Color {
         if isSelected {
-            return Color.primary.opacity(colorScheme == .dark ? 0.15 : 0.085)
+            return Color.primary.opacity(colorScheme == .dark ? 0.15 : 0.12)
         }
         if isHovered {
             return Color.primary.opacity(colorScheme == .dark ? 0.075 : 0.045)
@@ -86,7 +85,7 @@ struct SidebarNavigationButton: View {
 
     private var borderColor: Color {
         if isSelected {
-            return Color.primary.opacity(contrast == .increased ? 0.32 : (colorScheme == .dark ? 0.16 : 0.09))
+            return Color.primary.opacity(contrast == .increased ? 0.32 : 0)
         }
         return isFocused ? Color.primary.opacity(contrast == .increased ? 0.28 : 0.16) : .clear
     }

@@ -29,7 +29,7 @@ struct TagGroupHeader: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 9) {
+            HStack(spacing: 6) {
                 Image(systemName: "chevron.right")
                     .font(.caption.bold())
                     .foregroundStyle(.secondary)
@@ -37,14 +37,8 @@ struct TagGroupHeader: View {
                     .rotationEffect(.degrees(isExpanded ? 90 : 0))
                     .accessibilityHidden(true)
 
-                Image(systemName: systemImage)
-                    .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(.secondary)
-                    .frame(width: 16)
-                    .accessibilityHidden(true)
-
                 Text(title)
-                    .font(.caption.weight(.semibold))
+                    .font(.system(size: 13))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .truncationMode(.middle)
@@ -55,16 +49,13 @@ struct TagGroupHeader: View {
                 Text(count, format: .number)
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(.secondary)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 2)
-                    .background(Color.secondary.opacity(0.11), in: Capsule())
             }
             .padding(.horizontal, 10)
-            .padding(.vertical, 7)
+            .frame(height: 28)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .listRowInsets(EdgeInsets(top: 6, leading: 8, bottom: 3, trailing: 8))
+        .listRowInsets(EdgeInsets())
         .listRowSeparator(.hidden)
         .accessibilityLabel(title)
         .accessibilityValue(isExpanded ? Text("已展开") : Text("已收起"))

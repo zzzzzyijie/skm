@@ -5,44 +5,30 @@ struct PromptSummaryRow: View {
     let prompt: PromptSummary
 
     var body: some View {
-        let variableCount = prompt.variables?.count ?? 0
-
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 5) {
             Text(prompt.name)
-                .font(.body.weight(.semibold))
+                .font(.system(size: 14, weight: .semibold))
                 .lineLimit(1)
                 .truncationMode(.middle)
 
             Text(prompt.description.isEmpty ? AppLocalization.string("无描述") : prompt.description)
-                .font(.callout)
+                .font(.system(size: 12))
                 .foregroundStyle(.secondary)
                 .lineLimit(2)
 
-            HStack(spacing: 10) {
-                Label(prompt.source, systemImage: "archivebox")
+            if !prompt.tags.isEmpty {
+                Label(prompt.tags.joined(separator: " · "), systemImage: "tag")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
                     .lineLimit(1)
-
-                Spacer(minLength: 4)
-
-                Label {
-                    if variableCount == 0 {
-                        Text("没有变量")
-                    } else {
-                        HStack(spacing: 3) {
-                            Text(variableCount, format: .number)
-                            Text("变量")
-                        }
-                    }
-                } icon: {
-                    Image(systemName: "slider.horizontal.3")
-                }
-                .fixedSize()
             }
-            .font(.caption)
-            .foregroundStyle(.tertiary)
         }
-        .padding(.vertical, 8)
+        .padding(.top, 13)
+        .padding(.bottom, 16)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .overlay(alignment: .bottom) {
+            Rectangle().fill(SKMDesign.libraryBorder.opacity(0.45)).frame(height: 1)
+        }
         .contentShape(Rectangle())
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityLabel)

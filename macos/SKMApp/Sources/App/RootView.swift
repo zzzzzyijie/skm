@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// RootView - macOS App 根视图
-/// 负责根据 Core 握手状态在“启动/重试加载屏”与“三栏主界面（NavigationSplitView）”之间切换，
+/// 负责根据 Core 握手状态在“启动/重试加载屏”与“三栏主界面”之间切换，
 /// 并承载底部全局状态气泡（StatusPill）、全局错误弹窗以及新用户欢迎向导（WelcomeView）。
 struct RootView: View {
     @Bindable var model: AppModel
@@ -48,19 +48,19 @@ struct RootView: View {
 
     /// 三栏主界面布局：侧边栏（Sidebar） -> 内容列表栏（Content） -> 详情面板（Detail）
     private var mainContent: some View {
-        NavigationSplitView {
+        HStack(spacing: 0) {
             sidebar
-                .navigationSplitViewColumnWidth(min: 180, ideal: 210, max: 260)
-        } content: {
+                .frame(minWidth: 180, idealWidth: SKMDesign.librarySidebarWidth, maxWidth: SKMDesign.librarySidebarWidth)
+            Rectangle().fill(SKMDesign.libraryBorder).frame(width: 1)
             content
-                .navigationSplitViewColumnWidth(min: 280, ideal: 340, max: 440)
-        } detail: {
+                .frame(minWidth: 280, idealWidth: SKMDesign.libraryListWidth, maxWidth: SKMDesign.libraryListWidth)
+                .background(SKMDesign.detailCanvas)
+            Rectangle().fill(SKMDesign.libraryBorder).frame(width: 1)
             detail
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .frame(minWidth: 480, maxWidth: .infinity, maxHeight: .infinity)
                 .background(SKMDesign.detailCanvas)
         }
-        .navigationSplitViewStyle(.balanced)
-        .toolbar(removing: .sidebarToggle)
+        .ignoresSafeArea(.container, edges: .top)
     }
 
     /// Core 启动连接状态视图：加载中旋转菊花 或 启动失败诊断重试视图
@@ -91,37 +91,33 @@ struct RootView: View {
     }
 
     private var sidebar: some View {
-        List {
+        VStack(spacing: 4) {
             ForEach(AppSection.allCases) { section in
                 SidebarNavigationButton(
                     title: section.title,
-                    systemImage: section.symbol,
+                    systemImage: section == .skills ? "tag" : section == .prompts ? "bubble" : "folder",
                     isSelected: sidebarSelection == section,
                     count: collectionCount(section),
                     action: { selectSidebarSection(section) }
                 )
-                .listRowInsets(EdgeInsets(
-                    top: 1,
-                    leading: 0,
-                    bottom: 1,
-                    trailing: 0
-                ))
-                .listRowBackground(Color.clear)
                 .accessibilityIdentifier("navigation-\(section.rawValue.lowercased())")
             }
+            Spacer(minLength: 0)
         }
-        .listStyle(.sidebar)
+        .padding(.leading, 8)
+        .padding(.trailing, 40)
+        .padding(.top, 44)
         .onChange(of: model.section) { _, section in
             guard sidebarSelection != section else { return }
             sidebarSelection = section
         }
-        .safeAreaInset(edge: .bottom) {
+        .safeAreaInset(edge: .bottom, spacing: 0) {
             VStack(spacing: 0) {
                 Divider()
                 SidebarBottomToolbar(model: model)
             }
         }
-        .navigationTitle(AppLocalization.string("SKM"))
+        .background(SKMDesign.librarySidebar)
     }
 
     private func selectSidebarSection(_ section: AppSection) {
@@ -203,15 +199,16 @@ struct CollectionSearchField: View {
         }
         .font(.callout)
         .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
+        .frame(height: 28)
+        .background(SKMDesign.librarySelection, in: RoundedRectangle(cornerRadius: 6))
         .overlay {
             RoundedRectangle(cornerRadius: 8)
-                .strokeBorder(isFocused ? Color.accentColor : Color.primary.opacity(0.1), lineWidth: isFocused ? 2 : 0.5)
+                .strokeBorder(isFocused ? Color.accentColor : .clear, lineWidth: 1)
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
-        .background(.bar)
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
+        .padding(.bottom, 8)
+        .background(SKMDesign.detailCanvas)
     }
 }
 
@@ -239,19 +236,19 @@ struct StatusPill: View {
     }
 }
 
-/// 主窗口顶部工具栏按钮使用统一的正方形槽位和对称留白，
-/// 确保单按钮为正圆、按钮组为等高胶囊，并在图标与文本模式下留出舒适的底部空间。
+/// 主窗口顶部使用无底色的线性图标，保持一致的命中区域。
 private struct TopToolbarActionModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .labelStyle(.iconOnly)
-            .buttonStyle(.borderless)
+            .buttonStyle(.plain)
+            .font(.system(size: 17, weight: .light))
+            .foregroundStyle(.secondary)
             .controlSize(.regular)
             .frame(
                 width: SKMDesign.toolbarActionSize,
                 height: SKMDesign.toolbarActionSize
             )
-            .padding(SKMDesign.toolbarActionPadding)
             .contentShape(Rectangle())
     }
 }
@@ -426,7 +423,7 @@ private struct SidebarBottomToolbar: View {
     @Bindable var model: AppModel
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 2) {
             // 一键同步纯图标按钮
             Button {
                 if model.workspace?.configured == true {
@@ -471,14 +468,13 @@ private struct SidebarBottomToolbar: View {
             .help(AppLocalization.string("偏好设置 (⌘,)"))
 
             Spacer()
-            Text("SKM")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.tertiary)
+            Text("v\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "")")
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
                 .accessibilityHidden(true)
         }
-        .padding(.leading, 21)
-        .padding(.trailing, 26)
-        .padding(.vertical, 7)
+        .padding(.horizontal, 8)
+        .frame(height: 40)
     }
 
     private var syncHelpText: String {

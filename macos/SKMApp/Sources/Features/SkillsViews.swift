@@ -60,8 +60,7 @@ struct SkillsListView: View {
                             if isAllGroupExpanded {
                                 ForEach(visibleSkills) { skill in
                                     SkillSummaryRow(skill: skill)
-                                        .padding(.leading, 8)
-                                        .listRowInsets(EdgeInsets(top: 3, leading: 12, bottom: 3, trailing: 12))
+                                        .libraryListRow(isSelected: model.selectedSkillID == skill.id)
                                         .accessibilityIdentifier("skill-row-\(skill.id)")
                                         .tag(skill.id)
                                         .contextMenu {
@@ -94,8 +93,7 @@ struct SkillsListView: View {
                                 if expandedTags.contains(group.tag) {
                                     ForEach(group.items) { skill in
                                         SkillSummaryRow(skill: skill)
-                                            .padding(.leading, 8)
-                                            .listRowInsets(EdgeInsets(top: 3, leading: 12, bottom: 3, trailing: 12))
+                                            .libraryListRow(isSelected: model.selectedSkillID == skill.id)
                                             .accessibilityIdentifier("skill-row-\(skill.id)")
                                             .tag(skill.id)
                                             .contextMenu {
@@ -117,15 +115,17 @@ struct SkillsListView: View {
                             }
                         }
                     }
-                    .listStyle(.inset)
+                    .listStyle(.plain)
+                    .contentMargins(.horizontal, 0, for: .scrollContent)
+                    .scrollContentBackground(.hidden)
+                    .environment(\.defaultMinListRowHeight, 28)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             CollectionFooter(count: visibleSkills.count, symbol: "square.stack.3d.up")
         }
-        .navigationTitle(AppLocalization.string("Skills"))
-        .toolbar {
-            ToolbarItemGroup(placement: .primaryAction) {
+        .safeAreaInset(edge: .top, spacing: 0) {
+            CollectionHeader(title: "Skills") {
                 Group {
                     Button("标签管理", systemImage: "tag") {
                         showsTagManager = true
@@ -164,7 +164,7 @@ struct SkillsListView: View {
 }
 
 /// SkillDetailView - 技能详情视图
-/// 一体化滚动布局：顶部标题与元数据、Agent 激活卡片区、Markdown 正文渲染、底部路径与来源信息。
+/// 一体化滚动布局：顶部标题与元数据、Agent 激活卡片区、Markdown 正文渲染。
 /// 提供 QuickLook 快捷预览、在线编辑（SkillEditorSheet，内含历史版本回滚）与删除安全确认。
 struct SkillDetailView: View {
     @Environment(\.openSettings) private var openSettings
@@ -177,10 +177,8 @@ struct SkillDetailView: View {
         Group {
             if let id = model.selectedSkillID, let summary = model.skills.first(where: { $0.id == id }) {
                 ScrollView {
-                    VStack(alignment: .leading, spacing: SKMDesign.sectionSpacing) {
+                    VStack(alignment: .leading, spacing: SKMDesign.librarySectionSpacing) {
                         headerSection(summary)
-
-                        Divider()
 
                         agentSection(summary)
 
@@ -189,15 +187,14 @@ struct SkillDetailView: View {
                         markdownSection
                             .frame(maxWidth: .infinity, alignment: .leading)
 
-                        footerSection(summary)
                     }
-                    .readingLayout()
+                    .libraryReadingLayout()
                 }
                 .task(id: "\(id):\(summary.hash)") { await loadDetails(id) }
-                .toolbar {
-                    ToolbarItemGroup(placement: .primaryAction) {
+                .safeAreaInset(edge: .top, spacing: 0) {
+                    DetailToolbar(health: summary.health, isLoading: model.isLoading) {
                         Group {
-                            Button("快速查看", systemImage: "eye") { Task { await showQuickLook() } }
+                            Button("快速查看", systemImage: "eye.slash") { Task { await showQuickLook() } }
                             if details?.editable ?? summary.editable {
                                 Button("编辑", systemImage: "pencil") { showsEditor = true }
                                     .disabled(details == nil)
@@ -232,21 +229,16 @@ struct SkillDetailView: View {
     // MARK: - 顶部：标题、描述、标签、元数据
 
     private func headerSection(_ skill: SkillSummary) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .firstTextBaseline, spacing: 14) {
                 Text(skill.name)
-                    .font(.title.bold())
+                    .font(.system(size: 30, weight: .semibold))
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                Label(
-                    healthLabel(skill.health),
-                    systemImage: skill.health == "available" ? "checkmark.circle.fill" : "exclamationmark.triangle.fill"
-                )
-                .skmMetadataPill(tint: skill.health == "available" ? SKMDesign.successTint : SKMDesign.tagTint)
             }
 
             Text(skill.description.isEmpty ? AppLocalization.string("无描述") : skill.description)
-                .font(.callout)
+                .font(.system(size: 15))
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
 
@@ -256,35 +248,39 @@ struct SkillDetailView: View {
                     .foregroundStyle(.orange)
             }
 
-            if !skill.tags.isEmpty {
-                LazyVGrid(
-                    columns: [GridItem(.adaptive(minimum: 72, maximum: 180), spacing: 6, alignment: .leading)],
-                    alignment: .leading,
-                    spacing: 6
-                ) {
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 18) {
                     ForEach(skill.tags, id: \.self) { tag in
-                        Text(tag)
-                            .skmMetadataPill()
+                        Label(tag, systemImage: "tag")
+                            .libraryMetadataPill()
                             .fixedSize()
                     }
+                    skillSource(skill)
+                }
+                VStack(alignment: .leading, spacing: 10) {
+                    ForEach(skill.tags, id: \.self) { tag in
+                        Label(tag, systemImage: "tag").libraryMetadataPill()
+                    }
+                    skillSource(skill)
                 }
             }
-
-            Label(
-                skill.source.isEmpty ? "local" : skill.source,
-                systemImage: skill.source == "git" ? "arrow.triangle.branch" : "externaldrive"
-            )
-            .font(.caption)
-            .foregroundStyle(.secondary)
         }
+    }
+
+    private func skillSource(_ skill: SkillSummary) -> some View {
+        Label(skill.source.isEmpty ? "local" : skill.source, systemImage: "folder")
+            .font(.system(size: 12))
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+            .help([skill.effectivePath, skill.editReason].compactMap { $0 }.joined(separator: "\n"))
     }
 
     // MARK: - Agent 激活卡片区
 
     private func agentSection(_ skill: SkillSummary) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 14) {
             Text("Agent 激活")
-                .font(.headline)
+                .font(.system(size: 16, weight: .semibold))
 
             let configuredAgents = model.agents.filter(\.configured)
 
@@ -305,7 +301,7 @@ struct SkillDetailView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .skmSurface(radius: SKMDesign.compactCardRadius)
             } else {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: SKMDesign.agentCardMinimumWidth), spacing: 10)], spacing: 10) {
+                LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
                     ForEach(configuredAgents) { agent in
                         AgentToggleCard(
                             agent: agent,
@@ -348,30 +344,6 @@ struct SkillDetailView: View {
         }
     }
 
-    // MARK: - 底部元数据
-
-    private func footerSection(_ skill: SkillSummary) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Divider()
-
-            if let reason = skill.editReason, !skill.editable {
-                Label(reason, systemImage: "lock.fill")
-                    .font(.callout)
-                    .foregroundStyle(Color.secondary)
-            }
-
-            HStack(spacing: 16) {
-                Label(skill.effectivePath, systemImage: "folder")
-                    .font(.caption)
-                    .foregroundStyle(Color.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                    .textSelection(.enabled)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
     // MARK: - 辅助方法
 
     private func loadDetails(_ id: String) async {
@@ -412,14 +384,16 @@ private struct AgentToggleCard: View {
         Button {
             onToggle(!isEnabled)
         } label: {
-            HStack(spacing: 10) {
+            HStack(spacing: 12) {
                 AgentIconView(agentId: agent.id, isCustom: agent.custom, size: 24)
+                    .frame(width: 34, height: 34)
+                    .background(SKMDesign.librarySelection, in: RoundedRectangle(cornerRadius: 9))
                     .accessibilityHidden(true)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(agent.name)
-                        .font(.callout.bold())
-                        .foregroundStyle(isEnabled ? Color.primary : Color.secondary)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(Color.primary)
                         .lineLimit(1)
                         .truncationMode(.tail)
                         .layoutPriority(1)
@@ -442,28 +416,20 @@ private struct AgentToggleCard: View {
                 } else {
                     ZStack {
                         Capsule()
-                            .fill(isEnabled ? Color.accentColor : Color.secondary.opacity(0.24))
+                            .fill(isEnabled ? SKMDesign.libraryGreen : Color.secondary.opacity(0.24))
                         Circle()
                             .fill(.white)
                             .padding(2)
                             .offset(x: isEnabled ? 7 : -7)
                             .shadow(color: .black.opacity(0.16), radius: 1, y: 0.5)
                     }
-                    .frame(width: 32, height: 18)
+                    .frame(width: 36, height: 22)
                     .accessibilityHidden(true)
                 }
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-            .frame(minHeight: 54)
-            .background(
-                isEnabled ? Color.accentColor.opacity(0.055) : SKMDesign.surface,
-                in: RoundedRectangle(cornerRadius: SKMDesign.compactCardRadius)
-            )
-            .overlay {
-                RoundedRectangle(cornerRadius: SKMDesign.compactCardRadius)
-                    .strokeBorder(isEnabled ? Color.accentColor.opacity(0.3) : Color.primary.opacity(0.075), lineWidth: 0.5)
-            }
+            .padding(.horizontal, 16)
+            .frame(height: 74)
+            .libraryCard()
         }
         .buttonStyle(SelectionCardButtonStyle())
         .disabled(isLoading)
@@ -486,12 +452,12 @@ struct MarkdownBodyView: View {
                     Text(text)
                         .font(headingFont(level))
                         .fontWeight(.bold)
-                        .padding(.top, level <= 2 ? 8 : 4)
+                        .padding(.top, level <= 2 ? 0 : 4)
                 case .codeBlock(let code):
                     CodeBlockView(code: code)
                 case .paragraph(let text):
                     Text(attributedString(from: text))
-                        .font(.body)
+                        .font(.system(size: 14))
                         .lineSpacing(5)
                         .textSelection(.enabled)
                         .fixedSize(horizontal: false, vertical: true)
@@ -1080,10 +1046,11 @@ struct ConflictPreview: View {
 
 struct HealthBadge: View {
     let health: String
+    var size: CGFloat = 14
 
     var body: some View {
         Label(label, systemImage: symbol)
-            .font(.caption)
+            .font(.system(size: size, weight: .light))
             .foregroundStyle(color)
             .labelStyle(.iconOnly)
             .help(label)
@@ -1092,8 +1059,8 @@ struct HealthBadge: View {
 
     private var label: String { healthLabel(health) }
 
-    private var symbol: String { health == "available" ? "checkmark.circle.fill" : "exclamationmark.triangle.fill" }
-    private var color: Color { health == "available" ? .green : .orange }
+    private var symbol: String { health == "available" ? "checkmark.circle" : "exclamationmark.triangle" }
+    private var color: Color { health == "available" ? SKMDesign.libraryGreen : .orange }
 }
 
 func healthLabel(_ health: String) -> String {

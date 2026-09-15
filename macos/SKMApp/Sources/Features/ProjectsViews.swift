@@ -40,33 +40,26 @@ struct ProjectsListView: View {
                             model.selectedProjectID = project.id
                         } label: {
                             HStack(alignment: .center, spacing: 10) {
-                                Image(systemName: "folder.fill")
+                                Image(systemName: "folder")
                                     .font(.body)
-                                    .foregroundStyle(Color.accentColor)
-                                    .frame(width: 30, height: 30)
-                                    .background(Color.accentColor.opacity(0.09), in: RoundedRectangle(cornerRadius: 7))
+                                    .foregroundStyle(isSelected ? SKMDesign.libraryGreen : Color.orange)
+                                    .frame(width: 16)
                                     .accessibilityHidden(true)
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(project.id).bold()
-                                    Text(project.path)
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                        .lineLimit(1)
-                                        .truncationMode(.middle)
-                                }
+                                Text(project.id)
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundStyle(isSelected ? Color(red: 0.10, green: 0.49, blue: 0.16) : Color.primary)
+                                    .lineLimit(1)
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.horizontal, 10)
-                            .padding(.vertical, 7)
-                            .background(
-                                isSelected ? Color.accentColor.opacity(0.12) : Color.clear,
-                                in: RoundedRectangle(cornerRadius: SKMDesign.compactCardRadius)
-                            )
+                            .frame(height: 48)
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
-                        .listRowInsets(EdgeInsets(top: 3, leading: 6, bottom: 3, trailing: 6))
-                        .listRowBackground(Color.clear)
+                        .listRowInsets(EdgeInsets())
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(isSelected ? SKMDesign.libraryGreen.opacity(0.11) : Color.clear)
+                        .help(project.path)
                         .accessibilityElement(children: .combine)
                         .accessibilityAddTraits(isSelected ? .isSelected : [])
                         .contextMenu {
@@ -75,14 +68,16 @@ struct ProjectsListView: View {
                             Button("注销项目", role: .destructive) { projectToRemove = project }
                         }
                     }
+                    .listStyle(.plain)
+                    .contentMargins(.horizontal, 0, for: .scrollContent)
+                    .scrollContentBackground(.hidden)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             CollectionFooter(count: filteredProjects.count, symbol: "folder")
         }
-        .navigationTitle(AppLocalization.string("Projects"))
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
+        .safeAreaInset(edge: .top, spacing: 0) {
+            CollectionHeader(title: "Projects") {
                 Button("添加项目", systemImage: "plus") {
                     showsAddProject = true
                 }
@@ -187,7 +182,7 @@ struct ProjectDetailView: View {
                 let access = ProjectAccessStatus(project: project)
                 if access.canRead {
                     ScrollView {
-                        VStack(alignment: .leading, spacing: SKMDesign.sectionSpacing) {
+                        VStack(alignment: .leading, spacing: SKMDesign.librarySectionSpacing) {
                             if let details = model.projectDetails, details.project.id == id {
                                 header(project, details: details)
                                 projectOverview(details)
@@ -199,7 +194,7 @@ struct ProjectDetailView: View {
                                     .frame(maxWidth: .infinity, minHeight: 220)
                             }
                         }
-                        .readingLayout()
+                        .libraryReadingLayout()
                     }
                     .task(id: id) {
                         await model.loadProjectDetails(id)
@@ -223,8 +218,8 @@ struct ProjectDetailView: View {
                 ContentUnavailableView("选择一个项目", systemImage: "folder", description: Text("选择本机项目，查看 Skills 和 Agent 部署状态。"))
             }
         }
-        .toolbar {
-            ToolbarItemGroup(placement: .primaryAction) {
+        .safeAreaInset(edge: .top, spacing: 0) {
+            DetailToolbar(isLoading: model.isLoading) {
                 if let id = model.selectedProjectID,
                    let project = model.projects.first(where: { $0.id == id }) {
                     Group {
@@ -251,9 +246,9 @@ struct ProjectDetailView: View {
     }
 
     private func header(_ project: ProjectModel, details: ProjectDetails?) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 12) {
             Text(project.id)
-                .font(.title.bold())
+                .font(.system(size: 30, weight: .semibold))
                 .textSelection(.enabled)
 
             Label(project.path, systemImage: "folder")
@@ -264,13 +259,10 @@ struct ProjectDetailView: View {
                 .textSelection(.enabled)
 
             HStack(spacing: 10) {
-                Label("可用", systemImage: "checkmark.circle.fill")
-                    .skmMetadataPill(tint: SKMDesign.successTint)
-
-                Button("从我的 Skill 里导入", systemImage: "square.and.arrow.down") {
+                Button("从我的 Skill 里导入", systemImage: "arrow.down") {
                     showsSkillImporter = true
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(LibraryActionButtonStyle(prominent: true))
                 .disabled(details == nil)
             }
         }
@@ -286,17 +278,17 @@ struct ProjectDetailView: View {
             MetricCard(
                 title: AppLocalization.string("项目 Skills"),
                 value: details.scan.skillCount.description,
-                symbol: "square.stack.3d.up"
+                symbol: "tag"
             )
             MetricCard(
                 title: AppLocalization.string("使用中的 Agent"),
                 value: details.scan.agents.filter { $0.skillCount > 0 }.count.description,
-                symbol: "cpu"
+                symbol: "desktopcomputer"
             )
             MetricCard(
                 title: AppLocalization.string("受管 Skill"),
                 value: details.activations.count.description,
-                symbol: "checkmark.shield"
+                symbol: "checkmark.circle"
             )
         }
     }
@@ -346,17 +338,21 @@ struct ProjectDetailView: View {
     }
 
     private func scannedSkills(_ details: ProjectDetails) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 8) {
-                Label("项目 Skills", systemImage: "shippingbox")
-                    .font(.headline)
+                Label("项目 Skills", systemImage: "globe")
+                    .font(.system(size: 16, weight: .semibold))
                 Text(details.scan.skillCount.description)
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
                     .monospacedDigit()
-                    .skmMetadataPill(tint: .secondary)
+                    .padding(.horizontal, 8)
+                    .frame(height: 24)
+                    .background(SKMDesign.librarySelection, in: Capsule())
                 Spacer()
             }
 
-            LazyVStack(alignment: .leading, spacing: 10) {
+            LazyVStack(alignment: .leading, spacing: 12) {
                 if details.scan.skills.isEmpty {
                     ContentUnavailableView {
                         Label("项目中还没有 Skill", systemImage: "shippingbox")
@@ -380,9 +376,9 @@ struct ProjectDetailView: View {
                             agents: details.scan.agents,
                             activations: details.activations
                         )
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 4)
-                        .skmSurface(radius: SKMDesign.compactCardRadius)
+                        .padding(16)
+                        .frame(minHeight: 126, alignment: .topLeading)
+                        .libraryCard()
                     }
                 }
             }
@@ -400,63 +396,79 @@ private struct ProjectSkillRow: View {
     @State private var confirmsUnlink = false
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: skill.status == "ok" ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
-                .foregroundStyle(skill.status == "ok" ? .green : .orange)
-                .font(.title3)
-                .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 7) {
-                Text(skill.name).font(.headline)
-                if let description = skill.description, !description.isEmpty {
-                    Text(description)
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
-                }
-                HStack(spacing: 6) {
-                    ForEach(skill.agents, id: \.self) { agentID in
-                        Text(agentName(agentID))
-                            .font(.system(size: 11, weight: .medium))
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Label(skill.name, systemImage: skill.status == "ok" ? "checkmark.circle" : "exclamationmark.triangle")
+                        .font(.system(size: 14, weight: .semibold))
+                        .labelStyle(ProjectSkillLabelStyle(isHealthy: skill.status == "ok"))
+                    if let description = skill.description, !description.isEmpty {
+                        Text(description)
+                            .font(.system(size: 13))
+                            .lineSpacing(3)
                             .foregroundStyle(.secondary)
-                            .padding(.horizontal, 7)
-                            .padding(.vertical, 2.5)
-                            .background(Color.primary.opacity(0.05), in: Capsule())
-                            .overlay(
-                                Capsule()
-                                    .stroke(Color.primary.opacity(0.08), lineWidth: 0.5)
-                            )
+                            .lineLimit(2)
                     }
+                }
+                Spacer(minLength: 0)
+                if let activation = activations.first(where: { $0.name == skill.id || $0.skillId == skill.librarySkillId }) {
+                    Button("从项目移除", role: .destructive) { confirmsUnlink = true }
+                        .buttonStyle(LibraryActionButtonStyle())
+                        .fixedSize()
+                        .disabled(model.isLoading)
+                        .confirmationDialog("从项目移除此 Skill？", isPresented: $confirmsUnlink) {
+                            Button("从项目移除", role: .destructive) {
+                                Task { await model.unlinkProject(project: project.id, skill: activation.skillId, agents: activation.agents) }
+                            }
+                        } message: {
+                            Text("移除这个项目中的受管部署，个人资料库中的 Skill 会保留。")
+                        }
+                } else if skill.librarySkillId == nil {
+                    Button("存到我的 Skill") { showsMigration = true }
+                        .buttonStyle(LibraryActionButtonStyle())
+                        .fixedSize()
+                } else {
+                    Label("已在我的 Skill", systemImage: "checkmark")
+                        .font(.caption).foregroundStyle(.secondary)
                 }
             }
-            Spacer()
-            if let activation = activations.first(where: { $0.name == skill.id || $0.skillId == skill.librarySkillId }) {
-                Button("从项目移除", role: .destructive) { confirmsUnlink = true }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                    .disabled(model.isLoading)
-                    .confirmationDialog("从项目移除此 Skill？", isPresented: $confirmsUnlink) {
-                        Button("从项目移除", role: .destructive) {
-                            Task { await model.unlinkProject(project: project.id, skill: activation.skillId, agents: activation.agents) }
-                        }
-                    } message: {
-                        Text("移除这个项目中的受管部署，个人资料库中的 Skill 会保留。")
-                    }
-            } else if skill.librarySkillId == nil {
-                Button("存到我的 Skill") { showsMigration = true }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-            } else {
-                Label("已在我的 Skill", systemImage: "checkmark")
-                    .font(.caption).foregroundStyle(.secondary)
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 8) { agentBadges }
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 80), alignment: .leading)], alignment: .leading, spacing: 6) {
+                    agentBadges
+                }
             }
         }
-        .padding(.vertical, 10)
         .sheet(isPresented: $showsMigration) { ProjectMigrationSheet(model: model, project: project, skill: skill) }
         .accessibilityElement(children: .contain)
     }
 
     private func agentName(_ id: String) -> String {
         agents.first(where: { $0.id == id })?.label ?? id
+    }
+
+    private var agentBadges: some View {
+        ForEach(skill.agents, id: \.self) { agentID in
+            Text(agentName(agentID))
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(SKMDesign.librarySelection, in: Capsule())
+                .overlay { Capsule().strokeBorder(SKMDesign.libraryBorder, lineWidth: 0.5) }
+                .fixedSize()
+        }
+    }
+}
+
+private struct ProjectSkillLabelStyle: LabelStyle {
+    let isHealthy: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+        HStack(spacing: 8) {
+            configuration.icon.foregroundStyle(isHealthy ? SKMDesign.libraryGreen : .orange)
+            configuration.title.foregroundStyle(.primary)
+        }
     }
 }
 
@@ -526,17 +538,18 @@ struct MetricCard: View {
     let symbol: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 6) {
             Label(title, systemImage: symbol)
-                .font(.caption)
+                .font(.system(size: 13))
                 .foregroundStyle(.secondary)
             Text(value)
-                .font(.title2.bold())
+                .font(.system(size: 30, weight: .semibold))
                 .monospacedDigit()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
-        .skmSurface(radius: SKMDesign.compactCardRadius)
+        .padding(.horizontal, 16)
+        .frame(height: 88)
+        .libraryCard()
         .accessibilityElement(children: .combine)
     }
 }
