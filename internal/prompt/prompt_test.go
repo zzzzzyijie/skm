@@ -119,6 +119,30 @@ func TestManagerLifecycleAndHashConflict(t *testing.T) {
 	}
 }
 
+func TestManagerUpdateCanRemoveLastTag(t *testing.T) {
+	root := t.TempDir()
+	storage, err := store.New(store.Paths{Home: filepath.Join(root, ".skm"), UserHome: root, ProjectRoot: filepath.Join(root, "project")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := storage.Ensure(); err != nil {
+		t.Fatal(err)
+	}
+	manager := New(storage)
+	value, err := manager.Create(validPrompt, "local", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	updated, err := manager.Update(value.ID, validPrompt, value.Hash, []string{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if updated.Tags == nil || len(updated.Tags) != 0 {
+		t.Fatalf("updated tags = %#v, want non-nil empty slice", updated.Tags)
+	}
+}
+
 func TestManagerUsesPromptDefaultTag(t *testing.T) {
 	root := t.TempDir()
 	storage, err := store.New(store.Paths{Home: filepath.Join(root, ".skm"), UserHome: root, ProjectRoot: filepath.Join(root, "project")})

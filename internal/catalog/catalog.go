@@ -492,15 +492,8 @@ func (m *Manager) UpdateTags(query string, mutate func([]string) []string) (doma
 	if err != nil {
 		return domain.Skill{}, err
 	}
-	config, err := m.Store.LoadConfig()
-	if err != nil {
-		return domain.Skill{}, err
-	}
 	updated := mutate(append([]string(nil), value.Tags...))
-	if len(updated) == 0 {
-		updated = config.Defaults.Tags
-	}
-	value.Tags, err = tags.Normalize(updated, config.Defaults.Tags)
+	value.Tags, err = tags.NormalizeExplicit(updated)
 	if err != nil {
 		return domain.Skill{}, err
 	}

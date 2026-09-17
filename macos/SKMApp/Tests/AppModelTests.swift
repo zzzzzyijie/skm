@@ -112,6 +112,17 @@ final class AppModelTests: XCTestCase {
         XCTAssertEqual(model.customTags, ["review"])
     }
 
+    func testUnregisterCustomTagRemovesPersistedTag() {
+        let preferences = isolatedPreferences()
+        let model = AppModel(core: StubCore(), preferences: preferences, monitorsFiles: false)
+        model.registerCustomTag("review")
+
+        model.unregisterCustomTag("review")
+
+        XCTAssertTrue(model.customTags.isEmpty)
+        XCTAssertEqual(preferences.stringArray(forKey: "skm.custom.tags"), [])
+    }
+
     func testReadOnlyMethodsAreTheOnlyAutomaticallyRetryableCalls() {
         XCTAssertTrue(CoreClient.isSafeToRetry("skills.list"))
         XCTAssertTrue(CoreClient.isSafeToRetry("system.doctor"))

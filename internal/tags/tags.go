@@ -16,6 +16,16 @@ func Normalize(values []string, defaults []string) ([]string, error) {
 	if len(values) == 0 {
 		values = defaults
 	}
+	return normalize(values, false)
+}
+
+// NormalizeExplicit validates an explicitly supplied tag list. Unlike
+// Normalize, an empty list remains empty instead of restoring defaults.
+func NormalizeExplicit(values []string) ([]string, error) {
+	return normalize(values, true)
+}
+
+func normalize(values []string, allowEmpty bool) ([]string, error) {
 	seen := make(map[string]struct{}, len(values))
 	result := make([]string, 0, len(values))
 	for _, value := range values {
@@ -29,7 +39,7 @@ func Normalize(values []string, defaults []string) ([]string, error) {
 		seen[value] = struct{}{}
 		result = append(result, value)
 	}
-	if len(result) == 0 {
+	if len(result) == 0 && !allowEmpty {
 		return nil, fmt.Errorf("at least one tag is required")
 	}
 	sort.Strings(result)

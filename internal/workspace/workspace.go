@@ -788,7 +788,7 @@ func (m *Manager) applyLocal(root string, skills, prompts, sources map[string]co
 		if err != nil {
 			return fmt.Errorf("validate merged Prompt %s: %w", id, err)
 		}
-		normalizedTags, err := tags.Normalize(item.Entry.Tags, document.Tags)
+		normalizedTags, err := tags.NormalizeExplicit(item.Entry.Tags)
 		if err != nil {
 			return err
 		}
@@ -908,7 +908,7 @@ func loadRemote(root string, manifest domain.WorkspaceManifest) (map[string]cont
 		if entry.ID != "local/"+document.Name || entry.Hash != document.Hash {
 			return nil, nil, fmt.Errorf("workspace Skill %s manifest does not match its content", entry.ID)
 		}
-		entry.Tags, err = tags.Normalize(entry.Tags, nil)
+		entry.Tags, err = tags.NormalizeExplicit(entry.Tags)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -930,7 +930,13 @@ func loadRemote(root string, manifest domain.WorkspaceManifest) (map[string]cont
 		if entry.ID != "local/"+document.Name || entry.Hash != document.Hash {
 			return nil, nil, fmt.Errorf("workspace Prompt %s manifest does not match its content", entry.ID)
 		}
-		entry.Tags, err = tags.Normalize(entry.Tags, document.Tags)
+		if entry.Tags != nil {
+			entry.Tags, err = tags.NormalizeExplicit(entry.Tags)
+		} else if document.Tags != nil {
+			entry.Tags, err = tags.Normalize(entry.Tags, document.Tags)
+		} else {
+			entry.Tags, err = tags.NormalizeExplicit(nil)
+		}
 		if err != nil {
 			return nil, nil, err
 		}

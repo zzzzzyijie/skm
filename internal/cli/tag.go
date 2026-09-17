@@ -86,7 +86,7 @@ func (a *App) newTagAddCommand() *cobra.Command {
 func (a *App) newTagRemoveCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "remove <skill> <tag...>",
-		Short: "Remove tags; the configured default is restored if none remain",
+		Short: "Remove one or more tags from a personal Library Skill",
 		Args:  cobra.MinimumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			storage, err := a.openStore()

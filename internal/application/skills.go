@@ -138,11 +138,7 @@ func (s *Service) updateSkill(input UpdateSkillInput, historyReason string) (Ski
 	}
 	var result SkillUpdateResult
 	err := s.withLock(func() error {
-		config, err := s.Store.LoadConfig()
-		if err != nil {
-			return err
-		}
-		normalizedTags, err := tags.Normalize(input.Tags, config.Defaults.Tags)
+		normalizedTags, err := tags.NormalizeExplicit(input.Tags)
 		if err != nil {
 			return err
 		}

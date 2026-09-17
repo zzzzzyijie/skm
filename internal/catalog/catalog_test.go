@@ -46,6 +46,22 @@ func TestAddLocalAppliesDefaultAndExplicitTags(t *testing.T) {
 	}
 }
 
+func TestUpdateTagsCanRemoveLastTag(t *testing.T) {
+	manager := New(newStore(t))
+	added, err := manager.AddLocal(makeSkill(t, "untagged-skill"), "", []string{"testing"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	updated, err := manager.UpdateTags(added.ID, func([]string) []string { return []string{} })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if updated.Tags == nil || len(updated.Tags) != 0 {
+		t.Fatalf("updated tags = %#v, want non-nil empty slice", updated.Tags)
+	}
+}
+
 func TestUpdateContentCreatesSnapshotAndPreservesAuxiliaryFiles(t *testing.T) {
 	storage := newStore(t)
 	manager := New(storage)

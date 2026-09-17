@@ -25,6 +25,16 @@ func TestNormalizeUsesDefaultsOnlyWhenUnspecified(t *testing.T) {
 	}
 }
 
+func TestNormalizeExplicitPreservesEmptySelection(t *testing.T) {
+	actual, err := NormalizeExplicit([]string{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if actual == nil || len(actual) != 0 {
+		t.Fatalf("explicit empty tags = %#v, want non-nil empty slice", actual)
+	}
+}
+
 func TestNormalizeRejectsInvalidTag(t *testing.T) {
 	for _, value := range []string{
 		"", "UP PER", "-start", "end-", "a_b", "path/name", "emoji-🎉", "zero\u200bwidth", strings.Repeat("知", 33),

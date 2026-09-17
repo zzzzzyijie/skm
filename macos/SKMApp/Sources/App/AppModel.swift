@@ -132,6 +132,7 @@ final class AppModel {
     var hasExistingData = false
     var pendingCommand: AppCommand?
     var lastErrorKind: String?
+    var customTags: Set<String>
 
     init(
         core: any CoreServing = CoreClient(),
@@ -140,13 +141,16 @@ final class AppModel {
         presentsWelcome: Bool = true
     ) {
         self.core = core
+        let resolvedPreferences: UserDefaults
         if let preferences {
-            self.preferences = preferences
+            resolvedPreferences = preferences
         } else if let suite = ProcessInfo.processInfo.environment["SKM_PREFERENCES_SUITE"], suite.hasPrefix("SKMUITests.") {
-            self.preferences = UserDefaults(suiteName: suite) ?? .standard
+            resolvedPreferences = UserDefaults(suiteName: suite) ?? .standard
         } else {
-            self.preferences = .standard
+            resolvedPreferences = .standard
         }
+        self.preferences = resolvedPreferences
+        self.customTags = Set(resolvedPreferences.stringArray(forKey: Self.customTagsStorageKey) ?? [])
         self.monitorsFiles = monitorsFiles
         self.presentsWelcome = presentsWelcome
     }
@@ -682,20 +686,25 @@ final class AppModel {
     /// 批量从所有 Skill 中移除指定标签
     func removeSkillTag(_ tag: String) async {
         let affected = skills.filter { $0.tags.contains(tag) }
-        guard !affected.isEmpty else { return }
 
-        await perform(String(format: AppLocalization.string("正在从 %lld 个 Skill 中移除标签…"), affected.count)) {
-            for summary in affected {
-                if let details: SkillDetails = try? await self.core.call("skills.get", params: IDParams(id: summary.id)) {
+        if !affected.isEmpty {
+            var succeeded = false
+            await perform(String(format: AppLocalization.string("正在从 %lld 个 Skill 中移除标签…"), affected.count)) {
+                for summary in affected {
+                    let details: SkillDetails = try await self.core.call("skills.get", params: IDParams(id: summary.id))
                     let newTags = details.tags.filter { $0 != tag }
                     let _: SkillUpdateResponse = try await self.core.call(
                         "skills.update",
                         params: UpdateSkillParams(id: summary.id, content: details.content, baseHash: details.hash, tags: newTags)
                     )
                 }
+                try await self.reload()
+                succeeded = true
             }
-            await self.refresh()
+            guard succeeded else { return }
         }
+
+        unregisterCustomTag(tag)
         announce(AppLocalization.string("标签已移除"))
     }
 
@@ -735,11 +744,12 @@ final class AppModel {
     /// 批量从所有 Prompt 中移除指定标签
     func removePromptTag(_ tag: String) async {
         let affected = prompts.filter { $0.tags.contains(tag) }
-        guard !affected.isEmpty else { return }
 
-        await perform(String(format: AppLocalization.string("正在从 %lld 个 Prompt 中移除标签…"), affected.count)) {
-            for summary in affected {
-                if let details: PromptDetails = try? await self.core.call("prompts.get", params: IDParams(id: summary.id)) {
+        if !affected.isEmpty {
+            var succeeded = false
+            await perform(String(format: AppLocalization.string("正在从 %lld 个 Prompt 中移除标签…"), affected.count)) {
+                for summary in affected {
+                    let details: PromptDetails = try await self.core.call("prompts.get", params: IDParams(id: summary.id))
                     let newTags = details.tags.filter { $0 != tag }
                     let _: PromptSummary = try await self.core.call(
                         "prompts.update",
@@ -756,32 +766,34 @@ final class AppModel {
                         )
                     )
                 }
+                try await self.reload()
+                succeeded = true
             }
-            await self.refresh()
+            guard succeeded else { return }
         }
+
+        unregisterCustomTag(tag)
         announce(AppLocalization.string("标签已移除"))
     }
 
     private static let customTagsStorageKey = "skm.custom.tags"
 
-    /// 用户主动添加并持久化的标签集合
-    var customTags: Set<String> {
-        get {
-            let list = preferences.stringArray(forKey: Self.customTagsStorageKey) ?? []
-            return Set(list)
-        }
-        set {
-            preferences.set(Array(newValue).sorted(), forKey: Self.customTagsStorageKey)
-        }
-    }
-
     /// 注册一个自定义标签（即便尚未绑定任何条目）
     func registerCustomTag(_ tag: String) {
         let trimmed = tag.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
-        var current = customTags
-        current.insert(trimmed)
-        customTags = current
+        customTags.insert(trimmed)
+        persistCustomTags()
+    }
+
+    /// 从持久化标签池移除标签；条目上的关联由调用方先行处理。
+    func unregisterCustomTag(_ tag: String) {
+        customTags.remove(tag)
+        persistCustomTags()
+    }
+
+    private func persistCustomTags() {
+        preferences.set(Array(customTags).sorted(), forKey: Self.customTagsStorageKey)
     }
 
     /// 运行系统 Doctor 健康诊断

@@ -97,7 +97,7 @@ func (m *Manager) Update(query, content, baseHash string, tagValues []string) (d
 	if document.Name != value.Name {
 		return domain.Prompt{}, fmt.Errorf("Prompt name cannot change from %q to %q; duplicate it instead", value.Name, document.Name)
 	}
-	normalizedTags, err := m.normalizeTags(tagValues, document.Tags, value.Tags)
+	normalizedTags, err := m.normalizeUpdatedTags(tagValues, document.Tags, value.Tags)
 	if err != nil {
 		return domain.Prompt{}, err
 	}
@@ -237,6 +237,13 @@ func (m *Manager) normalizeTags(explicit, documentTags, fallback []string) ([]st
 		return nil, err
 	}
 	return tags.Normalize(values, config.Defaults.PromptTags)
+}
+
+func (m *Manager) normalizeUpdatedTags(explicit, documentTags, fallback []string) ([]string, error) {
+	if explicit != nil {
+		return tags.NormalizeExplicit(explicit)
+	}
+	return m.normalizeTags(nil, documentTags, fallback)
 }
 
 func (m *Manager) removeObjectIfUnreferenced(hash, name string) error {
