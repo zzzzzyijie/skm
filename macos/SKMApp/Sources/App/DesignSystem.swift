@@ -30,6 +30,8 @@ enum SKMDesign {
     static let librarySelection = adaptiveColor(light: 0xF3F3F5, dark: 0x303033)
     static let librarySidebar = adaptiveColor(light: 0xF5F5F5, dark: 0x242426)
     static let libraryBorder = adaptiveColor(light: 0xDEDFE5, dark: 0x424247)
+    static let sheetHorizontalPadding: CGFloat = 22
+    static let sheetVerticalPadding: CGFloat = 20
 
     private static func adaptiveColor(light: UInt32, dark: UInt32) -> Color {
         Color(nsColor: NSColor(name: nil) { appearance in
@@ -38,6 +40,136 @@ enum SKMDesign {
                            green: CGFloat((rgb >> 8) & 255) / 255,
                            blue: CGFloat(rgb & 255) / 255, alpha: 1)
         })
+    }
+}
+
+/// A compact, native-feeling title area for modal workflows.
+struct SheetHeader<Trailing: View>: View {
+    let title: String
+    let subtitle: String
+    let symbol: String
+    var tint: Color = .accentColor
+    @ViewBuilder let trailing: Trailing
+
+    init(
+        title: String,
+        subtitle: String,
+        symbol: String,
+        tint: Color = .accentColor,
+        @ViewBuilder trailing: () -> Trailing
+    ) {
+        self.title = title
+        self.subtitle = subtitle
+        self.symbol = symbol
+        self.tint = tint
+        self.trailing = trailing()
+    }
+
+    var body: some View {
+        HStack(spacing: 16) {
+            Image(systemName: symbol)
+                .font(.system(size: 22, weight: .medium))
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(.white)
+                .frame(width: 48, height: 48)
+                .background(tint.gradient, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .strokeBorder(.white.opacity(0.18), lineWidth: 1)
+                }
+                .shadow(color: tint.opacity(0.16), radius: 5, y: 3)
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 5) {
+                Text(title)
+                    .font(.system(size: 21, weight: .semibold))
+                    .lineLimit(1)
+                if !subtitle.isEmpty {
+                    Text(subtitle)
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            trailing
+        }
+        .padding(24)
+    }
+}
+
+extension SheetHeader where Trailing == EmptyView {
+    init(title: String, subtitle: String, symbol: String, tint: Color = .accentColor) {
+        self.init(title: title, subtitle: subtitle, symbol: symbol, tint: tint) { EmptyView() }
+    }
+}
+
+/// Quiet section labels keep the controls, rather than nested containers, in focus.
+struct SheetSection<Content: View>: View {
+    let title: LocalizedStringKey
+    var subtitle: LocalizedStringKey? = nil
+    let symbol: String
+    @ViewBuilder let content: Content
+
+    init(
+        _ title: LocalizedStringKey,
+        subtitle: LocalizedStringKey? = nil,
+        symbol: String,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.title = title
+        self.subtitle = subtitle
+        self.symbol = symbol
+        self.content = content()
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 11) {
+            HStack(alignment: .firstTextBaseline, spacing: 7) {
+                Text(title)
+                    .font(.system(size: 13, weight: .semibold))
+                Spacer(minLength: 8)
+                if let subtitle {
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            content
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+}
+
+/// Keeps primary and cancel actions stationary at the bottom of a sheet.
+struct SheetActionBar<Leading: View, Actions: View>: View {
+    @ViewBuilder let leading: Leading
+    @ViewBuilder let actions: Actions
+
+    init(@ViewBuilder leading: () -> Leading, @ViewBuilder actions: () -> Actions) {
+        self.leading = leading()
+        self.actions = actions()
+    }
+
+    var body: some View {
+        HStack(spacing: 10) {
+            leading
+            Spacer(minLength: 16)
+            actions
+        }
+        .padding(.horizontal, SKMDesign.sheetHorizontalPadding)
+        .padding(.vertical, 16)
+        .background(.bar)
+        .overlay(alignment: .top) { Divider() }
+    }
+}
+
+extension SheetActionBar where Leading == EmptyView {
+    init(@ViewBuilder actions: () -> Actions) {
+        self.init(leading: { EmptyView() }, actions: actions)
     }
 }
 

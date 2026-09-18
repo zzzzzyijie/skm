@@ -298,6 +298,17 @@
         }
       }
     },
+    "Git 来源" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Git Source"
+          }
+        }
+      }
+    },
     "Library 模式" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -327,6 +338,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "macOS or the file system denied access. Select the folder again to grant access."
+          }
+        }
+      }
+    },
+    "Markdown" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Markdown"
           }
         }
       }
@@ -981,6 +1003,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Folder in repository (optional)"
+          }
+        }
+      }
+    },
+    "仓库地址或安装命令" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Repository URL or install command"
           }
         }
       }
@@ -1890,6 +1923,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tags you add while editing items will appear here."
+          }
+        }
+      }
+    },
+    "基本信息" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Basic Information"
           }
         }
       }
@@ -2851,6 +2895,17 @@
         }
       }
     },
+    "支持文件夹或 ZIP" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supports a folder or ZIP archive"
+          }
+        }
+      }
+    },
     "放弃更改" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3022,6 +3077,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "No Version History"
+          }
+        }
+      }
+    },
+    "暂无变量。需要复用动态内容时，可添加名称、类型和默认值。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No variables yet. Add a name, type, and default value when you need reusable dynamic content."
           }
         }
       }
@@ -3282,6 +3348,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Local content is validated and stored in SKM's immutable object library."
+          }
+        }
+      }
+    },
+    "本地目录" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Local Folder"
           }
         }
       }
@@ -3993,6 +4070,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Add Variable"
+          }
+        }
+      }
+    },
+    "添加后可在录入或编辑条目时直接选择。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Once added, it can be selected when creating or editing items."
           }
         }
       }
@@ -5421,6 +5509,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Configure and Test Connection"
+          }
+        }
+      }
+    },
+    "配置模板变量" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Configure Template Variables"
           }
         }
       }

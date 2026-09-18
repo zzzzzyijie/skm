@@ -410,77 +410,91 @@ struct PromptEditorSheet: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            PanelHeader(title: details == nil ? AppLocalization.string("新建 Prompt") : AppLocalization.string("编辑 Prompt"), subtitle: AppLocalization.string("把好用的提示词保存为可复用模板。"), symbol: "text.badge.plus", tint: .purple)
-            Form {
-                TextField("名称", text: $name)
-                    .focused($nameFocused)
-                    .accessibilityIdentifier("prompt-name-field")
-                TextField("描述", text: $description)
-                    .accessibilityIdentifier("prompt-description-field")
-            }
-            .formStyle(.columns)
-            TagSelector(model: model, selectedTags: $tags, accessibilityIdentifier: "prompt-tags")
-            TextEditor(text: $promptBody)
-                .font(.system(.body, design: .monospaced))
-                .editorSurface()
-                .accessibilityIdentifier("prompt-body-editor")
-            DisclosureGroup("变量（\(variables.count)）") {
+        VStack(spacing: 0) {
+            SheetHeader(
+                title: details == nil ? AppLocalization.string("新建 Prompt") : AppLocalization.string("编辑 Prompt"),
+                subtitle: AppLocalization.string("把好用的提示词保存为可复用模板。"),
+                symbol: details == nil ? "text.badge.plus" : "square.and.pencil",
+                tint: .purple
+            )
+            Divider()
+
+            HStack(alignment: .top, spacing: 0) {
                 ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
-                    ForEach($variables) { $variable in
-                        PromptVariableEditor(variable: $variable) {
-                            variables.removeAll { $0.id == variable.id }
+                    VStack(alignment: .leading, spacing: 24) {
+                        SheetSection("基本信息", symbol: "info.circle") {
+                            VStack(alignment: .leading, spacing: 16) {
+                                VStack(alignment: .leading, spacing: 6) {
+                                    Text("名称").font(.caption).foregroundStyle(.secondary)
+                                    TextField("名称", text: $name)
+                                        .focused($nameFocused)
+                                        .accessibilityIdentifier("prompt-name-field")
+                                }
+                                VStack(alignment: .leading, spacing: 6) {
+                                    Text("描述").font(.caption).foregroundStyle(.secondary)
+                                    TextField("描述", text: $description, axis: .vertical)
+                                        .lineLimit(3...5)
+                                        .accessibilityIdentifier("prompt-description-field")
+                                }
+                            }
                         }
-                        if variable.id != variables.last?.id { Divider() }
+                        Divider()
+                        TagSelector(model: model, selectedTags: $tags, accessibilityIdentifier: "prompt-tags")
                     }
-                    Button("添加变量", systemImage: "plus") {
-                        variables.append(PromptVariableDraft())
+                    .padding(22)
+                }
+                .frame(width: 280)
+                .frame(maxHeight: .infinity)
+                .background(SKMDesign.canvas)
+
+                Divider()
+
+                VStack(spacing: 0) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "doc.plaintext")
+                            .foregroundStyle(.secondary)
+                        Text("内容")
+                            .fontWeight(.semibold)
+                        Spacer()
+                        Text("Markdown")
+                            .font(.system(size: 10, weight: .medium, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(SKMDesign.librarySelection, in: RoundedRectangle(cornerRadius: 5))
+                    }
+                    .font(.system(size: 12))
+                    .padding(.horizontal, 22)
+                    .padding(.vertical, 14)
+
+                    TextEditor(text: $promptBody)
+                        .font(.system(size: 14, design: .monospaced))
+                        .lineSpacing(5)
+                        .scrollContentBackground(.hidden)
+                        .padding(.horizontal, 18)
+                        .padding(.bottom, 18)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .accessibilityIdentifier("prompt-body-editor")
+
+                    Divider()
+                    variableSection
+
+                    if latest != nil {
+                        Divider()
+                        ScrollView { conflictSection.padding(16) }
+                            .frame(maxHeight: 220)
                     }
                 }
-                .padding(.vertical, 8)
-                }
-                .frame(maxHeight: 180)
+                .background(SKMDesign.detailCanvas)
             }
-            if let latest {
-                GroupBox("检测到并发修改") {
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("磁盘版本在编辑期间发生了变化。你的草稿没有丢失。")
-                            .foregroundStyle(.orange)
-                        HStack(alignment: .top, spacing: 12) {
-                            ConflictPreview(title: "你的草稿", content: promptBody)
-                            ConflictPreview(title: "磁盘版本", content: latest.body)
-                        }
-                        HStack {
-                            Button("使用磁盘版本") {
-                                name = latest.name
-                                description = latest.description
-                                promptBody = latest.body
-                                tags = latest.tags
-                                variables = (latest.variables ?? []).map(PromptVariableDraft.init)
-                                baseHash = latest.hash
-                                self.latest = nil
-                            }
-                            Button("另存为新 Prompt") {
-                                self.latest = nil
-                                Task { await save(asCopy: true) }
-                            }
-                            Spacer()
-                            Button("保留草稿并覆盖") {
-                                baseHash = latest.hash
-                                self.latest = nil
-                                Task { await save() }
-                            }
-                            .buttonStyle(.borderedProminent)
-                        }
-                    }
-                    .padding(6)
-                }
-            }
-            HStack {
+
+            SheetActionBar {
                 Text(variableHint)
-                    .font(.caption).foregroundStyle(.secondary)
-                Spacer()
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+            } actions: {
                 Button("取消", role: .cancel) { requestDismiss() }
                     .keyboardShortcut(.cancelAction)
                     .disabled(model.isLoading)
@@ -492,8 +506,7 @@ struct PromptEditorSheet: View {
                 .disabled(!canSave || model.isLoading)
             }
         }
-        .padding(24)
-        .frame(minWidth: 680, minHeight: 520)
+        .frame(width: 920, height: 640)
         .sheetChrome(model: model)
         .interactiveDismissDisabled(hasChanges || model.isLoading)
         .onAppear { nameFocused = details == nil }
@@ -502,6 +515,77 @@ struct PromptEditorSheet: View {
             Button("继续编辑", role: .cancel) { }
         } message: {
             Text("关闭后，本次未保存的编辑将丢失。")
+        }
+    }
+
+    private var variableSection: some View {
+        DisclosureGroup("变量（\(variables.count)）") {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    if variables.isEmpty {
+                        Text("暂无变量。需要复用动态内容时，可添加名称、类型和默认值。")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    ForEach($variables) { $variable in
+                        PromptVariableEditor(variable: $variable) {
+                            variables.removeAll { $0.id == variable.id }
+                        }
+                        .padding(12)
+                        .background(SKMDesign.librarySelection, in: RoundedRectangle(cornerRadius: 8))
+                    }
+                    Button("添加变量", systemImage: "plus") {
+                        variables.append(PromptVariableDraft())
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                }
+                .padding(.top, 10)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .frame(maxHeight: 170)
+        }
+        .font(.system(size: 12, weight: .medium))
+        .padding(.horizontal, 22)
+        .padding(.vertical, 14)
+    }
+
+    @ViewBuilder
+    private var conflictSection: some View {
+        if let latest {
+            GroupBox("检测到并发修改") {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("磁盘版本在编辑期间发生了变化。你的草稿没有丢失。")
+                        .foregroundStyle(.orange)
+                    HStack(alignment: .top, spacing: 12) {
+                        ConflictPreview(title: "你的草稿", content: promptBody)
+                        ConflictPreview(title: "磁盘版本", content: latest.body)
+                    }
+                    HStack {
+                        Button("使用磁盘版本") {
+                            name = latest.name
+                            description = latest.description
+                            promptBody = latest.body
+                            tags = latest.tags
+                            variables = (latest.variables ?? []).map(PromptVariableDraft.init)
+                            baseHash = latest.hash
+                            self.latest = nil
+                        }
+                        Button("另存为新 Prompt") {
+                            self.latest = nil
+                            Task { await save(asCopy: true) }
+                        }
+                        Spacer()
+                        Button("保留草稿并覆盖") {
+                            baseHash = latest.hash
+                            self.latest = nil
+                            Task { await save() }
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
+                }
+                .padding(6)
+            }
         }
     }
 

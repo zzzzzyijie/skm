@@ -98,6 +98,20 @@ enum TagManagementTarget {
         case .prompts: return AppLocalization.string("个 Prompt")
         }
     }
+
+    var symbol: String {
+        switch self {
+        case .skills: return "square.stack.3d.up"
+        case .prompts: return "text.bubble"
+        }
+    }
+
+    var tint: Color {
+        switch self {
+        case .skills: return .blue
+        case .prompts: return .purple
+        }
+    }
 }
 
 /// 集中式标签管理面板：支持全局标签统计浏览、重命名/合并与批量解绑移除
@@ -112,6 +126,8 @@ struct TagManagementSheet: View {
     @State private var tagToDelete: String?
     @State private var showsAddTagSheet = false
     @State private var newCreatedTag = ""
+    @FocusState private var renameFieldFocused: Bool
+    @FocusState private var addFieldFocused: Bool
 
     private var allTagCounts: [(tag: String, count: Int)] {
         let activeTags: [String]
@@ -144,12 +160,10 @@ struct TagManagementSheet: View {
     var body: some View {
         VStack(spacing: 0) {
             header
-            Divider()
             content
-            Divider()
             footer
         }
-        .frame(width: 560, height: 500)
+        .frame(width: 580, height: 510)
         .sheetChrome(model: model)
         .onExitCommand { if search.isEmpty { dismiss() } else { search = "" } }
         .confirmationDialog(
@@ -185,25 +199,27 @@ struct TagManagementSheet: View {
     }
 
     private var header: some View {
-        HStack(spacing: 12) {
-            PanelHeader(title: target.title, subtitle: String(format: AppLocalization.string("共 %lld 个标签"), allTagCounts.count), symbol: "tag")
-            Spacer()
+        SheetHeader(
+            title: target.title,
+            subtitle: String(format: AppLocalization.string("共 %lld 个标签"), allTagCounts.count),
+            symbol: target.symbol,
+            tint: target.tint
+        ) {
             Button("添加标签", systemImage: "plus") {
                 newCreatedTag = ""
                 showsAddTagSheet = true
             }
             .buttonStyle(.bordered)
-            .controlSize(.small)
+            .controlSize(.regular)
 
-            Button("完成") { dismiss() }
-                .keyboardShortcut(.defaultAction)
         }
-        .padding(16)
     }
 
     private var content: some View {
         VStack(spacing: 0) {
             CollectionSearchField(title: "搜索标签", text: $search)
+                .padding(.vertical, 4)
+            Divider()
 
             if filteredTagCounts.isEmpty {
                 ContentUnavailableView {
@@ -215,79 +231,111 @@ struct TagManagementSheet: View {
             } else {
                 List {
                     ForEach(filteredTagCounts, id: \.tag) { item in
-                        HStack(spacing: 10) {
-                            Image(systemName: "tag.fill")
-                                .foregroundStyle(Color.accentColor)
-                                .font(.system(size: 12))
+                        HStack(spacing: 12) {
+                            Image(systemName: "tag")
+                                .font(.system(size: 15, weight: .medium))
+                                .foregroundStyle(target.tint)
+                                .frame(width: 22)
+                                .accessibilityHidden(true)
 
                             Text(item.tag)
                                 .font(.system(size: 13, weight: .medium))
+                                .lineLimit(1)
+                                .help(item.tag)
 
-                            Spacer()
+                            Spacer(minLength: 12)
 
                             Text(String(format: AppLocalization.string("%lld %@"), item.count, target.itemNoun))
-                                .font(.caption.monospacedDigit())
+                                .font(.system(size: 12).monospacedDigit())
                                 .foregroundStyle(.secondary)
-                                .padding(.horizontal, 7)
-                                .padding(.vertical, 2)
-                                .background(Color.secondary.opacity(0.1), in: Capsule())
 
-                            Button("重命名") {
+                            Button("重命名", systemImage: "pencil") {
                                 editingTag = item.tag
                                 newTagName = item.tag
                             }
-                            .buttonStyle(.bordered)
-                            .controlSize(.small)
+                            .labelStyle(.iconOnly)
+                            .buttonStyle(.borderless)
+                            .help("重命名")
 
                             Button(role: .destructive) {
                                 tagToDelete = item.tag
                             } label: {
-                                Image(systemName: "trash")
-                                    .font(.system(size: 11))
-                                    .foregroundStyle(.red)
+                                Image(systemName: "minus.circle")
+                                    .foregroundStyle(.secondary)
                             }
-                            .buttonStyle(.plain)
+                            .buttonStyle(.borderless)
                             .accessibilityLabel(AppLocalization.string("移除标签") + " " + item.tag)
                             .help("移除标签")
-                            .frame(width: 28, height: 28)
-                            .padding(.leading, 4)
                         }
-                        .padding(.vertical, 3)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 10)
+                        .listRowSeparator(.visible)
                     }
                 }
                 .listStyle(.inset)
+                .scrollContentBackground(.hidden)
             }
         }
+        .background(SKMDesign.detailCanvas)
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .overlay {
+            RoundedRectangle(cornerRadius: 10)
+                .strokeBorder(.separator.opacity(0.5), lineWidth: 0.5)
+                .allowsHitTesting(false)
+        }
+        .padding(.horizontal, 24)
+        .padding(.bottom, 18)
     }
 
     private var footer: some View {
-        HStack {
-            Text("重命名若与现有标签相同将自动合并；删除仅解绑标签，不删除条目。")
-                .font(.caption)
+        SheetActionBar {
+            Label("重命名若与现有标签相同将自动合并；删除仅解绑标签，不删除条目。", systemImage: "info.circle")
+                .font(.system(size: 11))
                 .foregroundStyle(.secondary)
-            Spacer()
+                .fixedSize(horizontal: false, vertical: true)
+        } actions: {
+            Button("完成") { dismiss() }
+                .buttonStyle(.borderedProminent)
+                .keyboardShortcut(.defaultAction)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
-        .background(Color(nsColor: .windowBackgroundColor).opacity(0.5))
     }
 
     private var renameSheet: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            PanelHeader(title: AppLocalization.string("重命名 / 合并标签"), subtitle: "", symbol: "tag")
-            Text(String(format: AppLocalization.string("将原标签“%@”更新为新名称："), editingTag ?? ""))
-                .font(.callout).foregroundStyle(.secondary)
-            TextField("新标签名称", text: $newTagName)
-                .textFieldStyle(.roundedBorder)
+        VStack(spacing: 0) {
+            SheetHeader(
+                title: AppLocalization.string("重命名 / 合并标签"),
+                subtitle: String(format: AppLocalization.string("将原标签“%@”更新为新名称："), editingTag ?? ""),
+                symbol: "tag",
+                tint: target.tint
+            )
 
-            if allTagCounts.contains(where: { $0.tag == newTagName.trimmingCharacters(in: .whitespacesAndNewlines) && $0.tag != editingTag }) {
-                Label("新标签已存在，保存后将自动合并。", systemImage: "info.circle")
-                    .font(.caption)
-                    .foregroundStyle(.orange)
+            VStack(alignment: .leading, spacing: 12) {
+                SheetSection("标签名称", symbol: "text.cursor") {
+                    HStack(spacing: 10) {
+                        Image(systemName: "tag").foregroundStyle(target.tint)
+                        TextField("新标签名称", text: $newTagName)
+                            .focused($renameFieldFocused)
+                            .textFieldStyle(.plain)
+                    }
+                    .padding(11)
+                    .background(SKMDesign.detailCanvas, in: RoundedRectangle(cornerRadius: 8))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 8)
+                            .strokeBorder(renameFieldFocused ? Color.accentColor.opacity(0.65) : SKMDesign.libraryBorder, lineWidth: 1)
+                            .allowsHitTesting(false)
+                    }
+                }
+
+                if allTagCounts.contains(where: { $0.tag == newTagName.trimmingCharacters(in: .whitespacesAndNewlines) && $0.tag != editingTag }) {
+                    Label("新标签已存在，保存后将自动合并。", systemImage: "arrow.triangle.merge")
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                }
             }
+            .padding(SKMDesign.sheetVerticalPadding)
+            .frame(maxHeight: .infinity, alignment: .top)
 
-            HStack {
-                Spacer()
+            SheetActionBar {
                 Button("取消", role: .cancel) { editingTag = nil }
                     .keyboardShortcut(.cancelAction)
                 Button("确认更新") {
@@ -308,31 +356,50 @@ struct TagManagementSheet: View {
                 .disabled(newTagName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || newTagName == editingTag)
             }
         }
-        .padding(20)
-        .frame(width: 420)
+        .frame(width: 440, height: 280)
         .sheetChrome(model: model)
+        .onAppear { renameFieldFocused = true }
     }
 
     private var addTagSheet: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            PanelHeader(title: AppLocalization.string("添加新标签"), subtitle: "", symbol: "tag.fill")
-            Text("输入标签名称。添加后将进入全局标签池，可在录入或编辑条目时选择使用。")
-                .font(.callout).foregroundStyle(.secondary)
+        let trimmed = newCreatedTag.trimmingCharacters(in: .whitespacesAndNewlines)
+        let isDuplicate = allTagCounts.contains(where: { $0.tag == trimmed })
 
-            TextField("标签名称", text: $newCreatedTag)
-                .textFieldStyle(.roundedBorder)
+        return VStack(spacing: 0) {
+            SheetHeader(
+                title: AppLocalization.string("添加新标签"),
+                subtitle: AppLocalization.string("添加后可在录入或编辑条目时直接选择。"),
+                symbol: "tag.fill",
+                tint: target.tint
+            )
 
-            let trimmed = newCreatedTag.trimmingCharacters(in: .whitespacesAndNewlines)
-            let isDuplicate = allTagCounts.contains(where: { $0.tag == trimmed })
+            VStack(alignment: .leading, spacing: 12) {
+                SheetSection("标签名称", symbol: "text.cursor") {
+                    HStack(spacing: 10) {
+                        Image(systemName: "tag").foregroundStyle(target.tint)
+                        TextField("标签名称", text: $newCreatedTag)
+                            .focused($addFieldFocused)
+                            .textFieldStyle(.plain)
+                    }
+                    .padding(11)
+                    .background(SKMDesign.detailCanvas, in: RoundedRectangle(cornerRadius: 8))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 8)
+                            .strokeBorder(addFieldFocused ? Color.accentColor.opacity(0.65) : SKMDesign.libraryBorder, lineWidth: 1)
+                            .allowsHitTesting(false)
+                    }
+                }
 
-            if isDuplicate {
-                Label("该标签已存在，无需重复添加。", systemImage: "exclamationmark.circle")
-                    .font(.caption)
-                    .foregroundStyle(.orange)
+                if isDuplicate {
+                    Label("该标签已存在，无需重复添加。", systemImage: "exclamationmark.circle.fill")
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                }
             }
+            .padding(SKMDesign.sheetVerticalPadding)
+            .frame(maxHeight: .infinity, alignment: .top)
 
-            HStack {
-                Spacer()
+            SheetActionBar {
                 Button("取消", role: .cancel) { showsAddTagSheet = false }
                     .keyboardShortcut(.cancelAction)
                 Button("确认添加") {
@@ -344,9 +411,9 @@ struct TagManagementSheet: View {
                 .disabled(trimmed.isEmpty || isDuplicate)
             }
         }
-        .padding(20)
-        .frame(width: 420)
+        .frame(width: 440, height: 280)
         .sheetChrome(model: model)
+        .onAppear { addFieldFocused = true }
     }
 }
 
@@ -375,9 +442,20 @@ struct TagSelector: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("标签")
-                .font(.callout.weight(.medium))
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 7) {
+                Text("标签")
+                    .font(.system(size: 13, weight: .semibold))
+                Spacer()
+                if !selectedTags.isEmpty {
+                    Text(selectedTags.count, format: .number)
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 2)
+                        .background(Color.secondary.opacity(0.1), in: Capsule())
+                }
+            }
 
             if availableTags.isEmpty {
                 Text("暂无可用标签，可在下方创建。")
@@ -385,36 +463,32 @@ struct TagSelector: View {
                     .foregroundStyle(.secondary)
             } else {
                 ScrollView {
-                    LazyVGrid(
-                        columns: [GridItem(.adaptive(minimum: 92), spacing: 8)],
-                        alignment: .leading,
-                        spacing: 8
-                    ) {
+                    TagWrapLayout(spacing: 6) {
                         ForEach(availableTags, id: \.self) { tag in
                             let isSelected = selectedTags.contains(tag)
                             Button {
                                 toggle(tag)
                             } label: {
                                 HStack(spacing: 5) {
-                                    Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                                    Image(systemName: isSelected ? "checkmark" : "plus")
+                                        .font(.system(size: 9, weight: .semibold))
                                         .accessibilityHidden(true)
                                     Text(tag)
                                         .lineLimit(1)
                                         .truncationMode(.middle)
                                 }
                                 .font(.caption)
-                                .foregroundStyle(isSelected ? Color.accentColor : Color.primary)
+                                .foregroundStyle(isSelected ? Color.white : Color.secondary)
                                 .padding(.horizontal, 9)
-                                .padding(.vertical, 6)
-                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.vertical, 5)
                                 .background(
-                                    isSelected ? Color.accentColor.opacity(0.12) : Color.primary.opacity(0.05),
+                                    isSelected ? Color.accentColor : Color.primary.opacity(0.06),
                                     in: Capsule()
                                 )
                                 .overlay {
                                     Capsule()
                                         .strokeBorder(
-                                            isSelected ? Color.accentColor.opacity(0.45) : Color.primary.opacity(0.1),
+                                            isSelected ? Color.clear : Color.primary.opacity(0.06),
                                             lineWidth: 0.5
                                         )
                                 }
@@ -422,17 +496,14 @@ struct TagSelector: View {
                             .buttonStyle(.plain)
                             .accessibilityLabel(tag)
                             .accessibilityValue(isSelected ? Text("已选择") : Text("未选择"))
+                            .help(tag)
                             .accessibilityIdentifier("\(accessibilityIdentifier)-option-\(tag)")
                         }
                     }
-                    .padding(8)
+                    .padding(1)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .frame(maxHeight: 112)
-                .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 8)
-                        .strokeBorder(Color(nsColor: .separatorColor).opacity(0.6), lineWidth: 0.5)
-                }
+                .frame(height: 82)
             }
 
             HStack(spacing: 8) {
@@ -441,6 +512,8 @@ struct TagSelector: View {
                     .onSubmit(addNewTag)
                     .accessibilityIdentifier("\(accessibilityIdentifier)-new-field")
                 Button("添加并选中", systemImage: "plus", action: addNewTag)
+                    .labelStyle(.iconOnly)
+                    .help("添加并选中")
                     .disabled(trimmedNewTag.isEmpty || isDuplicate)
                     .accessibilityIdentifier("\(accessibilityIdentifier)-add-button")
             }
@@ -466,6 +539,47 @@ struct TagSelector: View {
         model.registerCustomTag(trimmedNewTag)
         selectedTags.append(trimmedNewTag)
         newTagName = ""
+    }
+}
+
+/// Tags use their natural width and wrap like Finder's tag tokens.
+private struct TagWrapLayout: Layout {
+    var spacing: CGFloat = 6
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        arrangement(width: proposal.width ?? 300, subviews: subviews).size
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let layout = arrangement(width: bounds.width, subviews: subviews)
+        for (index, subview) in subviews.enumerated() {
+            subview.place(
+                at: CGPoint(x: bounds.minX + layout.points[index].x, y: bounds.minY + layout.points[index].y),
+                anchor: .topLeading,
+                proposal: ProposedViewSize(width: min(subview.sizeThatFits(.unspecified).width, bounds.width), height: nil)
+            )
+        }
+    }
+
+    private func arrangement(width: CGFloat, subviews: Subviews) -> (size: CGSize, points: [CGPoint]) {
+        let width = max(width, 1)
+        var points: [CGPoint] = []
+        var x: CGFloat = 0
+        var y: CGFloat = 0
+        var rowHeight: CGFloat = 0
+        for subview in subviews {
+            let ideal = subview.sizeThatFits(.unspecified)
+            let size = subview.sizeThatFits(ProposedViewSize(width: min(ideal.width, width), height: nil))
+            if x > 0 && x + size.width > width {
+                x = 0
+                y += rowHeight + spacing
+                rowHeight = 0
+            }
+            points.append(CGPoint(x: x, y: y))
+            x += min(size.width, width) + spacing
+            rowHeight = max(rowHeight, size.height)
+        }
+        return (CGSize(width: width, height: y + rowHeight), points)
     }
 }
 

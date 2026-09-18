@@ -580,148 +580,165 @@ struct AddSkillSheet: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(spacing: 0) {
             headerView
 
-            if mode == 0 {
-                localImportView
-            } else {
+            if wizardStep == 0 {
+                sourcePicker
+            }
+
+            Group {
                 if wizardStep == 0 {
-                    gitInputStepView
+                    ScrollView {
+                        Group {
+                            if mode == 0 {
+                                localImportView
+                            } else {
+                                gitInputStepView
+                            }
+                        }
+                        .padding(24)
+                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                    }
                 } else {
                     gitPreviewStepView
+                        .padding(24)
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+
+            footerView
         }
-        .padding(24)
         .frame(
-            minWidth: mode == 1 && wizardStep == 1 ? 660 : 560,
-            minHeight: mode == 1 && wizardStep == 1 ? 480 : 400
+            width: mode == 1 && wizardStep == 1 ? 700 : 620,
+            height: mode == 1 && wizardStep == 1 ? 570 : 550
         )
         .sheetChrome(model: model)
         .interactiveDismissDisabled(isScanning || model.isLoading)
     }
 
     private var headerView: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                PanelHeader(
-                    title: mode == 1 && wizardStep == 1 ? AppLocalization.string("选择要导入的 Skill") : AppLocalization.string("添加 Skill"),
-                    subtitle: AppLocalization.string("把常用技能收进资料库，随时用于你的 Agent 和项目。"),
-                    symbol: "square.stack.3d.up"
+        SheetHeader(
+            title: mode == 1 && wizardStep == 1 ? AppLocalization.string("选择要导入的 Skill") : AppLocalization.string("添加 Skill"),
+            subtitle: AppLocalization.string("把常用技能收进资料库，随时用于你的 Agent 和项目。"),
+            symbol: "square.stack.3d.up",
+            tint: .blue
+        ) {
+            if mode == 1 {
+                Label(
+                    wizardStep == 0 ? "1/2 步：输入来源" : "2/2 步：勾选技能",
+                    systemImage: wizardStep == 0 ? "1.circle.fill" : "2.circle.fill"
                 )
-                Spacer()
-                if mode == 1 {
-                    Text(wizardStep == 0 ? "1/2 步：输入来源" : "2/2 步：勾选技能")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
-                        .background(.quaternary, in: Capsule())
-                }
-            }
-
-            if wizardStep == 0 {
-                Picker("来源", selection: $mode) {
-                    Text("本地").tag(0)
-                    Text("Git / 命令").tag(1)
-                }
-                .pickerStyle(.segmented)
-                .disabled(isScanning || model.isLoading)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(SKMDesign.librarySelection, in: Capsule())
             }
         }
     }
 
-    private var localImportView: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                TextField("Skill 目录或 ZIP", text: $path)
-                Button("选择…") { chooseLocalSkill() }
+    private var sourcePicker: some View {
+        HStack(spacing: 12) {
+            sourceOption(0, title: "本地", subtitle: "支持文件夹或 ZIP", symbol: "folder.fill")
+            sourceOption(1, title: "Git / 命令", subtitle: "仓库地址或安装命令", symbol: "arrow.triangle.branch")
+        }
+        .padding(.horizontal, 24)
+        .disabled(isScanning || model.isLoading)
+    }
+
+    private func sourceOption(_ value: Int, title: LocalizedStringKey, subtitle: LocalizedStringKey, symbol: String) -> some View {
+        Button { mode = value } label: {
+            HStack(spacing: 12) {
+                Image(systemName: symbol)
+                    .font(.system(size: 22, weight: .regular))
+                    .foregroundStyle(mode == value ? Color.accentColor : Color.secondary)
+                    .frame(width: 28)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.primary)
+                    Text(subtitle)
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 0)
+                Image(systemName: mode == value ? "checkmark.circle.fill" : "circle")
+                    .foregroundStyle(mode == value ? Color.accentColor : Color.secondary.opacity(0.35))
             }
             .padding(16)
-            .skmSurface()
-            TagSelector(model: model, selectedTags: $tags, accessibilityIdentifier: "add-skill-tags")
-            Text("本地内容会被验证并写入 SKM 的不可变对象库。")
-                .font(.caption).foregroundStyle(.secondary)
-
-            Spacer()
-
-            HStack {
-                Spacer()
-                Button("取消", role: .cancel) { dismiss() }
-                    .keyboardShortcut(.cancelAction)
-                    .disabled(model.isLoading || isScanning)
-                Button("导入") {
-                    Task {
-                        await model.addLocalSkill(path: path, tags: tags)
-                        if model.errorMessage == nil { dismiss() }
-                    }
-                }
-                .buttonStyle(.borderedProminent)
-                .keyboardShortcut(.defaultAction)
-                .disabled(path.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || model.isLoading)
+            .frame(maxWidth: .infinity, minHeight: 76)
+            .background(mode == value ? Color.accentColor.opacity(0.06) : SKMDesign.detailCanvas,
+                        in: RoundedRectangle(cornerRadius: 10))
+            .overlay {
+                RoundedRectangle(cornerRadius: 10)
+                    .strokeBorder(mode == value ? Color.accentColor.opacity(0.65) : SKMDesign.libraryBorder.opacity(0.7),
+                                  lineWidth: mode == value ? 1.5 : 0.5)
             }
+        }
+        .buttonStyle(.plain)
+        .accessibilityValue(mode == value ? Text("已选择") : Text("未选择"))
+    }
+
+    private var localImportView: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            SheetSection("本地目录", subtitle: "支持文件夹或 ZIP", symbol: "folder") {
+                HStack(spacing: 10) {
+                    TextField("Skill 目录或 ZIP", text: $path)
+                    Button("选择…", systemImage: "folder") { chooseLocalSkill() }
+                }
+            }
+
+            Divider()
+            TagSelector(model: model, selectedTags: $tags, accessibilityIdentifier: "add-skill-tags")
+
+            Label("本地内容会被验证并写入 SKM 的不可变对象库。", systemImage: "checkmark.shield")
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
     }
 
     private var gitInputStepView: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            TextField("Git URL、owner/repo 或 npx skills add …", text: $remote)
-            TextField("来源名称（可选，留空自动提取）", text: $sourceName)
-            TagSelector(model: model, selectedTags: $tags, accessibilityIdentifier: "add-skill-tags")
-            Text("凭据由系统 Git、SSH Agent 或 Credential Helper 管理，SKM 不保存 Token。")
-                .font(.caption).foregroundStyle(.secondary)
-
-            Spacer()
-
-            HStack {
-                Spacer()
-                Button("取消", role: .cancel) { dismiss() }
-                    .keyboardShortcut(.cancelAction)
-                    .disabled(model.isLoading || isScanning)
-                Button {
-                    Task { await startPreview() }
-                } label: {
-                    HStack(spacing: 6) {
-                        if isScanning {
-                            ProgressView().controlSize(.small)
-                            Text("正在扫描…")
-                        } else {
-                            Text("下一步：扫描技能")
-                            Image(systemName: "arrow.right")
-                        }
-                    }
+        VStack(alignment: .leading, spacing: 22) {
+            SheetSection("Git 来源", subtitle: "仓库地址或安装命令", symbol: "arrow.triangle.branch") {
+                VStack(alignment: .leading, spacing: 10) {
+                    TextField("Git URL、owner/repo 或 npx skills add …", text: $remote)
+                    TextField("来源名称（可选，留空自动提取）", text: $sourceName)
                 }
-                .buttonStyle(.borderedProminent)
-                .keyboardShortcut(.defaultAction)
-                .disabled(remote.trimmingCharacters(in: .whitespaces).isEmpty || isScanning)
             }
+
+            Divider()
+            TagSelector(model: model, selectedTags: $tags, accessibilityIdentifier: "add-skill-tags")
+
+            Label("凭据由系统 Git、SSH Agent 或 Credential Helper 管理，SKM 不保存 Token。", systemImage: "lock.shield")
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
     }
 
     private var gitPreviewStepView: some View {
         VStack(alignment: .leading, spacing: 12) {
             if let preview = previewResult {
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(preview.source.name).fontWeight(.semibold)
-                        Text(preview.source.url)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                    }
-                    Spacer()
-                    if let rev = preview.source.revision {
-                        Text(String(rev.prefix(8)))
-                            .font(.caption.monospaced())
-                            .foregroundStyle(.secondary)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(.quaternary, in: RoundedRectangle(cornerRadius: 4))
+                SheetSection("来源", symbol: "arrow.triangle.branch") {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(preview.source.name).fontWeight(.semibold)
+                            Text(preview.source.url)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
+                        Spacer()
+                        if let rev = preview.source.revision {
+                            Text(String(rev.prefix(8)))
+                                .font(.caption.monospaced())
+                                .foregroundStyle(.secondary)
+                                .padding(.horizontal, 7)
+                                .padding(.vertical, 3)
+                                .background(SKMDesign.librarySelection, in: RoundedRectangle(cornerRadius: 5))
+                        }
                     }
                 }
-                .padding(10)
-                .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 8))
 
                 HStack {
                     let validCandidates = preview.skills.filter(\.valid)
@@ -764,17 +781,55 @@ struct AddSkillSheet: View {
                 }
                 .frame(maxHeight: 260)
             }
+        }
+    }
 
-            Spacer()
-
-            HStack {
+    @ViewBuilder
+    private var footerView: some View {
+        if mode == 0 {
+            SheetActionBar {
+                Button("取消", role: .cancel) { dismiss() }
+                    .keyboardShortcut(.cancelAction)
+                    .disabled(model.isLoading || isScanning)
+                Button("导入") {
+                    Task {
+                        await model.addLocalSkill(path: path, tags: tags)
+                        if model.errorMessage == nil { dismiss() }
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .keyboardShortcut(.defaultAction)
+                .disabled(path.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || model.isLoading)
+            }
+        } else if wizardStep == 0 {
+            SheetActionBar {
+                Button("取消", role: .cancel) { dismiss() }
+                    .keyboardShortcut(.cancelAction)
+                    .disabled(model.isLoading || isScanning)
+                Button {
+                    Task { await startPreview() }
+                } label: {
+                    HStack(spacing: 6) {
+                        if isScanning {
+                            ProgressView().controlSize(.small)
+                            Text("正在扫描…")
+                        } else {
+                            Text("下一步：扫描技能")
+                            Image(systemName: "arrow.right")
+                        }
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .keyboardShortcut(.defaultAction)
+                .disabled(remote.trimmingCharacters(in: .whitespaces).isEmpty || isScanning)
+            }
+        } else {
+            SheetActionBar {
                 Button("上一步", systemImage: "arrow.left") {
                     wizardStep = 0
                 }
                 .disabled(model.isLoading || isScanning)
-
-                Spacer()
-
+            } actions: {
                 Button("取消", role: .cancel) { dismiss() }
                     .keyboardShortcut(.cancelAction)
                     .disabled(model.isLoading || isScanning)
