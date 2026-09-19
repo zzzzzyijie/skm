@@ -85,6 +85,13 @@ enum TagManagementTarget {
     case skills
     case prompts
 
+    var scope: TagScope {
+        switch self {
+        case .skills: return .skills
+        case .prompts: return .prompts
+        }
+    }
+
     var title: String {
         switch self {
         case .skills: return AppLocalization.string("Skill 标签管理")
@@ -137,7 +144,7 @@ struct TagManagementSheet: View {
         case .prompts:
             activeTags = availableFilterTags(from: model.prompts.map(\.tags))
         }
-        let allUnique = Set(activeTags).union(model.customTags).sorted {
+        let allUnique = Set(activeTags).union(model.customTags(for: target.scope)).sorted {
             $0.localizedStandardCompare($1) == .orderedAscending
         }
         return allUnique.map { tag in
@@ -403,7 +410,7 @@ struct TagManagementSheet: View {
                 Button("取消", role: .cancel) { showsAddTagSheet = false }
                     .keyboardShortcut(.cancelAction)
                 Button("确认添加") {
-                    model.registerCustomTag(trimmed)
+                    model.registerCustomTag(trimmed, for: target.scope)
                     showsAddTagSheet = false
                 }
                 .buttonStyle(.borderedProminent)
@@ -417,9 +424,10 @@ struct TagManagementSheet: View {
     }
 }
 
-/// Skills 与 Prompts 共用的标签选择器：可多选标签池中的已有标签，也可即时创建并选中新标签。
+/// Skill 或 Prompt 专属的标签选择器：可多选当前业务标签池中的已有标签，也可即时创建并选中新标签。
 struct TagSelector: View {
     let model: AppModel
+    let scope: TagScope
     @Binding var selectedTags: [String]
     let accessibilityIdentifier: String
 
@@ -427,8 +435,8 @@ struct TagSelector: View {
 
     private var availableTags: [String] {
         mergedTagPool(
-            customTags: model.customTags,
-            tagGroups: model.skills.map(\.tags) + model.prompts.map(\.tags),
+            customTags: model.customTags(for: scope),
+            tagGroups: scope == .skills ? model.skills.map(\.tags) : model.prompts.map(\.tags),
             selectedTags: selectedTags
         )
     }
@@ -536,7 +544,7 @@ struct TagSelector: View {
 
     private func addNewTag() {
         guard !trimmedNewTag.isEmpty, !isDuplicate else { return }
-        model.registerCustomTag(trimmedNewTag)
+        model.registerCustomTag(trimmedNewTag, for: scope)
         selectedTags.append(trimmedNewTag)
         newTagName = ""
     }

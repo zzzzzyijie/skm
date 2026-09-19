@@ -31,6 +31,12 @@ enum AppSection: String, CaseIterable, Identifiable {
     }
 }
 
+/// Skill 与 Prompt 使用各自独立的标签注册表。
+enum TagScope: Equatable {
+    case skills
+    case prompts
+}
+
 /// 偏好设置分区
 enum SettingsSection: String, CaseIterable, Identifiable {
     /// 通用：版本信息、存储路径与概览统计
@@ -132,7 +138,9 @@ final class AppModel {
     var hasExistingData = false
     var pendingCommand: AppCommand?
     var lastErrorKind: String?
-    var customTags: Set<String>
+    var skillCustomTags: Set<String>
+    var promptCustomTags: Set<String>
+    @ObservationIgnored private var legacyCustomTags: Set<String>
 
     init(
         core: any CoreServing = CoreClient(),
@@ -150,7 +158,13 @@ final class AppModel {
             resolvedPreferences = .standard
         }
         self.preferences = resolvedPreferences
-        self.customTags = Set(resolvedPreferences.stringArray(forKey: Self.customTagsStorageKey) ?? [])
+        self.skillCustomTags = Set(resolvedPreferences.stringArray(forKey: Self.skillCustomTagsStorageKey) ?? [])
+        self.promptCustomTags = Set(resolvedPreferences.stringArray(forKey: Self.promptCustomTagsStorageKey) ?? [])
+        let hasScopedRegistry = resolvedPreferences.object(forKey: Self.skillCustomTagsStorageKey) != nil ||
+            resolvedPreferences.object(forKey: Self.promptCustomTagsStorageKey) != nil
+        self.legacyCustomTags = hasScopedRegistry
+            ? []
+            : Set(resolvedPreferences.stringArray(forKey: Self.legacyCustomTagsStorageKey) ?? [])
         self.monitorsFiles = monitorsFiles
         self.presentsWelcome = presentsWelcome
     }
@@ -665,21 +679,24 @@ final class AppModel {
         let trimmedNew = newTag.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedNew.isEmpty, trimmedNew != oldTag else { return }
         let affected = skills.filter { $0.tags.contains(oldTag) }
-        guard !affected.isEmpty else { return }
+        guard !affected.isEmpty || skillCustomTags.contains(oldTag) else { return }
 
-        await perform(String(format: AppLocalization.string("正在更新 %lld 个 Skill 的标签…"), affected.count)) {
-            for summary in affected {
-                if let details: SkillDetails = try? await self.core.call("skills.get", params: IDParams(id: summary.id)) {
-                    var newTags = details.tags.map { $0 == oldTag ? trimmedNew : $0 }
-                    newTags = Array(NSOrderedSet(array: newTags)).compactMap { $0 as? String }
-                    let _: SkillUpdateResponse = try await self.core.call(
-                        "skills.update",
-                        params: UpdateSkillParams(id: summary.id, content: details.content, baseHash: details.hash, tags: newTags)
-                    )
+        if !affected.isEmpty {
+            await perform(String(format: AppLocalization.string("正在更新 %lld 个 Skill 的标签…"), affected.count)) {
+                for summary in affected {
+                    if let details: SkillDetails = try? await self.core.call("skills.get", params: IDParams(id: summary.id)) {
+                        var newTags = details.tags.map { $0 == oldTag ? trimmedNew : $0 }
+                        newTags = Array(NSOrderedSet(array: newTags)).compactMap { $0 as? String }
+                        let _: SkillUpdateResponse = try await self.core.call(
+                            "skills.update",
+                            params: UpdateSkillParams(id: summary.id, content: details.content, baseHash: details.hash, tags: newTags)
+                        )
+                    }
                 }
+                await self.refresh()
             }
-            await self.refresh()
         }
+        renameCustomTag(from: oldTag, to: trimmedNew, in: .skills)
         announce(AppLocalization.string("标签已更新"))
     }
 
@@ -704,7 +721,7 @@ final class AppModel {
             guard succeeded else { return }
         }
 
-        unregisterCustomTag(tag)
+        unregisterCustomTag(tag, from: .skills)
         announce(AppLocalization.string("标签已移除"))
     }
 
@@ -713,31 +730,34 @@ final class AppModel {
         let trimmedNew = newTag.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedNew.isEmpty, trimmedNew != oldTag else { return }
         let affected = prompts.filter { $0.tags.contains(oldTag) }
-        guard !affected.isEmpty else { return }
+        guard !affected.isEmpty || promptCustomTags.contains(oldTag) else { return }
 
-        await perform(String(format: AppLocalization.string("正在更新 %lld 个 Prompt 的标签…"), affected.count)) {
-            for summary in affected {
-                if let details: PromptDetails = try? await self.core.call("prompts.get", params: IDParams(id: summary.id)) {
-                    var newTags = details.tags.map { $0 == oldTag ? trimmedNew : $0 }
-                    newTags = Array(NSOrderedSet(array: newTags)).compactMap { $0 as? String }
-                    let _: PromptSummary = try await self.core.call(
-                        "prompts.update",
-                        params: PromptWriteParams(
-                            id: summary.id,
-                            content: nil,
-                            name: details.name,
-                            description: details.description,
-                            tags: newTags,
-                            body: details.body,
-                            variables: details.variables ?? [],
-                            source: "local",
-                            baseHash: details.hash
+        if !affected.isEmpty {
+            await perform(String(format: AppLocalization.string("正在更新 %lld 个 Prompt 的标签…"), affected.count)) {
+                for summary in affected {
+                    if let details: PromptDetails = try? await self.core.call("prompts.get", params: IDParams(id: summary.id)) {
+                        var newTags = details.tags.map { $0 == oldTag ? trimmedNew : $0 }
+                        newTags = Array(NSOrderedSet(array: newTags)).compactMap { $0 as? String }
+                        let _: PromptSummary = try await self.core.call(
+                            "prompts.update",
+                            params: PromptWriteParams(
+                                id: summary.id,
+                                content: nil,
+                                name: details.name,
+                                description: details.description,
+                                tags: newTags,
+                                body: details.body,
+                                variables: details.variables ?? [],
+                                source: "local",
+                                baseHash: details.hash
+                            )
                         )
-                    )
+                    }
                 }
+                await self.refresh()
             }
-            await self.refresh()
         }
+        renameCustomTag(from: oldTag, to: trimmedNew, in: .prompts)
         announce(AppLocalization.string("标签已更新"))
     }
 
@@ -772,28 +792,54 @@ final class AppModel {
             guard succeeded else { return }
         }
 
-        unregisterCustomTag(tag)
+        unregisterCustomTag(tag, from: .prompts)
         announce(AppLocalization.string("标签已移除"))
     }
 
-    private static let customTagsStorageKey = "skm.custom.tags"
+    private static let legacyCustomTagsStorageKey = "skm.custom.tags"
+    private static let skillCustomTagsStorageKey = "skm.custom.tags.skills"
+    private static let promptCustomTagsStorageKey = "skm.custom.tags.prompts"
+
+    func customTags(for scope: TagScope) -> Set<String> {
+        switch scope {
+        case .skills: skillCustomTags
+        case .prompts: promptCustomTags
+        }
+    }
 
     /// 注册一个自定义标签（即便尚未绑定任何条目）
-    func registerCustomTag(_ tag: String) {
+    func registerCustomTag(_ tag: String, for scope: TagScope) {
         let trimmed = tag.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
-        customTags.insert(trimmed)
-        persistCustomTags()
+        switch scope {
+        case .skills: skillCustomTags.insert(trimmed)
+        case .prompts: promptCustomTags.insert(trimmed)
+        }
+        persistCustomTags(for: scope)
     }
 
     /// 从持久化标签池移除标签；条目上的关联由调用方先行处理。
-    func unregisterCustomTag(_ tag: String) {
-        customTags.remove(tag)
-        persistCustomTags()
+    func unregisterCustomTag(_ tag: String, from scope: TagScope) {
+        switch scope {
+        case .skills: skillCustomTags.remove(tag)
+        case .prompts: promptCustomTags.remove(tag)
+        }
+        persistCustomTags(for: scope)
     }
 
-    private func persistCustomTags() {
-        preferences.set(Array(customTags).sorted(), forKey: Self.customTagsStorageKey)
+    private func renameCustomTag(from oldTag: String, to newTag: String, in scope: TagScope) {
+        guard customTags(for: scope).contains(oldTag) else { return }
+        unregisterCustomTag(oldTag, from: scope)
+        registerCustomTag(newTag, for: scope)
+    }
+
+    private func persistCustomTags(for scope: TagScope) {
+        switch scope {
+        case .skills:
+            preferences.set(Array(skillCustomTags).sorted(), forKey: Self.skillCustomTagsStorageKey)
+        case .prompts:
+            preferences.set(Array(promptCustomTags).sorted(), forKey: Self.promptCustomTagsStorageKey)
+        }
     }
 
     /// 运行系统 Doctor 健康诊断
@@ -860,6 +906,7 @@ final class AppModel {
 
         skills = loadedSkills
         prompts = loadedPrompts
+        migrateLegacyCustomTagsIfNeeded(skills: loadedSkills, prompts: loadedPrompts)
         agents = loadedAgents
         plan = loadedPlan
         sources = loadedSources
@@ -873,6 +920,23 @@ final class AppModel {
         selectedProjectID = loadedProjects.contains(where: { $0.id == previousProjectID }) ? previousProjectID : loadedProjects.first?.id
         selectedAgentID = loadedAgents.contains(where: { $0.id == previousAgentID }) ? previousAgentID : loadedAgents.first?.id
         selectedSourceID = loadedSources.contains(where: { $0.id == previousSourceID }) ? previousSourceID : loadedSources.first?.id
+    }
+
+    private func migrateLegacyCustomTagsIfNeeded(skills: [SkillSummary], prompts: [PromptSummary]) {
+        guard !legacyCustomTags.isEmpty else { return }
+        let usedSkillTags = Set(skills.flatMap(\.tags))
+        let usedPromptTags = Set(prompts.flatMap(\.tags))
+
+        skillCustomTags.formUnion(legacyCustomTags.filter {
+            usedSkillTags.contains($0) || (!usedSkillTags.contains($0) && !usedPromptTags.contains($0))
+        })
+        promptCustomTags.formUnion(legacyCustomTags.filter {
+            usedPromptTags.contains($0) || (!usedSkillTags.contains($0) && !usedPromptTags.contains($0))
+        })
+        persistCustomTags(for: .skills)
+        persistCustomTags(for: .prompts)
+        legacyCustomTags.removeAll()
+        preferences.removeObject(forKey: Self.legacyCustomTagsStorageKey)
     }
 
     private func startFileMonitoring() {

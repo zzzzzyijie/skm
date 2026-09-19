@@ -194,7 +194,7 @@ struct SkillDetailView: View {
                 .safeAreaInset(edge: .top, spacing: 0) {
                     DetailToolbar(health: summary.health, isLoading: model.isLoading) {
                         Group {
-                            Button("快速查看", systemImage: "eye.slash") { Task { await showQuickLook() } }
+                            Button("快速查看", systemImage: "eye") { Task { await showQuickLook() } }
                             if details?.editable ?? summary.editable {
                                 Button("编辑", systemImage: "pencil") { showsEditor = true }
                                     .disabled(details == nil)
@@ -690,7 +690,7 @@ struct AddSkillSheet: View {
             }
 
             Divider()
-            TagSelector(model: model, selectedTags: $tags, accessibilityIdentifier: "add-skill-tags")
+            TagSelector(model: model, scope: .skills, selectedTags: $tags, accessibilityIdentifier: "add-skill-tags")
 
             Label("本地内容会被验证并写入 SKM 的不可变对象库。", systemImage: "checkmark.shield")
                 .font(.caption)
@@ -708,7 +708,7 @@ struct AddSkillSheet: View {
             }
 
             Divider()
-            TagSelector(model: model, selectedTags: $tags, accessibilityIdentifier: "add-skill-tags")
+            TagSelector(model: model, scope: .skills, selectedTags: $tags, accessibilityIdentifier: "add-skill-tags")
 
             Label("凭据由系统 Git、SSH Agent 或 Credential Helper 管理，SKM 不保存 Token。", systemImage: "lock.shield")
                 .font(.caption)
@@ -983,7 +983,7 @@ struct SkillEditorSheet: View {
             TextEditor(text: $content)
                 .font(.system(.body, design: .monospaced))
                 .editorSurface()
-            TagSelector(model: model, selectedTags: $tags, accessibilityIdentifier: "edit-skill-tags")
+            TagSelector(model: model, scope: .skills, selectedTags: $tags, accessibilityIdentifier: "edit-skill-tags")
             if let latest {
                 GroupBox("检测到并发修改") {
                     VStack(alignment: .leading, spacing: 10) {

@@ -178,7 +178,6 @@ struct PromptDetailView: View {
     @State private var details: PromptDetails?
     @State private var showsEditor = false
     @State private var confirmsDelete = false
-    @State private var showsRender = false
     @State private var showsCopiedFeedback = false
     @State private var copyFeedbackTask: Task<Void, Never>?
 
@@ -188,11 +187,6 @@ struct PromptDetailView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: SKMDesign.librarySectionSpacing) {
                         promptHeader(prompt)
-
-                        if let variables = prompt.variables, !variables.isEmpty {
-                            variablesSection(variables)
-                        }
-
                         contentSection
                     }
                     .libraryReadingLayout()
@@ -201,10 +195,8 @@ struct PromptDetailView: View {
                 .safeAreaInset(edge: .top, spacing: 0) {
                     DetailToolbar(isLoading: model.isLoading) {
                         Group {
-                            Button("快速查看", systemImage: "eye.slash") { Task { await showQuickLook() } }
+                            Button("快速查看", systemImage: "eye") { Task { await showQuickLook() } }
                             Button("复制", systemImage: "paperclip", action: copyBody)
-                                .disabled(details == nil)
-                            Button("填写变量", systemImage: "tag") { showsRender = true }
                                 .disabled(details == nil)
                             Button("导出", systemImage: "bubble") { exportPrompt(prompt.name) }
                                 .disabled(details == nil)
@@ -218,9 +210,6 @@ struct PromptDetailView: View {
                 .sheet(isPresented: $showsEditor, onDismiss: { Task { await loadDetails(id) } }) {
                     if let details { PromptEditorSheet(model: model, details: details) }
                 }
-                .sheet(isPresented: $showsRender) {
-                    if let details { PromptRenderSheet(model: model, details: details) }
-                }
                 .confirmationDialog("移除 \(prompt.name)？", isPresented: $confirmsDelete) {
                     Button("移除 Prompt", role: .destructive) { Task { await model.removePrompt(id: id) } }
                 }
@@ -232,7 +221,7 @@ struct PromptDetailView: View {
                     model.consumeCommand(command.id)
                 }
             } else {
-                ContentUnavailableView("选择一个 Prompt", systemImage: "text.bubble", description: Text("在左侧选择模板，填写变量或复制到你的工作流程。"))
+                ContentUnavailableView("选择一个 Prompt", systemImage: "text.bubble", description: Text("在左侧选择模板，阅读、复制或导出到你的工作流程。"))
             }
         }
         .onDisappear {
@@ -271,40 +260,6 @@ struct PromptDetailView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private func variablesSection(_ variables: [PromptVariable]) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Text("变量")
-                    .font(.headline)
-                Text(variables.count, format: .number)
-                    .monospacedDigit()
-                    .skmMetadataPill(tint: .secondary)
-                Spacer()
-            }
-
-            VStack(alignment: .leading, spacing: 0) {
-                ForEach(variables, id: \.name) { variable in
-                    HStack(spacing: 12) {
-                        Text("{{\(variable.name)}}")
-                            .font(.body.monospaced())
-                        Spacer()
-                        if variable.required == true {
-                            Text("必填")
-                                .skmMetadataPill()
-                        }
-                    }
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 10)
-
-                    if variable.name != variables.last?.name {
-                        Divider()
-                    }
-                }
-            }
-            .skmSurface(radius: SKMDesign.compactCardRadius)
-        }
     }
 
     private var contentSection: some View {
@@ -382,7 +337,7 @@ struct PromptDetailView: View {
 }
 
 /// PromptEditorSheet - 提示词创建与编辑弹窗
-/// 支持配置 Prompt 名称、描述、标签、正文模板以及动态参数变量（PromptVariableDraft）。
+/// 支持配置 Prompt 名称、描述、标签与正文模板。
 /// 具备 baseHash 乐观锁并发冲突处理，若检测到冲突可选择“使用磁盘版本”、“另存为新副本”或“保留草稿覆盖”。
 struct PromptEditorSheet: View {
     @Environment(\.dismiss) private var dismiss
@@ -439,7 +394,7 @@ struct PromptEditorSheet: View {
                             }
                         }
                         Divider()
-                        TagSelector(model: model, selectedTags: $tags, accessibilityIdentifier: "prompt-tags")
+                        TagSelector(model: model, scope: .prompts, selectedTags: $tags, accessibilityIdentifier: "prompt-tags")
                     }
                     .padding(22)
                 }
@@ -476,9 +431,6 @@ struct PromptEditorSheet: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .accessibilityIdentifier("prompt-body-editor")
 
-                    Divider()
-                    variableSection
-
                     if latest != nil {
                         Divider()
                         ScrollView { conflictSection.padding(16) }
@@ -489,12 +441,6 @@ struct PromptEditorSheet: View {
             }
 
             SheetActionBar {
-                Text(variableHint)
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-            } actions: {
                 Button("取消", role: .cancel) { requestDismiss() }
                     .keyboardShortcut(.cancelAction)
                     .disabled(model.isLoading)
@@ -516,38 +462,6 @@ struct PromptEditorSheet: View {
         } message: {
             Text("关闭后，本次未保存的编辑将丢失。")
         }
-    }
-
-    private var variableSection: some View {
-        DisclosureGroup("变量（\(variables.count)）") {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
-                    if variables.isEmpty {
-                        Text("暂无变量。需要复用动态内容时，可添加名称、类型和默认值。")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    ForEach($variables) { $variable in
-                        PromptVariableEditor(variable: $variable) {
-                            variables.removeAll { $0.id == variable.id }
-                        }
-                        .padding(12)
-                        .background(SKMDesign.librarySelection, in: RoundedRectangle(cornerRadius: 8))
-                    }
-                    Button("添加变量", systemImage: "plus") {
-                        variables.append(PromptVariableDraft())
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                }
-                .padding(.top, 10)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .frame(maxHeight: 170)
-        }
-        .font(.system(size: 12, weight: .medium))
-        .padding(.horizontal, 22)
-        .padding(.vertical, 14)
     }
 
     @ViewBuilder
@@ -625,12 +539,4 @@ struct PromptEditorSheet: View {
             names.allSatisfy { !$0.isEmpty } && Set(names).count == names.count
     }
 
-    private var variableHint: String {
-        if description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            return AppLocalization.string("请填写名称、描述和正文后保存。")
-        }
-        let names = variables.map { $0.name.trimmingCharacters(in: .whitespacesAndNewlines) }
-        if Set(names).count != names.count { return AppLocalization.string("变量名不能重复。") }
-        return AppLocalization.string("变量可在正文中使用 {{name}}。secret 类型只在内存中参与渲染。")
-    }
 }

@@ -102,25 +102,48 @@ final class AppModelTests: XCTestCase {
         XCTAssertEqual(AppLocalization.string("通用"), "通用")
     }
 
-    func testRegisterCustomTagTrimsAndDeduplicatesGlobalPool() {
+    func testRegisterCustomTagsKeepsSkillAndPromptPoolsIndependent() {
         let preferences = isolatedPreferences()
         let model = AppModel(core: StubCore(), preferences: preferences, monitorsFiles: false)
 
-        model.registerCustomTag("  review  ")
-        model.registerCustomTag("review")
+        model.registerCustomTag("  review  ", for: .skills)
+        model.registerCustomTag("review", for: .skills)
+        model.registerCustomTag("draft", for: .prompts)
 
-        XCTAssertEqual(model.customTags, ["review"])
+        XCTAssertEqual(model.customTags(for: .skills), ["review"])
+        XCTAssertEqual(model.customTags(for: .prompts), ["draft"])
+        XCTAssertEqual(preferences.stringArray(forKey: "skm.custom.tags.skills"), ["review"])
+        XCTAssertEqual(preferences.stringArray(forKey: "skm.custom.tags.prompts"), ["draft"])
     }
 
-    func testUnregisterCustomTagRemovesPersistedTag() {
+    func testUnregisterCustomTagOnlyRemovesItFromRequestedPool() {
         let preferences = isolatedPreferences()
         let model = AppModel(core: StubCore(), preferences: preferences, monitorsFiles: false)
-        model.registerCustomTag("review")
+        model.registerCustomTag("shared", for: .skills)
+        model.registerCustomTag("shared", for: .prompts)
 
-        model.unregisterCustomTag("review")
+        model.unregisterCustomTag("shared", from: .prompts)
 
-        XCTAssertTrue(model.customTags.isEmpty)
-        XCTAssertEqual(preferences.stringArray(forKey: "skm.custom.tags"), [])
+        XCTAssertEqual(model.customTags(for: .skills), ["shared"])
+        XCTAssertTrue(model.customTags(for: .prompts).isEmpty)
+        XCTAssertEqual(preferences.stringArray(forKey: "skm.custom.tags.skills"), ["shared"])
+        XCTAssertEqual(preferences.stringArray(forKey: "skm.custom.tags.prompts"), [])
+    }
+
+    func testLegacyCustomTagsMigrateIntoIndependentPools() async {
+        let preferences = isolatedPreferences()
+        preferences.set(["skill-only", "prompt-only", "shared", "unused"], forKey: "skm.custom.tags")
+        let core = StubCore(responses: [
+            "skills.list": #"[{"id":"local/sample","name":"sample","description":"Sample","tags":["skill-only","shared"],"source":"local","location":"library","hash":"abc","path":"/tmp/sample","health":"available","effectivePath":"/tmp/sample","editable":true}]"#,
+            "prompts.list": #"[{"id":"local/prompt","name":"prompt","description":"Prompt","tags":["prompt-only","shared"],"source":"local","hash":"def","path":"/tmp/prompt","variables":[]}]"#,
+        ])
+        let model = AppModel(core: core, preferences: preferences, monitorsFiles: false)
+
+        await model.start()
+
+        XCTAssertEqual(model.customTags(for: .skills), ["shared", "skill-only", "unused"])
+        XCTAssertEqual(model.customTags(for: .prompts), ["prompt-only", "shared", "unused"])
+        XCTAssertNil(preferences.stringArray(forKey: "skm.custom.tags"))
     }
 
     func testReadOnlyMethodsAreTheOnlyAutomaticallyRetryableCalls() {
