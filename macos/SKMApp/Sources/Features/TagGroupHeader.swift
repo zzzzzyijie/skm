@@ -69,13 +69,13 @@ func itemsGroupedByTag<Item>(
     tags: (Item) -> [String]
 ) -> [(tag: String, items: [Item])] {
     availableFilterTags(from: items.map(tags)).map { tag in
-        (tag, items.filter { tags($0).contains(tag) })
+        (tag, items.filter { tags($0).contains(where: { tagNamesEqual($0, tag) }) })
     }
 }
 
 /// 从所有项目的标签数组集合中提取去重并按本地化规则排序的可用标签列表。
 func availableFilterTags(from tagGroups: [[String]]) -> [String] {
-    Set(tagGroups.joined()).sorted {
+    uniqueTagNamesPreservingCase(tagGroups.flatMap { $0 }).sorted {
         $0.localizedStandardCompare($1) == .orderedAscending
     }
 }
@@ -144,16 +144,16 @@ struct TagManagementSheet: View {
         case .prompts:
             activeTags = availableFilterTags(from: model.prompts.map(\.tags))
         }
-        let allUnique = Set(activeTags).union(model.customTags(for: target.scope)).sorted {
+        let allUnique = uniqueTagNamesPreservingCase(activeTags + model.customTags(for: target.scope).sorted()).sorted {
             $0.localizedStandardCompare($1) == .orderedAscending
         }
         return allUnique.map { tag in
             let count: Int
             switch target {
             case .skills:
-                count = model.skills.filter { $0.tags.contains(tag) }.count
+                count = model.skills.filter { $0.tags.contains(where: { tagNamesEqual($0, tag) }) }.count
             case .prompts:
-                count = model.prompts.filter { $0.tags.contains(tag) }.count
+                count = model.prompts.filter { $0.tags.contains(where: { tagNamesEqual($0, tag) }) }.count
             }
             return (tag, count)
         }
@@ -267,7 +267,7 @@ struct TagManagementSheet: View {
                             Button(role: .destructive) {
                                 tagToDelete = item.tag
                             } label: {
-                                Image(systemName: "minus.circle")
+                                Image(systemName: "trash")
                                     .foregroundStyle(.secondary)
                             }
                             .buttonStyle(.borderless)
@@ -333,7 +333,9 @@ struct TagManagementSheet: View {
                     }
                 }
 
-                if allTagCounts.contains(where: { $0.tag == newTagName.trimmingCharacters(in: .whitespacesAndNewlines) && $0.tag != editingTag }) {
+                if allTagCounts.contains(where: {
+                    tagNamesEqual($0.tag, newTagName) && $0.tag != editingTag
+                }) {
                     Label("新标签已存在，保存后将自动合并。", systemImage: "arrow.triangle.merge")
                         .font(.caption)
                         .foregroundStyle(.orange)
@@ -370,7 +372,7 @@ struct TagManagementSheet: View {
 
     private var addTagSheet: some View {
         let trimmed = newCreatedTag.trimmingCharacters(in: .whitespacesAndNewlines)
-        let isDuplicate = allTagCounts.contains(where: { $0.tag == trimmed })
+        let isDuplicate = allTagCounts.contains(where: { tagNamesEqual($0.tag, trimmed) })
 
         return VStack(spacing: 0) {
             SheetHeader(
@@ -446,7 +448,7 @@ struct TagSelector: View {
     }
 
     private var isDuplicate: Bool {
-        availableTags.contains(trimmedNewTag)
+        availableTags.contains(where: { tagNamesEqual($0, trimmedNewTag) })
     }
 
     var body: some View {
@@ -473,7 +475,7 @@ struct TagSelector: View {
                 ScrollView {
                     TagWrapLayout(spacing: 6) {
                         ForEach(availableTags, id: \.self) { tag in
-                            let isSelected = selectedTags.contains(tag)
+                            let isSelected = selectedTags.contains(where: { tagNamesEqual($0, tag) })
                             Button {
                                 toggle(tag)
                             } label: {
@@ -535,7 +537,7 @@ struct TagSelector: View {
     }
 
     private func toggle(_ tag: String) {
-        if let index = selectedTags.firstIndex(of: tag) {
+        if let index = selectedTags.firstIndex(where: { tagNamesEqual($0, tag) }) {
             selectedTags.remove(at: index)
         } else {
             selectedTags.append(tag)
@@ -593,8 +595,6 @@ private struct TagWrapLayout: Layout {
 
 /// 合并自定义标签、已有条目标签和当前选择，去重后按本地化顺序排序。
 func mergedTagPool(customTags: Set<String>, tagGroups: [[String]], selectedTags: [String]) -> [String] {
-    Set(tagGroups.flatMap { $0 } + selectedTags)
-        .union(customTags)
-        .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+    uniqueTagNamesPreservingCase(tagGroups.flatMap { $0 } + selectedTags + customTags.sorted())
         .sorted { $0.localizedStandardCompare($1) == .orderedAscending }
 }

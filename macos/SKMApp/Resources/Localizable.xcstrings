@@ -15,9 +15,6 @@
     "·" : {
 
     },
-    "{{%@}}" : {
-
-    },
     "%@ · %@" : {
       "localizations" : {
         "zh-Hans" : {
@@ -223,6 +220,7 @@
       }
     },
     "Git / 命令" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1350,7 +1348,6 @@
       }
     },
     "内容" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1438,6 +1435,7 @@
       }
     },
     "凭据由系统 Git、SSH Agent 或 Credential Helper 管理，SKM 不保存 Token。" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1644,6 +1642,7 @@
       }
     },
     "变量" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1826,7 +1825,6 @@
       }
     },
     "名称" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1915,6 +1913,9 @@
           }
         }
       }
+    },
+    "在左侧选择模板，阅读、复制或导出到你的工作流程。" : {
+
     },
     "在编辑详情中为条目添加标签后，将在此集中展示。" : {
       "extractionState" : "manual",
@@ -2644,6 +2645,7 @@
       }
     },
     "必填" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2830,7 +2832,6 @@
       }
     },
     "描述" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3333,6 +3334,7 @@
       }
     },
     "本地" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3343,6 +3345,7 @@
       }
     },
     "本地内容会被验证并写入 SKM 的不可变对象库。" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5150,6 +5153,7 @@
       }
     },
     "输入标签名称。添加后将进入全局标签池，可在录入或编辑条目时选择使用。" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5534,9 +5538,6 @@
           }
         }
       }
-    },
-    "重命名若与现有标签相同将自动合并；删除仅解绑标签，不删除条目。" : {
-
     },
     "重新扫描" : {
       "extractionState" : "manual",

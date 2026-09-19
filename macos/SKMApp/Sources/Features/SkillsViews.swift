@@ -248,31 +248,12 @@ struct SkillDetailView: View {
                     .foregroundStyle(.orange)
             }
 
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: 18) {
-                    ForEach(skill.tags, id: \.self) { tag in
-                        Label(tag, systemImage: "tag")
-                            .libraryMetadataPill()
-                            .fixedSize()
-                    }
-                    skillSource(skill)
-                }
-                VStack(alignment: .leading, spacing: 10) {
-                    ForEach(skill.tags, id: \.self) { tag in
-                        Label(tag, systemImage: "tag").libraryMetadataPill()
-                    }
-                    skillSource(skill)
-                }
-            }
+            LibraryMetadataStrip(
+                source: skill.source,
+                tags: skill.tags,
+                sourceHelp: [skill.effectivePath, skill.editReason].compactMap { $0 }.joined(separator: "\n")
+            )
         }
-    }
-
-    private func skillSource(_ skill: SkillSummary) -> some View {
-        Label(skill.source.isEmpty ? "local" : skill.source, systemImage: "folder")
-            .font(.system(size: 12))
-            .foregroundStyle(.secondary)
-            .lineLimit(1)
-            .help([skill.effectivePath, skill.editReason].compactMap { $0 }.joined(separator: "\n"))
     }
 
     // MARK: - Agent 激活卡片区
@@ -1129,5 +1110,8 @@ func healthLabel(_ health: String) -> String {
 }
 
 func parseTags(_ value: String) -> [String] {
-    Array(Set(value.split(separator: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty })).sorted()
+    uniqueTagNamesPreservingCase(
+        value.split(separator: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+    )
+    .sorted { $0.localizedStandardCompare($1) == .orderedAscending }
 }

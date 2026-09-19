@@ -20,6 +20,7 @@ final class ModelsTests: XCTestCase {
 
     func testTagParsingNormalizesInput() {
         XCTAssertEqual(parseTags("general, mac, general"), ["general", "mac"])
+        XCTAssertEqual(parseTags("AI, ai"), ["AI"])
     }
 
     func testTagGroupsBuildUniqueSectionsAndRepeatMultiTagItems() {
@@ -44,11 +45,11 @@ final class ModelsTests: XCTestCase {
     func testMergedTagPoolIncludesCustomUsedAndSelectedTags() {
         XCTAssertEqual(
             mergedTagPool(
-                customTags: ["design", "general"],
-                tagGroups: [["swift", "general"], ["review"]],
+                customTags: ["Design", "general"],
+                tagGroups: [["Swift", "general"], ["review"]],
                 selectedTags: ["draft", "swift"]
             ),
-            ["design", "draft", "general", "review", "swift"]
+            ["Design", "draft", "general", "review", "Swift"]
         )
     }
 

@@ -266,6 +266,55 @@ extension View {
     }
 }
 
+/// Skill 与 Prompt 详情页共用的来源和标签展示，确保样式与排列顺序一致。
+struct LibraryMetadataStrip: View {
+    let source: String
+    let tags: [String]
+    var sourceHelp: String? = nil
+
+    private var sourceName: String {
+        let trimmed = source.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty || trimmed.caseInsensitiveCompare("local") == .orderedSame
+            ? AppLocalization.string("本地")
+            : trimmed
+    }
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 18) {
+                sourceBadge
+                tagBadges
+            }
+            VStack(alignment: .leading, spacing: 10) {
+                sourceBadge
+                tagBadges
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var sourceBadge: some View {
+        let badge = Label(sourceName, systemImage: "folder")
+            .libraryMetadataPill()
+            .fixedSize()
+
+        if let sourceHelp, !sourceHelp.isEmpty {
+            badge.help(sourceHelp)
+        } else {
+            badge
+        }
+    }
+
+    @ViewBuilder
+    private var tagBadges: some View {
+        ForEach(tags, id: \.self) { tag in
+            Label(tag, systemImage: "tag")
+                .libraryMetadataPill()
+                .fixedSize()
+        }
+    }
+}
+
 /// Keep native list selection and keyboard navigation, with the reference's neutral highlight.
 private struct LibrarySelectionAppearance: NSViewRepresentable {
     func makeNSView(context: Context) -> SelectionView { SelectionView() }

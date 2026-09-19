@@ -1,5 +1,25 @@
 import Foundation
 
+/// 标签保留用户输入的大小写，但比较与去重时忽略大小写和 Unicode 宽度差异。
+func tagComparisonKey(_ value: String) -> String {
+    value
+        .trimmingCharacters(in: .whitespacesAndNewlines)
+        .precomposedStringWithCompatibilityMapping
+        .lowercased()
+}
+
+func tagNamesEqual(_ left: String, _ right: String) -> Bool {
+    tagComparisonKey(left) == tagComparisonKey(right)
+}
+
+func uniqueTagNamesPreservingCase(_ values: [String]) -> [String] {
+    var seen: Set<String> = []
+    return values.filter { value in
+        let key = tagComparisonKey(value)
+        return !key.isEmpty && seen.insert(key).inserted
+    }
+}
+
 /// 空参数载荷
 struct EmptyParams: Codable, Sendable {}
 

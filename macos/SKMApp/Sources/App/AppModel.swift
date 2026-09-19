@@ -678,22 +678,21 @@ final class AppModel {
     func renameSkillTag(from oldTag: String, to newTag: String) async {
         let trimmedNew = newTag.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedNew.isEmpty, trimmedNew != oldTag else { return }
-        let affected = skills.filter { $0.tags.contains(oldTag) }
-        guard !affected.isEmpty || skillCustomTags.contains(oldTag) else { return }
+        let affected = skills.filter { $0.tags.contains(where: { tagNamesEqual($0, oldTag) }) }
+        guard !affected.isEmpty || skillCustomTags.contains(where: { tagNamesEqual($0, oldTag) }) else { return }
 
         if !affected.isEmpty {
             await perform(String(format: AppLocalization.string("正在更新 %lld 个 Skill 的标签…"), affected.count)) {
                 for summary in affected {
-                    if let details: SkillDetails = try? await self.core.call("skills.get", params: IDParams(id: summary.id)) {
-                        var newTags = details.tags.map { $0 == oldTag ? trimmedNew : $0 }
-                        newTags = Array(NSOrderedSet(array: newTags)).compactMap { $0 as? String }
-                        let _: SkillUpdateResponse = try await self.core.call(
-                            "skills.update",
-                            params: UpdateSkillParams(id: summary.id, content: details.content, baseHash: details.hash, tags: newTags)
-                        )
-                    }
+                    let newTags = uniqueTagNamesPreservingCase(
+                        summary.tags.map { tagNamesEqual($0, oldTag) ? trimmedNew : $0 }
+                    )
+                    let _: SkillTagsResponse = try await self.core.call(
+                        "skills.tags.replace",
+                        params: SkillTagsParams(skill: summary.id, tags: newTags)
+                    )
                 }
-                await self.refresh()
+                try await self.reload()
             }
         }
         renameCustomTag(from: oldTag, to: trimmedNew, in: .skills)
@@ -702,17 +701,16 @@ final class AppModel {
 
     /// 批量从所有 Skill 中移除指定标签
     func removeSkillTag(_ tag: String) async {
-        let affected = skills.filter { $0.tags.contains(tag) }
+        let affected = skills.filter { $0.tags.contains(where: { tagNamesEqual($0, tag) }) }
 
         if !affected.isEmpty {
             var succeeded = false
             await perform(String(format: AppLocalization.string("正在从 %lld 个 Skill 中移除标签…"), affected.count)) {
                 for summary in affected {
-                    let details: SkillDetails = try await self.core.call("skills.get", params: IDParams(id: summary.id))
-                    let newTags = details.tags.filter { $0 != tag }
-                    let _: SkillUpdateResponse = try await self.core.call(
-                        "skills.update",
-                        params: UpdateSkillParams(id: summary.id, content: details.content, baseHash: details.hash, tags: newTags)
+                    let newTags = summary.tags.filter { !tagNamesEqual($0, tag) }
+                    let _: SkillTagsResponse = try await self.core.call(
+                        "skills.tags.replace",
+                        params: SkillTagsParams(skill: summary.id, tags: newTags)
                     )
                 }
                 try await self.reload()
@@ -729,14 +727,14 @@ final class AppModel {
     func renamePromptTag(from oldTag: String, to newTag: String) async {
         let trimmedNew = newTag.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedNew.isEmpty, trimmedNew != oldTag else { return }
-        let affected = prompts.filter { $0.tags.contains(oldTag) }
-        guard !affected.isEmpty || promptCustomTags.contains(oldTag) else { return }
+        let affected = prompts.filter { $0.tags.contains(where: { tagNamesEqual($0, oldTag) }) }
+        guard !affected.isEmpty || promptCustomTags.contains(where: { tagNamesEqual($0, oldTag) }) else { return }
 
         if !affected.isEmpty {
             await perform(String(format: AppLocalization.string("正在更新 %lld 个 Prompt 的标签…"), affected.count)) {
                 for summary in affected {
                     if let details: PromptDetails = try? await self.core.call("prompts.get", params: IDParams(id: summary.id)) {
-                        var newTags = details.tags.map { $0 == oldTag ? trimmedNew : $0 }
+                        var newTags = details.tags.map { tagNamesEqual($0, oldTag) ? trimmedNew : $0 }
                         newTags = Array(NSOrderedSet(array: newTags)).compactMap { $0 as? String }
                         let _: PromptSummary = try await self.core.call(
                             "prompts.update",
@@ -763,14 +761,14 @@ final class AppModel {
 
     /// 批量从所有 Prompt 中移除指定标签
     func removePromptTag(_ tag: String) async {
-        let affected = prompts.filter { $0.tags.contains(tag) }
+        let affected = prompts.filter { $0.tags.contains(where: { tagNamesEqual($0, tag) }) }
 
         if !affected.isEmpty {
             var succeeded = false
             await perform(String(format: AppLocalization.string("正在从 %lld 个 Prompt 中移除标签…"), affected.count)) {
                 for summary in affected {
                     let details: PromptDetails = try await self.core.call("prompts.get", params: IDParams(id: summary.id))
-                    let newTags = details.tags.filter { $0 != tag }
+                    let newTags = details.tags.filter { !tagNamesEqual($0, tag) }
                     let _: PromptSummary = try await self.core.call(
                         "prompts.update",
                         params: PromptWriteParams(
@@ -812,8 +810,12 @@ final class AppModel {
         let trimmed = tag.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         switch scope {
-        case .skills: skillCustomTags.insert(trimmed)
-        case .prompts: promptCustomTags.insert(trimmed)
+        case .skills:
+            guard !skillCustomTags.contains(where: { tagNamesEqual($0, trimmed) }) else { return }
+            skillCustomTags.insert(trimmed)
+        case .prompts:
+            guard !promptCustomTags.contains(where: { tagNamesEqual($0, trimmed) }) else { return }
+            promptCustomTags.insert(trimmed)
         }
         persistCustomTags(for: scope)
     }
@@ -821,14 +823,16 @@ final class AppModel {
     /// 从持久化标签池移除标签；条目上的关联由调用方先行处理。
     func unregisterCustomTag(_ tag: String, from scope: TagScope) {
         switch scope {
-        case .skills: skillCustomTags.remove(tag)
-        case .prompts: promptCustomTags.remove(tag)
+        case .skills:
+            skillCustomTags = skillCustomTags.filter { !tagNamesEqual($0, tag) }
+        case .prompts:
+            promptCustomTags = promptCustomTags.filter { !tagNamesEqual($0, tag) }
         }
         persistCustomTags(for: scope)
     }
 
     private func renameCustomTag(from oldTag: String, to newTag: String, in scope: TagScope) {
-        guard customTags(for: scope).contains(oldTag) else { return }
+        guard customTags(for: scope).contains(where: { tagNamesEqual($0, oldTag) }) else { return }
         unregisterCustomTag(oldTag, from: scope)
         registerCustomTag(newTag, for: scope)
     }
@@ -1034,6 +1038,8 @@ struct AddSourceParams: Codable, Sendable {
     var tags: [String] = []
 }
 struct UpdateSkillParams: Codable, Sendable { let id: String; let content: String; let baseHash: String; let tags: [String] }
+struct SkillTagsParams: Codable, Sendable { let skill: String; let tags: [String] }
+struct SkillTagsResponse: Codable, Sendable { let id: String; let tags: [String] }
 struct ConfigureAgentsParams: Codable, Sendable { let agents: [String] }
 struct CustomAgentParams: Codable, Sendable { let id: String; let name: String; let skillsPath: String }
 struct ActivationParams: Codable, Sendable { let skills: [String]; let agents: [String]; let mode: String? }

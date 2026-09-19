@@ -29,21 +29,38 @@ func normalize(values []string, allowEmpty bool) ([]string, error) {
 	seen := make(map[string]struct{}, len(values))
 	result := make([]string, 0, len(values))
 	for _, value := range values {
-		value = strings.ToLower(norm.NFKC.String(strings.TrimSpace(value)))
+		value = norm.NFKC.String(strings.TrimSpace(value))
 		if !isValidTag(value) {
 			return nil, fmt.Errorf("invalid tag %q: use 1-32 Unicode letters, numbers, or internal hyphens", value)
 		}
-		if _, ok := seen[value]; ok {
+		key := comparisonKey(value)
+		if _, ok := seen[key]; ok {
 			continue
 		}
-		seen[value] = struct{}{}
+		seen[key] = struct{}{}
 		result = append(result, value)
 	}
 	if len(result) == 0 && !allowEmpty {
 		return nil, fmt.Errorf("at least one tag is required")
 	}
-	sort.Strings(result)
+	sort.Slice(result, func(i, j int) bool {
+		left := comparisonKey(result[i])
+		right := comparisonKey(result[j])
+		if left == right {
+			return result[i] < result[j]
+		}
+		return left < right
+	})
 	return result, nil
+}
+
+// Equal compares tag identities without changing their display capitalization.
+func Equal(left, right string) bool {
+	return comparisonKey(left) == comparisonKey(right)
+}
+
+func comparisonKey(value string) string {
+	return strings.ToLower(norm.NFKC.String(strings.TrimSpace(value)))
 }
 
 func isValidTag(value string) bool {
@@ -68,10 +85,10 @@ func MatchAll(actual, required []string) bool {
 	}
 	set := make(map[string]struct{}, len(actual))
 	for _, tag := range actual {
-		set[tag] = struct{}{}
+		set[comparisonKey(tag)] = struct{}{}
 	}
 	for _, tag := range required {
-		if _, ok := set[strings.ToLower(tag)]; !ok {
+		if _, ok := set[comparisonKey(tag)]; !ok {
 			return false
 		}
 	}

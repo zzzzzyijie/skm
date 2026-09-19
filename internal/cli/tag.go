@@ -93,16 +93,19 @@ func (a *App) newTagRemoveCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			remove := make(map[string]struct{}, len(args)-1)
-			for _, value := range args[1:] {
-				remove[strings.ToLower(value)] = struct{}{}
-			}
 			var value domain.Skill
 			err = withLock(storage, func() error {
 				value, err = catalog.New(storage).UpdateTags(args[0], func(current []string) []string {
 					result := current[:0]
 					for _, tag := range current {
-						if _, ok := remove[tag]; !ok {
+						remove := false
+						for _, requested := range args[1:] {
+							if tags.Equal(tag, requested) {
+								remove = true
+								break
+							}
+						}
+						if !remove {
 							result = append(result, tag)
 						}
 					}
@@ -131,7 +134,11 @@ func (a *App) newTagRenameCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			oldName := strings.ToLower(args[0])
+			oldValues, err := tags.Normalize([]string{args[0]}, nil)
+			if err != nil {
+				return err
+			}
+			oldName := oldValues[0]
 			newName := validated[0]
 			storage, err := a.openStore()
 			if err != nil {
@@ -146,7 +153,7 @@ func (a *App) newTagRenameCommand() *cobra.Command {
 				for _, value := range library.Skills {
 					found := false
 					for i, tag := range value.Tags {
-						if tag == oldName {
+						if tags.Equal(tag, oldName) {
 							value.Tags[i] = newName
 							found = true
 						}

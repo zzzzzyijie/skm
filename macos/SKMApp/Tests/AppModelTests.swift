@@ -106,14 +106,14 @@ final class AppModelTests: XCTestCase {
         let preferences = isolatedPreferences()
         let model = AppModel(core: StubCore(), preferences: preferences, monitorsFiles: false)
 
-        model.registerCustomTag("  review  ", for: .skills)
-        model.registerCustomTag("review", for: .skills)
-        model.registerCustomTag("draft", for: .prompts)
+        model.registerCustomTag("  AI  ", for: .skills)
+        model.registerCustomTag("ai", for: .skills)
+        model.registerCustomTag("iOS", for: .prompts)
 
-        XCTAssertEqual(model.customTags(for: .skills), ["review"])
-        XCTAssertEqual(model.customTags(for: .prompts), ["draft"])
-        XCTAssertEqual(preferences.stringArray(forKey: "skm.custom.tags.skills"), ["review"])
-        XCTAssertEqual(preferences.stringArray(forKey: "skm.custom.tags.prompts"), ["draft"])
+        XCTAssertEqual(model.customTags(for: .skills), ["AI"])
+        XCTAssertEqual(model.customTags(for: .prompts), ["iOS"])
+        XCTAssertEqual(preferences.stringArray(forKey: "skm.custom.tags.skills"), ["AI"])
+        XCTAssertEqual(preferences.stringArray(forKey: "skm.custom.tags.prompts"), ["iOS"])
     }
 
     func testUnregisterCustomTagOnlyRemovesItFromRequestedPool() {
@@ -144,6 +144,22 @@ final class AppModelTests: XCTestCase {
         XCTAssertEqual(model.customTags(for: .skills), ["shared", "skill-only", "unused"])
         XCTAssertEqual(model.customTags(for: .prompts), ["prompt-only", "shared", "unused"])
         XCTAssertNil(preferences.stringArray(forKey: "skm.custom.tags"))
+    }
+
+    func testRenameSkillTagUsesTagOnlyEndpointForGitManagedSkill() async {
+        let core = StubCore(responses: [
+            "skills.list": #"[{"id":"team/sample","name":"sample","description":"Sample","tags":["ai"],"source":"team","location":"library","hash":"abc","path":"/tmp/sample","health":"available","effectivePath":"/tmp/sample","editable":false,"editReason":"this Skill is managed by a Git source"}]"#,
+            "skills.tags.replace": #"{"id":"team/sample","tags":["AI"]}"#,
+        ])
+        let model = AppModel(core: core, preferences: isolatedPreferences(), monitorsFiles: false)
+        await model.start()
+
+        await model.renameSkillTag(from: "ai", to: "AI")
+
+        let methods = await core.calledMethods()
+        XCTAssertTrue(methods.contains("skills.tags.replace"))
+        XCTAssertFalse(methods.contains("skills.update"))
+        XCTAssertNil(model.errorMessage)
     }
 
     func testReadOnlyMethodsAreTheOnlyAutomaticallyRetryableCalls() {
@@ -271,6 +287,7 @@ final class CoreClientResilienceTests: XCTestCase {
 private actor StubCore: CoreServing {
     private let handshakeError: CoreClientError?
     private let responses: [String: Data]
+    private var methods: [String] = []
 
     init(handshakeError: CoreClientError? = nil, responses: [String: String] = [:]) {
         self.handshakeError = handshakeError
@@ -304,11 +321,14 @@ private actor StubCore: CoreServing {
         _ method: String,
         params: Params
     ) async throws -> Result {
+        methods.append(method)
         guard let data = responses[method] else {
             throw CoreClientError.remote(code: -32601, message: method, kind: "method_not_found", retryable: false)
         }
         return try JSONDecoder().decode(Result.self, from: data)
     }
+
+    func calledMethods() -> [String] { methods }
 
     func stop() async {}
 }

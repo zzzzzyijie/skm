@@ -19,7 +19,7 @@ func TestNormalizeUsesDefaultsOnlyWhenUnspecified(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []string{"code-review", "testing"}
+	want := []string{"code-review", "Testing"}
 	if !reflect.DeepEqual(explicit, want) {
 		t.Fatalf("explicit = %#v, want %#v", explicit, want)
 	}
@@ -50,17 +50,31 @@ func TestNormalizeSupportsAndCanonicalizesUnicodeTags(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []string{"café", "code", "简小知"}
+	want := []string{"Café", "CODE", "简小知"}
 	if !reflect.DeepEqual(actual, want) {
 		t.Fatalf("normalized tags = %#v, want %#v", actual, want)
 	}
 }
 
 func TestMatchAll(t *testing.T) {
-	if !MatchAll([]string{"backend", "testing"}, []string{"backend", "testing"}) {
+	if !MatchAll([]string{"Backend", "Testing"}, []string{"backend", "TESTING"}) {
 		t.Fatal("expected AND match")
 	}
 	if MatchAll([]string{"backend"}, []string{"backend", "testing"}) {
 		t.Fatal("expected missing tag to fail")
+	}
+}
+
+func TestNormalizePreservesCapitalizationAndDeduplicatesCaseInsensitively(t *testing.T) {
+	actual, err := Normalize([]string{"AI", "ai", "iOS", "IOS"}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"AI", "iOS"}
+	if !reflect.DeepEqual(actual, want) {
+		t.Fatalf("normalized tags = %#v, want %#v", actual, want)
+	}
+	if !Equal("ＡＩ", "ai") {
+		t.Fatal("expected compatibility-equivalent tag names to match")
 	}
 }

@@ -242,33 +242,25 @@ struct PromptDetailView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: 18) {
-                    Label(prompt.source, systemImage: "folder").libraryMetadataPill()
-                    ForEach(prompt.tags, id: \.self) { tag in
-                        Label(tag, systemImage: "tag")
-                            .libraryMetadataPill()
-                            .fixedSize()
-                    }
-                }
-                VStack(alignment: .leading, spacing: 10) {
-                    Label(prompt.source, systemImage: "folder").libraryMetadataPill()
-                    ForEach(prompt.tags, id: \.self) { tag in
-                        Label(tag, systemImage: "tag").libraryMetadataPill()
-                    }
-                }
-            }
+            LibraryMetadataStrip(source: prompt.source, tags: prompt.tags)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var contentSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            if showsCopiedFeedback {
-                Label("已复制", systemImage: "checkmark.circle")
-                    .font(.caption)
-                    .foregroundStyle(SKMDesign.successTint)
-                    .transition(.opacity)
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 10) {
+                Label("内容", systemImage: "doc.text")
+                    .font(.system(size: 16, weight: .semibold))
+
+                Spacer()
+
+                if showsCopiedFeedback {
+                    Label("已复制", systemImage: "checkmark.circle")
+                        .font(.caption)
+                        .foregroundStyle(SKMDesign.successTint)
+                        .transition(.opacity)
+                }
             }
 
             Group {
@@ -283,7 +275,18 @@ struct PromptDetailView: View {
                     }
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .topLeading)
+            .padding(.leading, 20)
+            .padding(.vertical, 20)
+            .padding(.trailing, 56)
+            .frame(maxWidth: .infinity, minHeight: 150, alignment: .topLeading)
+            .skmSurface(radius: SKMDesign.cardRadius)
+            .overlay(alignment: .topTrailing) {
+                Button("复制", systemImage: "doc.on.doc", action: copyBody)
+                    .topToolbarActionStyle()
+                    .disabled(details == nil)
+                    .help("复制 Prompt 内容")
+                    .padding(12)
+            }
         }
         .animation(reduceMotion ? nil : .easeOut(duration: 0.15), value: showsCopiedFeedback)
     }
@@ -359,7 +362,7 @@ struct PromptEditorSheet: View {
         _name = State(initialValue: details?.name ?? "")
         _description = State(initialValue: details?.description ?? "")
         _promptBody = State(initialValue: details?.body ?? "")
-        _tags = State(initialValue: details?.tags ?? ["general"])
+        _tags = State(initialValue: details?.tags ?? [])
         _baseHash = State(initialValue: details?.hash)
         _variables = State(initialValue: (details?.variables ?? []).map(PromptVariableDraft.init))
     }
@@ -505,7 +508,7 @@ struct PromptEditorSheet: View {
 
     private var hasChanges: Bool {
         name != (details?.name ?? "") || description != (details?.description ?? "") ||
-        promptBody != (details?.body ?? "") || tags != (details?.tags ?? ["general"]) ||
+        promptBody != (details?.body ?? "") || tags != (details?.tags ?? []) ||
         variables.map(\.model) != (details?.variables ?? []).map { PromptVariableDraft($0).model }
     }
 

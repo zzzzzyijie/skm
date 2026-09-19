@@ -484,7 +484,7 @@ func (s *Server) handleDeleteTag(w http.ResponseWriter, r *http.Request) {
 			registry = config.PromptTags
 		}
 		for _, value := range defaults {
-			if value == name {
+			if tags.Equal(value, name) {
 				return fmt.Errorf("default tag %q cannot be deleted", name)
 			}
 		}
@@ -511,7 +511,7 @@ func (s *Server) handleDeleteTag(w http.ResponseWriter, r *http.Request) {
 		}
 		result := registry[:0]
 		for _, value := range registry {
-			if value == name {
+			if tags.Equal(value, name) {
 				deleted = true
 				continue
 			}
@@ -597,7 +597,7 @@ func (s *Server) handleRemoveTag(w http.ResponseWriter, r *http.Request) {
 		value, tagErr = catalog.New(s.store).UpdateTags(body.Skill, func(current []string) []string {
 			result := current[:0]
 			for _, t := range current {
-				if t != body.Tag {
+				if !tags.Equal(t, body.Tag) {
 					result = append(result, t)
 				}
 			}
@@ -685,7 +685,7 @@ func (s *Server) handleRenameTag(w http.ResponseWriter, r *http.Request) {
 			for _, value := range library.Skills {
 				found := false
 				for i, tag := range value.Tags {
-					if tag == oldName {
+					if tags.Equal(tag, oldName) {
 						value.Tags[i] = newName
 						found = true
 					}
@@ -740,7 +740,7 @@ func isPromptTagScope(r *http.Request) bool {
 
 func containsTag(values []string, name string) bool {
 	for _, value := range values {
-		if value == name {
+		if tags.Equal(value, name) {
 			return true
 		}
 	}
@@ -750,7 +750,7 @@ func containsTag(values []string, name string) bool {
 func replaceTag(values []string, oldName, newName string) []string {
 	result := append([]string(nil), values...)
 	for index, value := range result {
-		if value == oldName {
+		if tags.Equal(value, oldName) {
 			result[index] = newName
 		}
 	}
