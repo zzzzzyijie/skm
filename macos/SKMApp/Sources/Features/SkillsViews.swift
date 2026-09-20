@@ -282,7 +282,7 @@ struct SkillDetailView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .skmSurface(radius: SKMDesign.compactCardRadius)
             } else {
-                LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: SKMDesign.agentCardMinimumWidth), spacing: 12)], spacing: 12) {
                     ForEach(configuredAgents) { agent in
                         AgentToggleCard(
                             agent: agent,

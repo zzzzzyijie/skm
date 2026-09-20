@@ -18,7 +18,7 @@ enum SKMDesign {
     static let canvas = Color(nsColor: .windowBackgroundColor)
     static let detailCanvas = Color(nsColor: .textBackgroundColor)
     static let surface = Color(nsColor: .controlBackgroundColor)
-    static let tagTint = Color.orange
+    static let tagTint = adaptiveColor(light: 0xA85B08, dark: 0xF5B35C)
     static let successTint = Color.green
 
     // Main library window proportions, measured from the macOS reference screens.
@@ -31,10 +31,13 @@ enum SKMDesign {
     static let tagManagerRowHeight: CGFloat = 46
     static let tagManagerSkillTint = adaptiveColor(light: 0x3478F6, dark: 0x6EA8FF)
     static let tagManagerPromptTint = adaptiveColor(light: 0x8B5CF6, dark: 0xB59AFF)
-    static let libraryGreen = Color(red: 0.16, green: 0.68, blue: 0.39)
+    static let libraryGreen = adaptiveColor(light: 0x29AD63, dark: 0x62CF8B)
+    static let projectSelectionText = adaptiveColor(light: 0x197D29, dark: 0x83D9A3)
+    static let primaryAction = adaptiveColor(light: 0x27843D, dark: 0x286D3C)
     static let librarySelection = adaptiveColor(light: 0xF3F3F5, dark: 0x303033)
     static let librarySidebar = adaptiveColor(light: 0xF5F5F5, dark: 0x242426)
     static let libraryBorder = adaptiveColor(light: 0xDEDFE5, dark: 0x424247)
+    static let hoverFill = adaptiveColor(light: 0x000000, dark: 0xFFFFFF).opacity(0.065)
     static let sheetHorizontalPadding: CGFloat = 22
     static let sheetVerticalPadding: CGFloat = 20
 
@@ -88,20 +91,24 @@ struct SheetHeader<Trailing: View>: View {
             VStack(alignment: .leading, spacing: 5) {
                 Text(title)
                     .font(.system(size: 21, weight: .semibold))
-                    .lineLimit(1)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .help(title)
                 if !subtitle.isEmpty {
                     Text(subtitle)
                         .font(.system(size: 12))
                         .foregroundStyle(.secondary)
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
+                        .help(subtitle)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
             trailing
         }
-        .padding(24)
+        .padding(.horizontal, SKMDesign.sheetHorizontalPadding)
+        .padding(.vertical, SKMDesign.sheetVerticalPadding)
     }
 }
 
@@ -162,8 +169,12 @@ struct SheetActionBar<Leading: View, Actions: View>: View {
     var body: some View {
         HStack(spacing: 10) {
             leading
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .lineLimit(2)
             Spacer(minLength: 16)
             actions
+                .fixedSize(horizontal: true, vertical: false)
         }
         .padding(.horizontal, SKMDesign.sheetHorizontalPadding)
         .padding(.vertical, 16)
@@ -220,6 +231,7 @@ struct DetailToolbar<Actions: View>: View {
 
 struct LibraryActionButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
+    @State private var isHovered = false
     var prominent = false
 
     func makeBody(configuration: Configuration) -> some View {
@@ -228,9 +240,34 @@ struct LibraryActionButtonStyle: ButtonStyle {
             .padding(.horizontal, prominent ? 16 : 12)
             .frame(height: prominent ? 36 : 32)
             .foregroundStyle(prominent ? Color.white : Color.primary)
-            .background(prominent ? Color(red: 0.28, green: 0.69, blue: 0.30) : SKMDesign.librarySelection,
+            .background(prominent ? SKMDesign.primaryAction : SKMDesign.librarySelection,
                         in: RoundedRectangle(cornerRadius: prominent ? 18 : 6))
+            .overlay {
+                RoundedRectangle(cornerRadius: prominent ? 18 : 6)
+                    .fill(isHovered && isEnabled ? SKMDesign.hoverFill : .clear)
+                    .allowsHitTesting(false)
+            }
+            .contentShape(RoundedRectangle(cornerRadius: prominent ? 18 : 6))
             .opacity(!isEnabled ? 0.45 : configuration.isPressed ? 0.7 : 1)
+            .onHover { isHovered = $0 }
+    }
+}
+
+/// Keep the full icon area clickable and give each toolbar button its own feedback.
+struct QuietIconButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+    @State private var isHovered = false
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .frame(minWidth: SKMDesign.toolbarActionSize, minHeight: SKMDesign.toolbarActionSize)
+            .background {
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(isEnabled && (isHovered || configuration.isPressed) ? SKMDesign.hoverFill : .clear)
+            }
+            .contentShape(RoundedRectangle(cornerRadius: 6))
+            .opacity(!isEnabled ? 0.4 : configuration.isPressed ? 0.65 : 1)
+            .onHover { isHovered = $0 }
     }
 }
 
@@ -277,7 +314,7 @@ extension View {
 
     func libraryTagPill() -> some View {
         font(.system(size: 12))
-            .foregroundStyle(Color.orange)
+            .foregroundStyle(SKMDesign.tagTint)
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
             .background(Color.orange.opacity(0.11), in: Capsule())
@@ -306,29 +343,25 @@ struct LibraryMetadataStrip: View {
     }
 
     var body: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: 18) {
-                sourceBadge
-                tagBadges
-            }
-            VStack(alignment: .leading, spacing: 10) {
-                sourceBadge
-                tagBadges
-            }
+        TagWrapLayout(spacing: 8) {
+            sourceBadge
+            tagBadges
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     @ViewBuilder
     private var sourceBadge: some View {
         let badge = Label(sourceName, systemImage: sourceSymbol)
+            .lineLimit(1)
+            .truncationMode(.middle)
             .librarySourceBadge()
-            .fixedSize()
             .accessibilityLabel("\(AppLocalization.string("来源")) \(sourceName)")
 
         if let sourceHelp, !sourceHelp.isEmpty {
             badge.help(sourceHelp)
         } else {
-            badge
+            badge.help(sourceName)
         }
     }
 
@@ -336,8 +369,10 @@ struct LibraryMetadataStrip: View {
     private var tagBadges: some View {
         ForEach(tags, id: \.self) { tag in
             Label(tag, systemImage: "tag.fill")
+                .lineLimit(1)
+                .truncationMode(.middle)
                 .libraryTagPill()
-                .fixedSize()
+                .help(tag)
                 .accessibilityLabel("\(AppLocalization.string("标签")) \(tag)")
         }
     }

@@ -6,7 +6,7 @@ struct CollectionFooter: View {
 
     var body: some View {
         HStack(spacing: 6) {
-            Image(systemName: "paperclip").accessibilityHidden(true)
+            Image(systemName: symbol).accessibilityHidden(true)
             Text("共 \(count) 项").monospacedDigit()
             Spacer()
         }

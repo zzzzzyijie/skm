@@ -105,7 +105,7 @@ struct RootView: View {
             Spacer(minLength: 0)
         }
         .padding(.leading, 8)
-        .padding(.trailing, 40)
+        .padding(.trailing, 12)
         .padding(.top, 44)
         .onChange(of: model.section) { _, section in
             guard sidebarSelection != section else { return }
@@ -164,7 +164,7 @@ struct CollectionSearchField: View {
     let title: LocalizedStringKey
     @Binding var text: String
     var tint: Color = .accentColor
-    var controlHeight: CGFloat = 28
+    var controlHeight: CGFloat = 30
     @FocusState private var isFocused: Bool
 
     var body: some View {
@@ -205,8 +205,9 @@ struct CollectionSearchField: View {
         .frame(height: controlHeight)
         .background(SKMDesign.librarySelection, in: RoundedRectangle(cornerRadius: 6))
         .overlay {
-            RoundedRectangle(cornerRadius: 8)
-                .strokeBorder(isFocused ? tint : .clear, lineWidth: 1)
+            RoundedRectangle(cornerRadius: 6)
+                .strokeBorder(isFocused ? tint.opacity(0.8) : SKMDesign.libraryBorder.opacity(0.5), lineWidth: 1)
+                .allowsHitTesting(false)
         }
         .padding(.horizontal, 16)
         .padding(.top, 8)
@@ -226,12 +227,18 @@ struct StatusPill: View {
             } else {
                 Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
             }
-            Text(text).lineLimit(3)
+            Text(text)
+                .lineLimit(3)
+                .fixedSize(horizontal: false, vertical: true)
         }
             .font(.callout)
             .padding(.horizontal, 14)
-            .padding(.vertical, 8)
-            .background(.regularMaterial, in: Capsule())
+            .padding(.vertical, 10)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: SKMDesign.cardRadius))
+            .overlay {
+                RoundedRectangle(cornerRadius: SKMDesign.cardRadius)
+                    .strokeBorder(SKMDesign.libraryBorder.opacity(0.75), lineWidth: 0.5)
+            }
             .shadow(color: .black.opacity(0.12), radius: 8, y: 3)
             .padding(.horizontal, 24)
             .allowsHitTesting(false)
@@ -244,7 +251,7 @@ private struct TopToolbarActionModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .labelStyle(.iconOnly)
-            .buttonStyle(.plain)
+            .buttonStyle(QuietIconButtonStyle())
             .font(.system(size: 17, weight: .light))
             .foregroundStyle(.secondary)
             .controlSize(.regular)
@@ -451,7 +458,7 @@ private struct SidebarBottomToolbar: View {
                 .frame(width: 30, height: 30)
                 .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(QuietIconButtonStyle())
             .disabled(model.isLoading)
             .accessibilityLabel(syncHelpText)
             .accessibilityIdentifier("sidebar-sync-button")
@@ -465,7 +472,7 @@ private struct SidebarBottomToolbar: View {
                     .frame(width: 30, height: 30)
                     .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(QuietIconButtonStyle())
             .accessibilityLabel(AppLocalization.string("偏好设置 (⌘,)"))
             .accessibilityIdentifier("open-settings")
             .help(AppLocalization.string("偏好设置 (⌘,)"))

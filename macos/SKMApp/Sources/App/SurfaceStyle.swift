@@ -10,7 +10,7 @@ struct SurfaceStyle: ViewModifier {
             .background(SKMDesign.surface, in: RoundedRectangle(cornerRadius: radius))
             .overlay {
                 RoundedRectangle(cornerRadius: radius)
-                    .strokeBorder(Color.primary.opacity(contrast == .increased ? 0.4 : 0.075), lineWidth: 0.5)
+                    .strokeBorder(Color.primary.opacity(contrast == .increased ? 0.4 : colorScheme == .dark ? 0.14 : 0.075), lineWidth: 1)
                     .allowsHitTesting(false)
             }
             .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.035), radius: 2, y: 1)

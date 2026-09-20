@@ -39,7 +39,7 @@ struct SidebarNavigationButton: View {
                 }
             }
             .padding(.horizontal, SKMDesign.sidebarRowHorizontalPadding)
-            .frame(maxWidth: .infinity, minHeight: 32, alignment: .leading)
+            .frame(maxWidth: .infinity, minHeight: SKMDesign.sidebarRowHeight, alignment: .leading)
             .contentShape(Rectangle())
             .background {
                 RoundedRectangle(cornerRadius: 6)
@@ -84,9 +84,10 @@ struct SidebarNavigationButton: View {
     }
 
     private var borderColor: Color {
+        if isFocused { return Color.accentColor.opacity(0.8) }
         if isSelected {
             return Color.primary.opacity(contrast == .increased ? 0.32 : 0)
         }
-        return isFocused ? Color.primary.opacity(contrast == .increased ? 0.28 : 0.16) : .clear
+        return .clear
     }
 }

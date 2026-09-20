@@ -47,7 +47,7 @@ struct ProjectsListView: View {
                                     .accessibilityHidden(true)
                                 Text(project.id)
                                     .font(.system(size: 14, weight: .semibold))
-                                    .foregroundStyle(isSelected ? Color(red: 0.10, green: 0.49, blue: 0.16) : Color.primary)
+                                    .foregroundStyle(isSelected ? SKMDesign.projectSelectionText : Color.primary)
                                     .lineLimit(1)
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -118,25 +118,32 @@ struct AddProjectSheet: View {
     @State private var name = ""
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            PanelHeader(title: AppLocalization.string("添加项目"), subtitle: AppLocalization.string("连接本机项目，集中查看和部署它的 Skills。"), symbol: "folder.badge.plus")
-            Form {
-                HStack {
-                    TextField("项目目录", text: $path)
-                        .accessibilityIdentifier("project-path-field")
-                    Button("选择…") { chooseProject() }
+        VStack(spacing: 0) {
+            SheetHeader(title: AppLocalization.string("添加项目"), subtitle: AppLocalization.string("连接本机项目，集中查看和部署它的 Skills。"), symbol: "folder.badge.plus")
+            Divider()
+            ScrollView {
+                VStack(alignment: .leading, spacing: 14) {
+                    Form {
+                        HStack {
+                            TextField("项目目录", text: $path)
+                                .accessibilityIdentifier("project-path-field")
+                            Button("选择…") { chooseProject() }
+                        }
+                        TextField("显示名称（可选）", text: $name)
+                    }
+                    .formStyle(.columns)
+                    .padding(16)
+                    .skmSurface()
+                    Text("SKM 只登记目录，不会修改项目；部署操作仍会单独预览和确认。")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-                TextField("显示名称（可选）", text: $name)
+                .padding(.horizontal, SKMDesign.sheetHorizontalPadding)
+                .padding(.vertical, SKMDesign.sheetVerticalPadding)
             }
-            .formStyle(.columns)
-            .padding(16)
-            .skmSurface()
-            Text("SKM 只登记目录，不会修改项目；部署操作仍会单独预览和确认。")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            Spacer()
-            HStack {
-                Spacer()
+            .frame(maxHeight: .infinity)
+            SheetActionBar {
                 Button("取消", role: .cancel) { dismiss() }
                     .keyboardShortcut(.cancelAction)
                     .disabled(model.isLoading)
@@ -151,7 +158,6 @@ struct AddProjectSheet: View {
                 .disabled(path.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || model.isLoading)
             }
         }
-        .padding(24)
         .frame(width: 580, height: 340)
         .sheetChrome(model: model)
     }
@@ -489,28 +495,36 @@ private struct ProjectMigrationSheet: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            PanelHeader(title: AppLocalization.string("迁移 \(skill.name)"), subtitle: AppLocalization.string("把项目中的技能加入个人资料库。"), symbol: "tray.and.arrow.down")
-            Picker("来源 Agent", selection: $agent) {
-                ForEach(skill.agents, id: \.self) { Text($0).tag($0) }
+        VStack(spacing: 0) {
+            SheetHeader(title: AppLocalization.string("迁移 \(skill.name)"), subtitle: AppLocalization.string("把项目中的技能加入个人资料库。"), symbol: "tray.and.arrow.down")
+            Divider()
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    Picker("来源 Agent", selection: $agent) {
+                        ForEach(skill.agents, id: \.self) { Text($0).tag($0) }
+                    }
+                    Picker("Library 模式", selection: $mode) {
+                        Text("复制到 Library").tag("copy")
+                        Text("跟随项目").tag("symlink")
+                    }
+                    .pickerStyle(.segmented)
+                    if mode == "copy" {
+                        Toggle("复制成功后移除项目原件", isOn: $removeSource)
+                        Text("只有所有 Agent 副本内容一致且不受 SKM 管理时才允许移除。")
+                            .font(.caption).foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    } else {
+                        Text("将在个人 Library 中建立指向项目 Skill 的软链接；项目内的修改会实时同步到我的 Skill。")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                .padding(.horizontal, SKMDesign.sheetHorizontalPadding)
+                .padding(.vertical, SKMDesign.sheetVerticalPadding)
             }
-            Picker("Library 模式", selection: $mode) {
-                Text("复制到 Library").tag("copy")
-                Text("跟随项目").tag("symlink")
-            }
-            .pickerStyle(.segmented)
-            if mode == "copy" {
-                Toggle("复制成功后移除项目原件", isOn: $removeSource)
-                Text("只有所有 Agent 副本内容一致且不受 SKM 管理时才允许移除。")
-                    .font(.caption).foregroundStyle(.secondary)
-            } else {
-                Text("将在个人 Library 中建立指向项目 Skill 的软链接；项目内的修改会实时同步到我的 Skill。")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            Spacer()
-            HStack {
-                Spacer()
+            .frame(maxHeight: .infinity)
+            SheetActionBar {
                 Button("取消", role: .cancel) { dismiss() }
                     .keyboardShortcut(.cancelAction)
                     .disabled(model.isLoading)
@@ -525,7 +539,6 @@ private struct ProjectMigrationSheet: View {
                 .disabled(agent.isEmpty || model.isLoading)
             }
         }
-        .padding(24)
         .frame(width: 560, height: 380)
         .sheetChrome(model: model)
         .onChange(of: mode) { _, newValue in if newValue != "copy" { removeSource = false } }

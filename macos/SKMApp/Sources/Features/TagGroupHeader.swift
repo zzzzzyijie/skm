@@ -235,7 +235,7 @@ struct TagManagementSheet: View {
             Image(systemName: target.symbol)
                 .font(.system(size: 16, weight: .semibold))
                 .symbolRenderingMode(.hierarchical)
-                .foregroundStyle(.white)
+                .foregroundStyle(colorScheme == .dark ? Color.black.opacity(0.85) : Color.white)
                 .frame(width: 36, height: 36)
                 .background(target.tint.gradient, in: RoundedRectangle(cornerRadius: 9))
                 .overlay {
@@ -382,7 +382,7 @@ struct TagManagementSheet: View {
             Button("完成", action: dismiss.callAsFunction)
                 .buttonStyle(.plain)
                 .font(.callout.bold())
-                .foregroundStyle(.white)
+                .foregroundStyle(colorScheme == .dark ? Color.black.opacity(0.85) : Color.white)
                 .padding(.horizontal, 16)
                 .frame(height: 32)
                 .background(target.tint.gradient, in: RoundedRectangle(cornerRadius: 8))
@@ -400,6 +400,7 @@ struct TagManagementSheet: View {
         .padding(.horizontal, 24)
         .padding(.vertical, 14)
         .background(SKMDesign.detailCanvas)
+        .overlay(alignment: .top) { Divider() }
     }
 
     private func beginAddingTag() {
@@ -681,7 +682,7 @@ struct TagSelector: View {
 }
 
 /// Tags use their natural width and wrap like Finder's tag tokens.
-private struct TagWrapLayout: Layout {
+struct TagWrapLayout: Layout {
     var spacing: CGFloat = 6
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {

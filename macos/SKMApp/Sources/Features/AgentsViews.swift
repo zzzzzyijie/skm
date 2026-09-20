@@ -466,22 +466,29 @@ struct CustomAgentSheet: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            PanelHeader(title: agent == nil ? AppLocalization.string("添加自定义 Agent") : AppLocalization.string("编辑自定义 Agent"), subtitle: AppLocalization.string("为你的 AI 工具指定 Skill 存放位置。"), symbol: "cpu", tint: .purple)
-            Form {
-                TextField("标识", text: $id, prompt: Text("my-agent"))
-                    .disabled(agent != nil)
-                TextField("名称", text: $name)
-                TextField("Skill 根目录", text: $path, prompt: Text("~/.agent/skills"))
+        VStack(spacing: 0) {
+            SheetHeader(title: agent == nil ? AppLocalization.string("添加自定义 Agent") : AppLocalization.string("编辑自定义 Agent"), subtitle: AppLocalization.string("为你的 AI 工具指定 Skill 存放位置。"), symbol: "cpu", tint: .purple)
+            Divider()
+            ScrollView {
+                VStack(alignment: .leading, spacing: 14) {
+                    Form {
+                        TextField("标识", text: $id, prompt: Text("my-agent"))
+                            .disabled(agent != nil)
+                        TextField("名称", text: $name)
+                        TextField("Skill 根目录", text: $path, prompt: Text("~/.agent/skills"))
+                    }
+                    .formStyle(.columns)
+                    .padding(16)
+                    .skmSurface()
+                    Text("标识使用 2–32 位小写字母、数字或连字符；路径必须以 ~/ 开头。")
+                        .font(.caption).foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(.horizontal, SKMDesign.sheetHorizontalPadding)
+                .padding(.vertical, SKMDesign.sheetVerticalPadding)
             }
-            .formStyle(.columns)
-            .padding(16)
-            .skmSurface()
-            Text("标识使用 2–32 位小写字母、数字或连字符；路径必须以 ~/ 开头。")
-                .font(.caption).foregroundStyle(.secondary)
-            Spacer()
-            HStack {
-                Spacer()
+            .frame(maxHeight: .infinity)
+            SheetActionBar {
                 Button("取消", role: .cancel) { dismiss() }
                     .keyboardShortcut(.cancelAction)
                     .disabled(model.isLoading)
@@ -496,7 +503,6 @@ struct CustomAgentSheet: View {
                 .disabled(id.range(of: "^[a-z0-9][a-z0-9-]{1,31}$", options: .regularExpression) == nil || name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !path.hasPrefix("~/") || model.isLoading)
             }
         }
-        .padding(24)
         .frame(width: 560, height: 360)
         .sheetChrome(model: model)
     }

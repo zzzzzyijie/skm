@@ -8,9 +8,10 @@ struct SelectionCardButtonStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .background {
+            .overlay {
                 RoundedRectangle(cornerRadius: SKMDesign.controlRadius)
-                    .fill(Color.primary.opacity(isHovered && isEnabled ? 0.045 : 0))
+                    .fill(isHovered && isEnabled ? SKMDesign.hoverFill : .clear)
+                    .allowsHitTesting(false)
             }
             .opacity(isEnabled ? (configuration.isPressed ? 0.8 : 1) : 0.5)
             .scaleEffect(configuration.isPressed && !reduceMotion && !isStatic ? 0.96 : 1)
