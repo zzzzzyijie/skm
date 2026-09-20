@@ -163,13 +163,15 @@ struct RootView: View {
 struct CollectionSearchField: View {
     let title: LocalizedStringKey
     @Binding var text: String
+    var tint: Color = .accentColor
+    var controlHeight: CGFloat = 28
     @FocusState private var isFocused: Bool
 
     var body: some View {
         HStack(spacing: 7) {
             Button { isFocused = true } label: {
                 Image(systemName: "magnifyingglass")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(isFocused ? tint : Color.secondary)
             }
             .buttonStyle(.plain)
             .keyboardShortcut("f", modifiers: .command)
@@ -198,12 +200,13 @@ struct CollectionSearchField: View {
             }
         }
         .font(.callout)
+        .tint(tint)
         .padding(.horizontal, 10)
-        .frame(height: 28)
+        .frame(height: controlHeight)
         .background(SKMDesign.librarySelection, in: RoundedRectangle(cornerRadius: 6))
         .overlay {
             RoundedRectangle(cornerRadius: 8)
-                .strokeBorder(isFocused ? Color.accentColor : .clear, lineWidth: 1)
+                .strokeBorder(isFocused ? tint : .clear, lineWidth: 1)
         }
         .padding(.horizontal, 16)
         .padding(.top, 8)

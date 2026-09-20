@@ -26,6 +26,11 @@ enum SKMDesign {
     static let libraryListWidth: CGFloat = 372
     static let libraryToolbarHeight: CGFloat = 52
     static let librarySectionSpacing: CGFloat = 30
+    static let tagManagerWidth: CGFloat = 620
+    static let tagManagerHeight: CGFloat = 560
+    static let tagManagerRowHeight: CGFloat = 46
+    static let tagManagerSkillTint = adaptiveColor(light: 0x3478F6, dark: 0x6EA8FF)
+    static let tagManagerPromptTint = adaptiveColor(light: 0x8B5CF6, dark: 0xB59AFF)
     static let libraryGreen = Color(red: 0.16, green: 0.68, blue: 0.39)
     static let librarySelection = adaptiveColor(light: 0xF3F3F5, dark: 0x303033)
     static let librarySidebar = adaptiveColor(light: 0xF5F5F5, dark: 0x242426)
@@ -257,7 +262,20 @@ extension View {
             }
     }
 
-    func libraryMetadataPill() -> some View {
+    func librarySourceBadge() -> some View {
+        font(.system(size: 12))
+            .foregroundStyle(Color.accentColor)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(Color.accentColor.opacity(0.09), in: RoundedRectangle(cornerRadius: 6))
+            .overlay {
+                RoundedRectangle(cornerRadius: 6)
+                    .strokeBorder(Color.accentColor.opacity(0.18), lineWidth: 0.5)
+                    .allowsHitTesting(false)
+            }
+    }
+
+    func libraryTagPill() -> some View {
         font(.system(size: 12))
             .foregroundStyle(Color.orange)
             .padding(.horizontal, 12)
@@ -266,17 +284,25 @@ extension View {
     }
 }
 
-/// Skill 与 Prompt 详情页共用的来源和标签展示，确保样式与排列顺序一致。
+/// Skill 与 Prompt 详情页共用的元数据展示，以形状和图标区分来源与标签。
 struct LibraryMetadataStrip: View {
     let source: String
     let tags: [String]
     var sourceHelp: String? = nil
 
-    private var sourceName: String {
+    private var isLocalSource: Bool {
         let trimmed = source.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty || trimmed.caseInsensitiveCompare("local") == .orderedSame
+    }
+
+    private var sourceName: String {
+        isLocalSource
             ? AppLocalization.string("本地")
-            : trimmed
+            : source.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var sourceSymbol: String {
+        isLocalSource ? "internaldrive" : "arrow.triangle.branch"
     }
 
     var body: some View {
@@ -294,9 +320,10 @@ struct LibraryMetadataStrip: View {
 
     @ViewBuilder
     private var sourceBadge: some View {
-        let badge = Label(sourceName, systemImage: "folder")
-            .libraryMetadataPill()
+        let badge = Label(sourceName, systemImage: sourceSymbol)
+            .librarySourceBadge()
             .fixedSize()
+            .accessibilityLabel("\(AppLocalization.string("来源")) \(sourceName)")
 
         if let sourceHelp, !sourceHelp.isEmpty {
             badge.help(sourceHelp)
@@ -308,9 +335,10 @@ struct LibraryMetadataStrip: View {
     @ViewBuilder
     private var tagBadges: some View {
         ForEach(tags, id: \.self) { tag in
-            Label(tag, systemImage: "tag")
-                .libraryMetadataPill()
+            Label(tag, systemImage: "tag.fill")
+                .libraryTagPill()
                 .fixedSize()
+                .accessibilityLabel("\(AppLocalization.string("标签")) \(tag)")
         }
     }
 }

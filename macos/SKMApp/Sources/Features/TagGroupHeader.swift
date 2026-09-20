@@ -108,15 +108,15 @@ enum TagManagementTarget {
 
     var symbol: String {
         switch self {
-        case .skills: return "square.stack.3d.up"
-        case .prompts: return "text.bubble"
+        case .skills: return "tag.fill"
+        case .prompts: return "text.bubble.fill"
         }
     }
 
     var tint: Color {
         switch self {
-        case .skills: return .blue
-        case .prompts: return .purple
+        case .skills: return SKMDesign.tagManagerSkillTint
+        case .prompts: return SKMDesign.tagManagerPromptTint
         }
     }
 }
@@ -124,6 +124,7 @@ enum TagManagementTarget {
 /// 集中式标签管理面板：支持全局标签统计浏览、重命名/合并与批量解绑移除
 struct TagManagementSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
     @Bindable var model: AppModel
     let target: TagManagementTarget
 
@@ -131,8 +132,13 @@ struct TagManagementSheet: View {
     @State private var editingTag: String?
     @State private var newTagName = ""
     @State private var tagToDelete: String?
+    @State private var showsRenameSheet = false
+    @State private var showsDeleteConfirmation = false
     @State private var showsAddTagSheet = false
     @State private var newCreatedTag = ""
+    @State private var hoveredTag: String?
+    @State private var isAddButtonHovered = false
+    @State private var isDoneButtonHovered = false
     @FocusState private var renameFieldFocused: Bool
     @FocusState private var addFieldFocused: Bool
 
@@ -164,40 +170,59 @@ struct TagManagementSheet: View {
         return allTagCounts.filter { $0.tag.localizedStandardContains(search) }
     }
 
+    private var totalItems: Int {
+        switch target {
+        case .skills: return model.skills.count
+        case .prompts: return model.prompts.count
+        }
+    }
+
+    private var summary: String {
+        let tagCount = String(format: AppLocalization.string("共 %lld 个标签"), allTagCounts.count)
+        let itemCount = String(
+            format: AppLocalization.string("%lld %@"),
+            totalItems,
+            target.itemNoun
+        )
+        return "\(tagCount) · \(itemCount)"
+    }
+
+    private var subtleTintOpacity: Double {
+        colorScheme == .dark ? 0.18 : 0.10
+    }
+
+    private var hoverTintOpacity: Double {
+        colorScheme == .dark ? 0.18 : 0.08
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             header
             content
             footer
         }
-        .frame(width: 580, height: 510)
+        .background(SKMDesign.detailCanvas)
         .sheetChrome(model: model)
+        .frame(width: SKMDesign.tagManagerWidth, height: SKMDesign.tagManagerHeight)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .overlay {
+            RoundedRectangle(cornerRadius: 16)
+                .strokeBorder(SKMDesign.libraryBorder, lineWidth: 1)
+                .allowsHitTesting(false)
+        }
+        .shadow(color: .black.opacity(colorScheme == .dark ? 0.42 : 0.14), radius: 24, y: 10)
         .onExitCommand { if search.isEmpty { dismiss() } else { search = "" } }
         .confirmationDialog(
             String(format: AppLocalization.string("确定要移除标签“%@”吗？"), tagToDelete ?? ""),
-            isPresented: Binding(
-                get: { tagToDelete != nil },
-                set: { if !$0 { tagToDelete = nil } }
-            )
+            isPresented: $showsDeleteConfirmation,
+            presenting: tagToDelete
         ) {
-            Button("移除标签", role: .destructive) {
-                if let tag = tagToDelete {
-                    Task {
-                        if target == .skills {
-                            await model.removeSkillTag(tag)
-                        } else {
-                            await model.removePromptTag(tag)
-                        }
-                    }
-                }
-            }
+            tag in
+            Button("移除标签", role: .destructive) { removeTag(tag) }
         } message: {
-            Text("标签将从所有关联条目中移除，但不会删除条目本身。")
+            _ in Text("标签将从所有关联条目中移除，但不会删除条目本身。")
         }
-        .sheet(isPresented: Binding(
-            get: { editingTag != nil },
-            set: { if !$0 { editingTag = nil } }
-        )) {
+        .sheet(isPresented: $showsRenameSheet, onDismiss: { editingTag = nil }) {
             renameSheet
         }
         .sheet(isPresented: $showsAddTagSheet) {
@@ -206,105 +231,223 @@ struct TagManagementSheet: View {
     }
 
     private var header: some View {
-        SheetHeader(
-            title: target.title,
-            subtitle: String(format: AppLocalization.string("共 %lld 个标签"), allTagCounts.count),
-            symbol: target.symbol,
-            tint: target.tint
-        ) {
-            Button("添加标签", systemImage: "plus") {
-                newCreatedTag = ""
-                showsAddTagSheet = true
-            }
-            .buttonStyle(.bordered)
-            .controlSize(.regular)
+        HStack(spacing: 12) {
+            Image(systemName: target.symbol)
+                .font(.system(size: 16, weight: .semibold))
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(.white)
+                .frame(width: 36, height: 36)
+                .background(target.tint.gradient, in: RoundedRectangle(cornerRadius: 9))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 9)
+                        .strokeBorder(.white.opacity(0.18), lineWidth: 1)
+                }
+                .shadow(color: target.tint.opacity(0.18), radius: 4, y: 2)
+                .accessibilityHidden(true)
 
+            VStack(alignment: .leading, spacing: 2) {
+                Text(target.title)
+                    .font(.headline)
+                Text(String(format: AppLocalization.string("共 %lld 个标签"), allTagCounts.count))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer(minLength: 16)
+
+            Button("添加标签", systemImage: "plus", action: beginAddingTag)
+                .buttonStyle(.plain)
+                .font(.callout)
+                .foregroundStyle(target.tint)
+                .padding(.horizontal, 12)
+                .frame(height: 30)
+                .background(
+                    target.tint.opacity(isAddButtonHovered ? subtleTintOpacity + 0.05 : subtleTintOpacity),
+                    in: RoundedRectangle(cornerRadius: 8)
+                )
+                .overlay {
+                    RoundedRectangle(cornerRadius: 8)
+                        .strokeBorder(target.tint.opacity(colorScheme == .dark ? 0.26 : 0.16), lineWidth: 1)
+                        .allowsHitTesting(false)
+                }
+                .contentShape(RoundedRectangle(cornerRadius: 8))
+                .onHover { isAddButtonHovered = $0 }
         }
+        .padding(.horizontal, 24)
+        .padding(.top, 22)
+        .padding(.bottom, 14)
     }
 
     private var content: some View {
         VStack(spacing: 0) {
-            CollectionSearchField(title: "搜索标签", text: $search)
-                .padding(.vertical, 4)
-            Divider()
+            CollectionSearchField(title: "搜索标签", text: $search, tint: target.tint, controlHeight: 32)
+                .padding(.horizontal, 8)
+                .padding(.bottom, 4)
 
             if filteredTagCounts.isEmpty {
                 ContentUnavailableView {
-                    Label(search.isEmpty ? "暂无标签" : "无匹配标签", systemImage: "tag")
+                    Label(search.isEmpty ? "暂无标签" : "无匹配标签", systemImage: target.symbol)
                 } description: {
                     Text(search.isEmpty ? "在编辑详情中为条目添加标签后，将在此集中展示。" : "尝试其他关键词。")
                 }
                 .frame(maxHeight: .infinity)
             } else {
-                List {
-                    ForEach(filteredTagCounts, id: \.tag) { item in
-                        HStack(spacing: 12) {
-                            Image(systemName: "tag")
-                                .font(.system(size: 15, weight: .medium))
-                                .foregroundStyle(target.tint)
-                                .frame(width: 22)
-                                .accessibilityHidden(true)
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(filteredTagCounts, id: \.tag) { item in
+                            HStack(spacing: 12) {
+                                Image(systemName: "tag.fill")
+                                    .font(.callout)
+                                    .foregroundStyle(target.tint)
+                                    .frame(width: 28, height: 28)
+                                    .background(target.tint.opacity(subtleTintOpacity), in: RoundedRectangle(cornerRadius: 7))
+                                    .accessibilityHidden(true)
 
-                            Text(item.tag)
-                                .font(.system(size: 13, weight: .medium))
-                                .lineLimit(1)
-                                .help(item.tag)
+                                Text(item.tag)
+                                    .font(.callout)
+                                    .lineLimit(1)
+                                    .help(item.tag)
 
-                            Spacer(minLength: 12)
+                                Spacer(minLength: 12)
 
-                            Text(String(format: AppLocalization.string("%lld %@"), item.count, target.itemNoun))
-                                .font(.system(size: 12).monospacedDigit())
-                                .foregroundStyle(.secondary)
-
-                            Button("重命名", systemImage: "pencil") {
-                                editingTag = item.tag
-                                newTagName = item.tag
-                            }
-                            .labelStyle(.iconOnly)
-                            .buttonStyle(.borderless)
-                            .help("重命名")
-
-                            Button(role: .destructive) {
-                                tagToDelete = item.tag
-                            } label: {
-                                Image(systemName: "trash")
+                                Text(String(format: AppLocalization.string("%lld %@"), item.count, target.itemNoun))
+                                    .font(.caption.monospacedDigit())
                                     .foregroundStyle(.secondary)
+
+                                Button("重命名", systemImage: "square.and.pencil") { beginRenaming(item.tag) }
+                                    .labelStyle(.iconOnly)
+                                    .buttonStyle(.borderless)
+                                    .foregroundStyle(hoveredTag == item.tag ? target.tint : Color.secondary)
+                                    .frame(width: 28, height: 28)
+                                    .background(
+                                        hoveredTag == item.tag ? target.tint.opacity(subtleTintOpacity) : Color.clear,
+                                        in: RoundedRectangle(cornerRadius: 7)
+                                    )
+                                    .help("重命名")
+
+                                Button("移除标签", systemImage: "trash", role: .destructive) {
+                                    requestTagRemoval(item.tag)
+                                }
+                                .labelStyle(.iconOnly)
+                                .buttonStyle(.borderless)
+                                .foregroundStyle(hoveredTag == item.tag ? Color.red : Color.secondary)
+                                .frame(width: 28, height: 28)
+                                .background(
+                                    hoveredTag == item.tag ? Color.red.opacity(subtleTintOpacity) : Color.clear,
+                                    in: RoundedRectangle(cornerRadius: 7)
+                                )
+                                .accessibilityLabel(AppLocalization.string("移除标签") + " " + item.tag)
+                                .help("移除标签")
                             }
-                            .buttonStyle(.borderless)
-                            .accessibilityLabel(AppLocalization.string("移除标签") + " " + item.tag)
-                            .help("移除标签")
+                            .padding(.horizontal, 24)
+                            .frame(height: SKMDesign.tagManagerRowHeight)
+                            .contentShape(Rectangle())
+                            .background(hoveredTag == item.tag ? target.tint.opacity(hoverTintOpacity) : Color.clear)
+                            .overlay(alignment: .leading) {
+                                if hoveredTag == item.tag {
+                                    Capsule()
+                                        .fill(target.tint)
+                                        .frame(width: 3, height: 24)
+                                        .padding(.leading, 8)
+                                }
+                            }
+                            .overlay(alignment: .bottom) {
+                                Divider().padding(.leading, 24)
+                            }
+                            .onHover { isHovering in
+                                if isHovering {
+                                    hoveredTag = item.tag
+                                } else if hoveredTag == item.tag {
+                                    hoveredTag = nil
+                                }
+                            }
                         }
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 10)
-                        .listRowSeparator(.visible)
                     }
                 }
-                .listStyle(.inset)
-                .scrollContentBackground(.hidden)
             }
         }
         .background(SKMDesign.detailCanvas)
-        .clipShape(RoundedRectangle(cornerRadius: 10))
-        .overlay {
-            RoundedRectangle(cornerRadius: 10)
-                .strokeBorder(.separator.opacity(0.5), lineWidth: 0.5)
-                .allowsHitTesting(false)
-        }
-        .padding(.horizontal, 24)
-        .padding(.bottom, 18)
+        .frame(maxHeight: .infinity)
     }
 
     private var footer: some View {
-        SheetActionBar {
-            Label("重命名若与现有标签相同将自动合并；删除仅解绑标签，不删除条目。", systemImage: "info.circle")
-                .font(.system(size: 11))
+        HStack(spacing: 16) {
+            Text(summary)
+                .font(.caption)
                 .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-        } actions: {
-            Button("完成") { dismiss() }
-                .buttonStyle(.borderedProminent)
+                .monospacedDigit()
+
+            Spacer(minLength: 16)
+
+            Button("完成", action: dismiss.callAsFunction)
+                .buttonStyle(.plain)
+                .font(.callout.bold())
+                .foregroundStyle(.white)
+                .padding(.horizontal, 16)
+                .frame(height: 32)
+                .background(target.tint.gradient, in: RoundedRectangle(cornerRadius: 8))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 8)
+                        .strokeBorder(.white.opacity(colorScheme == .dark ? 0.16 : 0.24), lineWidth: 1)
+                        .allowsHitTesting(false)
+                }
+                .shadow(color: target.tint.opacity(isDoneButtonHovered ? 0.30 : 0.18), radius: 5, y: 2)
+                .opacity(isDoneButtonHovered ? 0.94 : 1)
+                .contentShape(RoundedRectangle(cornerRadius: 8))
+                .onHover { isDoneButtonHovered = $0 }
                 .keyboardShortcut(.defaultAction)
         }
+        .padding(.horizontal, 24)
+        .padding(.vertical, 14)
+        .background(SKMDesign.detailCanvas)
+    }
+
+    private func beginAddingTag() {
+        newCreatedTag = ""
+        showsAddTagSheet = true
+    }
+
+    private func beginRenaming(_ tag: String) {
+        editingTag = tag
+        newTagName = tag
+        showsRenameSheet = true
+    }
+
+    private func dismissRename() {
+        showsRenameSheet = false
+    }
+
+    private func commitRename() {
+        guard let oldTag = editingTag else { return }
+        let targetName = newTagName.trimmingCharacters(in: .whitespacesAndNewlines)
+        showsRenameSheet = false
+        Task {
+            if target == .skills {
+                await model.renameSkillTag(from: oldTag, to: targetName)
+            } else {
+                await model.renamePromptTag(from: oldTag, to: targetName)
+            }
+        }
+    }
+
+    private func requestTagRemoval(_ tag: String) {
+        tagToDelete = tag
+        showsDeleteConfirmation = true
+    }
+
+    private func removeTag(_ tag: String) {
+        Task {
+            if target == .skills {
+                await model.removeSkillTag(tag)
+            } else {
+                await model.removePromptTag(tag)
+            }
+        }
+    }
+
+    private func addTag(_ tag: String) {
+        model.registerCustomTag(tag, for: target.scope)
+        showsAddTagSheet = false
     }
 
     private var renameSheet: some View {
@@ -345,24 +488,12 @@ struct TagManagementSheet: View {
             .frame(maxHeight: .infinity, alignment: .top)
 
             SheetActionBar {
-                Button("取消", role: .cancel) { editingTag = nil }
+                Button("取消", role: .cancel, action: dismissRename)
                     .keyboardShortcut(.cancelAction)
-                Button("确认更新") {
-                    if let oldTag = editingTag {
-                        let targetName = newTagName.trimmingCharacters(in: .whitespacesAndNewlines)
-                        editingTag = nil
-                        Task {
-                            if target == .skills {
-                                await model.renameSkillTag(from: oldTag, to: targetName)
-                            } else {
-                                await model.renamePromptTag(from: oldTag, to: targetName)
-                            }
-                        }
-                    }
-                }
-                .buttonStyle(.borderedProminent)
-                .keyboardShortcut(.defaultAction)
-                .disabled(newTagName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || newTagName == editingTag)
+                Button("确认更新", action: commitRename)
+                    .buttonStyle(.borderedProminent)
+                    .keyboardShortcut(.defaultAction)
+                    .disabled(newTagName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || newTagName == editingTag)
             }
         }
         .frame(width: 440, height: 280)
@@ -411,13 +542,10 @@ struct TagManagementSheet: View {
             SheetActionBar {
                 Button("取消", role: .cancel) { showsAddTagSheet = false }
                     .keyboardShortcut(.cancelAction)
-                Button("确认添加") {
-                    model.registerCustomTag(trimmed, for: target.scope)
-                    showsAddTagSheet = false
-                }
-                .buttonStyle(.borderedProminent)
-                .keyboardShortcut(.defaultAction)
-                .disabled(trimmed.isEmpty || isDuplicate)
+                Button("确认添加") { addTag(trimmed) }
+                    .buttonStyle(.borderedProminent)
+                    .keyboardShortcut(.defaultAction)
+                    .disabled(trimmed.isEmpty || isDuplicate)
             }
         }
         .frame(width: 440, height: 280)
