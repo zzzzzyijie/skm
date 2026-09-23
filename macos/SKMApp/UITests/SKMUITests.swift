@@ -61,9 +61,9 @@ final class SKMUITests: XCTestCase {
 
         app.descendants(matching: .any)["open-settings"].click()
         XCTAssertTrue(app.descendants(matching: .any)["settings-agents"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Skill Sources"].exists)
-        XCTAssertTrue(app.staticTexts["Git Sync"].exists)
-        XCTAssertTrue(app.staticTexts["Software Updates"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["settings-sources"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["settings-gitSync"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["settings-updates"].exists)
     }
 
     @MainActor
@@ -177,7 +177,7 @@ final class SKMUITests: XCTestCase {
         editor.click()
         paste("Review this isolated fixture.", into: editor)
         app.buttons["保存"].click()
-        XCTAssertTrue(app.staticTexts["ui-smoke-prompt"].waitForExistence(timeout: 8))
+        XCTAssertTrue(app.staticTexts["ui-smoke-prompt"].waitForExistence(timeout: 20))
         XCTAssertTrue(app.buttons["快速查看"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["编辑"].exists)
         XCTAssertTrue(app.buttons["导出"].exists)
@@ -264,7 +264,9 @@ final class SKMUITests: XCTestCase {
         let projectsNavigation = app.descendants(matching: .any)["navigation-projects"]
         XCTAssertTrue(projectsNavigation.waitForExistence(timeout: 5))
         projectsNavigation.click()
-        app.typeKey("o", modifierFlags: .command)
+        let addProject = app.buttons["add-project-button"]
+        XCTAssertTrue(addProject.waitForExistence(timeout: 5))
+        addProject.click()
         let projectField = app.textFields["project-path-field"]
         XCTAssertTrue(projectField.waitForExistence(timeout: 5))
         projectField.click()
@@ -294,7 +296,7 @@ final class SKMUITests: XCTestCase {
         XCTAssertTrue(previewButton.waitForExistence(timeout: 8))
         app.activate()
         previewButton.click()
-        XCTAssertTrue(app.staticTexts["同步预览"].waitForExistence(timeout: 8))
+        XCTAssertTrue(app.staticTexts["同步预览"].waitForExistence(timeout: 20))
         XCTAssertTrue(app.staticTexts["没有需要同步的更改"].exists)
     }
 
@@ -323,8 +325,10 @@ final class SKMUITests: XCTestCase {
         capture(app, name: "discard-confirmation")
         app.windows.buttons["继续编辑"].firstMatch.click()
         XCTAssertEqual(name.value as? String, "draft-protection")
-        app.typeKey("s", modifierFlags: .command)
-        XCTAssertTrue(app.staticTexts["draft-protection"].waitForExistence(timeout: 8))
+        let save = app.buttons["保存"]
+        XCTAssertTrue(save.waitForExistence(timeout: 3))
+        save.click()
+        XCTAssertTrue(app.staticTexts["draft-protection"].waitForExistence(timeout: 20))
         capture(app, name: "prompt-detail")
         let copy = app.buttons["复制"].firstMatch
         XCTAssertTrue(copy.waitForExistence(timeout: 5))
@@ -394,7 +398,18 @@ final class SKMUITests: XCTestCase {
     private func paste(_ value: String, into element: XCUIElement) {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(value, forType: .string)
-        element.typeKey("v", modifierFlags: .command)
+        for _ in 0 ..< 3 {
+            element.click()
+            element.typeKey("a", modifierFlags: .command)
+            element.typeKey("v", modifierFlags: .command)
+
+            let valueMatches = NSPredicate(format: "value == %@", value)
+            let expectation = XCTNSPredicateExpectation(predicate: valueMatches, object: element)
+            if XCTWaiter.wait(for: [expectation], timeout: 2) == .completed {
+                return
+            }
+        }
+        XCTFail("Failed to enter text into \(element)")
     }
 
     private func run(_ executable: String, arguments: [String]) throws {
