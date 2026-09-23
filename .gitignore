@@ -42,5 +42,9 @@ macos/**/xcuserdata/
 macos/.build/
 macos/build/
 macos/DerivedData/
-macos/Derived/
+macos/Derived/*
+!macos/Derived/InfoPlists/
+!macos/Derived/InfoPlists/*.plist
+!macos/Derived/Sources/
+!macos/Derived/Sources/*.swift
 *.xcuserstate
