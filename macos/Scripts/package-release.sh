@@ -83,7 +83,7 @@ done
 
 case "$VERSION" in
   [0-9]*.[0-9]*.[0-9]*) ;;
-  *) echo "error: --version must be a semantic version such as 0.5.3" >&2; exit 2 ;;
+  *) echo "error: --version must be a semantic version such as 0.6.0" >&2; exit 2 ;;
 esac
 
 case "$BUILD_NUMBER" in

@@ -1,12 +1,12 @@
 # SKM macOS 原生版开发进度
 
-> 更新日期：2026-09-01
+> 更新日期：2026-09-23
 >
-> 当前工程版本：`0.5.3 (Build 3)`
+> 当前工程版本：`0.6.0 (Build 3)`
 >
 > Bundle ID：`com.zzzzzyijie.skm`（已确认）
 >
-> 当前结论：Phase 0 至 Phase 3 的工程实现已完成；Phase 1/2 已统一补强，本地正式签名、公证闭环已验收。剩余事项是 Sparkle 发布密钥、GitHub/Apple 凭据和外部机器上的正式发布动作，不属于本地功能开发缺口。
+> 当前结论：Phase 0 至 Phase 3 的工程实现已完成；Phase 1/2 已统一补强，本地正式签名、公证闭环已验收。Prompt 变量定义继续兼容，但原生 App 不再提供“填写变量”入口。剩余事项是 Sparkle 发布密钥、GitHub/Apple 凭据和外部机器上的正式发布动作。
 
 相关文档：
 
@@ -22,7 +22,7 @@
 | Phase 0：Core 契约 | 已完成 | stdio JSON-RPC、握手、稳定错误模型、读写方法、半包/损坏/超限/并发/崩溃与恢复测试已完成 |
 | Phase 1：原生 MVP | 已完成 | Skills、Prompts、Agents、首次启动、双语、键盘、冲突恢复、诊断及本地 Developer ID 发布闭环已完成 |
 | Phase 2：项目与同步 | 已完成 | Projects、Sources、Workspace、Diagnostics 和 Homebrew Cask 已实现并接入原生界面与发布工作流 |
-| Phase 3：完整 CLI 能力 | 已完成 | 项目 Require/Vendor/Apply、Prompt 渲染、历史回滚、Quick Look 与 Sparkle 2 均已实现 |
+| Phase 3：完整 CLI 能力 | 已完成 | 项目 Require/Vendor/Apply、历史回滚、Quick Look 与 Sparkle 2 均已实现；Prompt 渲染保留在 CLI/Core |
 
 ## 2. 已完成
 
@@ -31,7 +31,7 @@
 - [x] SwiftUI 原生 macOS 工程、Xcode workspace、Tuist 工程描述和共享 Scheme。
 - [x] App 使用内置 `skm-core`，通过私有 stdio JSON-RPC 通信，不监听网络端口。
 - [x] 构建阶段分别生成 `arm64`、`x86_64` Core，并合并为 Universal 2。
-- [x] App、Core 和发布参数执行版本一致性检查，当前版本统一为 `0.5.3`，构建号为 `3`。
+- [x] App、Core 和发布参数执行版本一致性检查，当前版本统一为 `0.6.0`，构建号为 `3`。
 - [x] App、测试 Target、发布脚本均使用最终 Bundle ID 命名空间；主 App 固定为 `com.zzzzzyijie.skm`。
 - [x] Xcode 构建脚本可从 Apple Silicon Homebrew、Intel Homebrew 或 `SKM_GO_EXECUTABLE` 找到 Go。
 - [x] 最终用户运行 App 不依赖 Go、Homebrew 或已安装的 SKM CLI。
@@ -83,8 +83,7 @@
 ### 2.5 Phase 3 原生界面
 
 - [x] 项目清单支持 Require、Vendor、Apply 与条目移除，沿用 Planner 的冲突保护和原子部署。
-- [x] Prompt 编辑器支持 text、multiline、number、boolean、select、secret 变量定义、必填/重复校验和默认值。
-- [x] Prompt 填写表单由 Core 渲染，secret 值只在内存中传递，可校验缺失变量并复制最终结果。
+- [x] Prompt 编辑器保留导入文件中的变量定义及兼容读取；填写变量和渲染后复制由 CLI/Core 提供，原生 App 不设置独立入口。
 - [x] Skill 与 Prompt 编辑前自动保存历史快照，原生界面支持版本列表、行差异和安全回滚。
 - [x] Skill/PROMPT.md 支持系统 Quick Look、工具栏入口和空格快捷键。
 - [x] Sparkle `2.9.6` 已通过 Swift Package Manager 固定，配置公钥时启用签名 appcast 自动更新；本地未配置时回退到只读版本检查。
@@ -92,8 +91,8 @@
 
 ### 2.6 构建、测试与本地预览
 
-- [x] 15 个 Swift 单元测试覆盖 Model、主导航/设置分区、Phase 3 响应、首次启动、版本比较及 Core 并发/损坏响应/stderr/超时/崩溃恢复。
-- [x] 4 个中英文 XCUITest 覆盖空 Library、快捷键、设置入口、Skill 导入、Agent 管理、Prompt 创建/渲染入口、项目登记和 Git 同步预览。
+- [x] Swift 单元测试覆盖 Model、主导航/设置分区、Phase 3 响应、首次启动、版本比较及 Core 并发/损坏响应/stderr/超时/崩溃恢复。
+- [x] 中英文 XCUITest 覆盖空 Library、快捷键、设置入口、Skill 导入、Agent 管理、Prompt 创建、项目登记和 Git 同步预览。
 - [x] 测试使用隔离的 `SKM_HOME`、`SKM_USER_HOME`、`SKM_PROJECT`，不操作真实个人数据。
 - [x] CI 执行 Go 测试、Vet、Build、安装器测试和 macOS App 测试。
 - [x] `--preview` 构建 Universal 2 ZIP、DMG 和 SHA-256 校验文件。
@@ -125,7 +124,7 @@
 - [x] 完成 App/Core 与共享 Store 并发修改的冲突、草稿保留和恢复测试。
 - [ ] 完成正式发布前的 VoiceOver、键盘、浅色、深色和窄窗口人工验收。
 - [ ] 把 Developer ID `.p12` 与 App Store Connect Team API Key 配置为 GitHub Actions Secrets，并验证 Tag 工作流。
-- [ ] 创建 `v0.5.3` Tag 和正式 Release；当前尚未发布。
+- [ ] 创建 `v0.6.0` Tag 和正式 Release；当前尚未发布。
 
 ### 4.2 Phase 2：项目与同步
 
@@ -139,7 +138,7 @@
 ### 4.3 Phase 3：完整 CLI 能力
 
 - [x] `project require`、`project vendor`、`project apply`。
-- [x] Prompt 变量表单、变量校验和渲染后复制。
+- [x] CLI/Core Prompt 变量校验和渲染能力保留；原生 App 的“填写变量”入口不纳入发布范围。
 - [x] 历史快照、差异查看和回滚。
 - [x] Skill/Prompt Quick Look。
 - [x] Sparkle 2 自动更新工程与 appcast 发布链路。
@@ -265,3 +264,5 @@
   [macOS 原生 App 签名、公证与发布流程](Mac原生App签名公证与发布流程.md)。
 
 正式 Release 尚未创建；当前完成的是本地真实凭据发布闭环验证，不等同于发布 `v0.6.0`。
+
+2026-09-23 范围确认：正式候选版本统一为 `v0.6.0`，当前 `feature_ui` 纳入 `main`；macOS 原生 App 不再提供 Prompt“填写变量”入口。GitHub/Apple 凭据、Sparkle 密钥、Intel 与人工无障碍验收留待后续，本次范围调整未执行回归测试。

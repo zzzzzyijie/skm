@@ -5,7 +5,7 @@
 Developer ID、Apple 公证、stapling 与 Gatekeeper 的完整实操见
 [macOS 原生 App 签名、公证与发布流程](../docs/Mac原生App签名公证与发布流程.md)。
 
-当前工程版本为 `0.5.3`，Phase 1 至 Phase 3 均已完成：
+当前工程版本为 `0.6.0`，Phase 1 至 Phase 3 均已完成：
 
 - 支持在设置中选择跟随系统、简体中文或英文，并即时切换界面语言；
 - SwiftUI 三栏主界面聚焦 Skills、Prompts、Projects，侧栏底部和 `⌘,` 可打开独立 Settings 窗口；
@@ -19,7 +19,7 @@ Developer ID、Apple 公证、stapling 与 Gatekeeper 的完整实操见
 - Source 添加、更新、移除与统一同步；
 - 个人 Git 同步配置、双向预览与逐项冲突解决；Core 内部仍沿用 Workspace 契约；
 - App Bundle 内置 Go Core，通过私有 stdio JSON-RPC 通信，不监听端口。
-- Project Require/Vendor/Apply、Prompt 变量表单与安全渲染、历史差异/回滚、Quick Look；
+- Project Require/Vendor/Apply、历史差异/回滚、Quick Look；Prompt 变量定义继续兼容，但原生 App 不提供“填写变量”入口；
 - Sparkle 2 签名 appcast 自动更新；未注入发布公钥的开发构建会回退到 GitHub 版本检查。
 
 ## 打开与生成工程
@@ -89,7 +89,7 @@ App 正式运行时不设置这些变量，Core 会使用与 CLI 相同的 `~/.s
 
 ```bash
 sh macos/Scripts/package-release.sh \
-  --version 0.5.3 \
+  --version 0.6.0 \
   --build 3 \
   --output dist/macos \
   --preview

@@ -1,6 +1,6 @@
 # SKM macOS 原生版技术设计
 
-> 状态：0.5.3 Phase 1 至 Phase 3 工程实现已完成；Bundle ID 固定为 `com.zzzzzyijie.skm`，真实 Developer ID 签名、公证和 Gatekeeper 本地闭环已验收，Sparkle 发布密钥、干净机 Tag 工作流与正式 Release 待配置/触发
+> 状态：0.6.0 Phase 1 至 Phase 3 工程实现已完成；Bundle ID 固定为 `com.zzzzzyijie.skm`，真实 Developer ID 签名、公证和 Gatekeeper 本地闭环已验收，Sparkle 发布密钥、干净机 Tag 工作流与正式 Release 待配置/触发
 > 基线：SKM v0.5.0、持久化 schema v2
 > 目标：在不重写 Go 领域逻辑、不破坏 CLI 兼容性的前提下，提供真正的 macOS 原生应用。
 
@@ -197,7 +197,7 @@ func (s *Service) SyncWorkspace(ctx context.Context, input SyncInput, progress P
 App 启动后第一条请求必须是：
 
 ```json
-{"jsonrpc":"2.0","id":"1","method":"system.handshake","params":{"protocolVersion":1,"appVersion":"0.5.3"}}
+{"jsonrpc":"2.0","id":"1","method":"system.handshake","params":{"protocolVersion":1,"appVersion":"0.6.0"}}
 ```
 
 Core 返回：
@@ -208,7 +208,7 @@ Core 返回：
   "id": "1",
   "result": {
     "protocolVersion": 1,
-    "coreVersion": "0.5.3",
+    "coreVersion": "0.6.0",
     "schemaVersion": 2,
     "promptSchemaVersion": 1,
     "workspaceSchemaVersion": 1,
@@ -489,7 +489,7 @@ macOS 隐私提示。
 状态：工程实现已完成，正式自动更新启用需配置 Sparkle EdDSA 发布密钥。
 
 - `project require/vendor/apply`；
-- Prompt 变量表单和渲染后复制；
+- Prompt 变量定义保持兼容；填写变量与渲染后复制继续由 CLI/Core 提供，原生 App 不设置独立入口；
 - 历史快照、差异和回滚；
 - Skill/Prompt Quick Look；
 - Sparkle 2 自动更新。
@@ -535,7 +535,7 @@ Gatekeeper 与 SHA-256。
 - App、捆绑 Core 和 CLI 使用同一个语义化 Tag。
 - `CFBundleShortVersionString` 等于去掉 `v` 的 Tag。
 - `CFBundleVersion` 使用 CI 递增构建号。
-- Phase 1/2 工程完成版本为 `v0.5.3`；正式 Tag 与 Release 创建前仍只属于工程候选版本。
+- 当前正式候选版本统一为 `v0.6.0`；正式 Tag 与 Release 创建前仍只属于工程候选版本。
 
 ### 10.3 发布产物
 

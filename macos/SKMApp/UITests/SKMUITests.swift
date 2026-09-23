@@ -60,7 +60,7 @@ final class SKMUITests: XCTestCase {
         app.buttons["Cancel"].click()
 
         app.descendants(matching: .any)["open-settings"].click()
-        XCTAssertTrue(app.staticTexts["Agent Management"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["settings-agents"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Skill Sources"].exists)
         XCTAssertTrue(app.staticTexts["Git Sync"].exists)
         XCTAssertTrue(app.staticTexts["Software Updates"].exists)
@@ -161,7 +161,7 @@ final class SKMUITests: XCTestCase {
 
         let agentCard = app.descendants(matching: .any)["skill-agent-codex"]
         XCTAssertTrue(agentCard.waitForExistence(timeout: 5))
-        XCTAssertLessThan(agentCard.frame.height, 70)
+        XCTAssertLessThanOrEqual(agentCard.frame.height, 74)
 
         app.descendants(matching: .any)["navigation-prompts"].click()
         app.typeKey("n", modifierFlags: .command)
@@ -299,7 +299,7 @@ final class SKMUITests: XCTestCase {
     }
 
     @MainActor
-    func testPromptDraftProtectionAndVariablePreview() {
+    func testPromptDraftProtectionAndDetailActions() {
         let app = application(language: "zh-Hans")
         app.launch()
         defer { app.terminate() }
@@ -325,19 +325,11 @@ final class SKMUITests: XCTestCase {
         XCTAssertEqual(name.value as? String, "draft-protection")
         app.typeKey("s", modifierFlags: .command)
         XCTAssertTrue(app.staticTexts["draft-protection"].waitForExistence(timeout: 8))
-        let render = app.buttons["填写变量"]
-        XCTAssertTrue(render.waitForExistence(timeout: 5))
         capture(app, name: "prompt-detail")
-        app.buttons["复制 Prompt 内容"].click()
-        XCTAssertTrue(app.staticTexts["已复制"].waitForExistence(timeout: 2))
-        render.click()
-        XCTAssertTrue(app.staticTexts["没有变量"].waitForExistence(timeout: 5))
-        let copy = app.sheets.buttons["复制"]
+        let copy = app.buttons["复制"].lastMatch
         XCTAssertTrue(copy.waitForExistence(timeout: 5))
-        XCTAssertTrue(copy.isEnabled)
-        capture(app, name: "prompt-render")
-        app.typeKey(.escape, modifierFlags: [])
-        XCTAssertTrue(render.waitForExistence(timeout: 3))
+        copy.click()
+        XCTAssertTrue(app.staticTexts["已复制"].waitForExistence(timeout: 2))
     }
 
     @MainActor

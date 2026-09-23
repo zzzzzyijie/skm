@@ -144,7 +144,7 @@ xcrun notarytool history \
 
 ```bash
 sh macos/Scripts/package-release.sh \
-  --version 0.5.3 \
+  --version 0.6.0 \
   --build 3 \
   --output dist/macos-preview \
   --preview
@@ -156,7 +156,7 @@ sh macos/Scripts/package-release.sh \
 
 ```bash
 sh macos/Scripts/package-release.sh \
-  --version 0.5.3 \
+  --version 0.6.0 \
   --build 3 \
   --output dist/macos
 ```
