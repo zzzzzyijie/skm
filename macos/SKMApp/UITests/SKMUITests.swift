@@ -326,7 +326,7 @@ final class SKMUITests: XCTestCase {
         app.typeKey("s", modifierFlags: .command)
         XCTAssertTrue(app.staticTexts["draft-protection"].waitForExistence(timeout: 8))
         capture(app, name: "prompt-detail")
-        let copy = app.buttons["复制"].lastMatch
+        let copy = app.buttons["复制"].firstMatch
         XCTAssertTrue(copy.waitForExistence(timeout: 5))
         copy.click()
         XCTAssertTrue(app.staticTexts["已复制"].waitForExistence(timeout: 2))
