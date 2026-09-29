@@ -6,7 +6,7 @@
 >
 > Bundle ID：`com.zzzzzyijie.skm`（已确认）
 >
-> 当前结论：Phase 0 至 Phase 3 的工程实现已完成，macOS 人工验收已完成。Developer ID、Apple 公证和 Sparkle 凭据已配置到 GitHub Actions；`v0.6.0` Tag 已触发发布，但因 Sparkle `Autoupdate` 签名遗漏导致公证失败，尚未生成 GitHub Release。
+> 当前结论：Phase 0 至 Phase 3 的工程实现、macOS 人工验收和 `v0.6.1` 正式发布均已完成。App 与 DMG 公证、stapling、Gatekeeper 及 Apple Silicon/Intel 干净 runner 验证已通过，GitHub Release、Formula、Cask 和 appcast 均已发布。
 
 相关文档：
 
@@ -126,7 +126,7 @@
 - [x] Developer ID `.p12`、App Store Connect Team API Key 和 Sparkle EdDSA 密钥已配置为 GitHub Actions Secrets，Tag 工作流已成功完成凭据检查与导入。
 - [x] 已创建 `v0.6.0` Tag 并触发 Release 工作流。
 - [x] 已修复 Sparkle `Autoupdate` Developer ID 签名与时间戳，并增加公证失败日志。
-- [ ] 使用 `v0.6.1` 重新发布并确认 GitHub Release 产物。
+- [x] 已使用 `v0.6.1` 重新发布，并确认 GitHub Release、DMG、ZIP、appcast、Formula 和 Cask 产物。
 
 ### 4.2 Phase 2：项目与同步
 
@@ -267,4 +267,4 @@
 
 已创建 `v0.6.0` Tag，但本次 GitHub Actions 发布在 App 公证阶段失败，尚未生成正式 Release。Apple 公证日志确认 Sparkle `Autoupdate` 缺少有效 Developer ID 签名和安全时间戳。
 
-2026-09-29 进展：macOS 人工无障碍、外观、窄窗口和双架构干净机验收已完成；GitHub/Apple/Sparkle 凭据已通过 Release 工作流的配置检查。当前唯一 macOS 发布阻塞是修复 Sparkle `Autoupdate` 签名后重新触发正式发布。
+2026-09-29 进展：`v0.6.1` 已完成正式发布。Release 工作流中的 App/DMG 公证和双架构验证已通过；因 Homebrew Tap PAT 缺少 Contents 写权限，工作流末段失败，本次 Formula、Cask 和 macOS Release 产物已使用有权限的发布账号补齐。后续发布前应更新 `HOMEBREW_TAP_GITHUB_TOKEN` 的 Contents 写权限。

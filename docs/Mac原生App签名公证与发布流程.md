@@ -299,7 +299,7 @@ Actions Secrets 提供，不能提交到仓库。
 - [x] 在无 Go、Homebrew 和 SKM CLI 的 Apple Silicon 与 Intel Mac 上完成安装、启动和主要读写流程验收；
 - [x] 完成中英文、VoiceOver、键盘、浅色、深色和窄窗口验收；
 - [x] 配置并验证 GitHub Actions Secrets；
-- [ ] 修复 Sparkle `Autoupdate` 签名后使用新版本 Tag 重新发布，再检查 GitHub Release、DMG、ZIP、appcast 与校验和。
+- [x] 已修复 Sparkle `Autoupdate` 签名并使用 `v0.6.1` 重新发布；GitHub Release、DMG、ZIP、appcast 与校验和已确认。
 
 ## 9. Apple 官方参考
 
