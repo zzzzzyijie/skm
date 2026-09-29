@@ -193,6 +193,7 @@ sign_sparkle_nested_code() {
   signing_identity="$1"
   timestamp_option="$2"
   sparkle_version="$SPARKLE_FRAMEWORK/Versions/B"
+  codesign --force --options runtime "$timestamp_option" --sign "$signing_identity" "$sparkle_version/Autoupdate"
   for nested_bundle in \
     "$sparkle_version/XPCServices/Downloader.xpc" \
     "$sparkle_version/XPCServices/Installer.xpc" \
@@ -225,12 +226,26 @@ fi
 
 notarize() {
   artifact_path="$1"
+  result_path="$TEMPORARY_DIRECTORY/notary-$(basename "$artifact_path").json"
   xcrun notarytool submit "$artifact_path" \
     --key "$SKM_NOTARY_KEY_PATH" \
     --key-id "$SKM_NOTARY_KEY_ID" \
     --issuer "$SKM_NOTARY_ISSUER_ID" \
     --wait \
-    --timeout 30m
+    --timeout 30m \
+    --output-format json > "$result_path"
+  cat "$result_path"
+
+  submission_status="$(plutil -extract status raw -o - "$result_path")"
+  if [ "$submission_status" != "Accepted" ]; then
+    submission_id="$(plutil -extract id raw -o - "$result_path")"
+    echo "error: notarization returned $submission_status; fetching Apple validation log" >&2
+    xcrun notarytool log "$submission_id" \
+      --key "$SKM_NOTARY_KEY_PATH" \
+      --key-id "$SKM_NOTARY_KEY_ID" \
+      --issuer "$SKM_NOTARY_ISSUER_ID" || true
+    return 1
+  fi
 }
 
 if [ "$SKIP_NOTARIZATION" -eq 0 ]; then

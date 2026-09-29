@@ -1,10 +1,10 @@
 # SKM macOS 原生 App 签名、公证与发布流程
 
-> 最后验证日期：2026-08-27
+> 最后验证日期：2026-09-29
 >
 > 验证结论：本地 Developer ID 签名、Apple 公证、stapling、Gatekeeper 与校验和闭环已通过。
 >
-> 验证产物：`SKM 0.6.0 (Build 3)`，仅用于发布链路验收，不代表已经创建 `v0.6.0` Tag 或 GitHub Release。
+> 验证产物：`SKM 0.6.0 (Build 3)`。`v0.6.0` Tag 已创建，但 CI 公证因 Sparkle `Autoupdate` 漏签失败，尚未生成 GitHub Release。
 
 本文记录 SKM 原生 macOS App 在 Mac App Store 之外分发时的完整流程。最终用户安装 DMG 或 ZIP
 中的 `SKM.app`，不需要安装 Go、Homebrew 或 SKM CLI；Go 只在开发和打包时用于生成内置
@@ -170,7 +170,7 @@ sh macos/Scripts/package-release.sh \
 → 合并 Universal 2 Core
 → 构建 Universal 2 SKM.app
 → 检查 App/Core/参数版本一致
-→ 用同一身份签名 Sparkle XPC、Updater 和 Framework
+→ 用同一身份签名 Sparkle Autoupdate、XPC、Updater 和 Framework
 → Developer ID 签名内置 Core
 → Developer ID 签名 SKM.app
 → 上传 App 压缩包进行公证
@@ -291,17 +291,15 @@ Tag 发布工作流会把 `.p12` 导入临时钥匙串，把 `.p8` 写入 runner
 `package-release.sh`，生成签名 `appcast.xml`，然后在 Apple Silicon 与 Intel runner 上验证产物。凭据必须通过 GitHub
 Actions Secrets 提供，不能提交到仓库。
 
-## 8. 正式发布前剩余人工验收
+## 8. 正式发布状态
 
-本地发布技术闭环已完成，正式创建 Tag 和 GitHub Release 前仍应：
+本地发布技术闭环和 macOS 人工验收已完成：
 
-- 确认正式版本号、Build 号和 Bundle ID；
-- 在没有 Go、Homebrew 和 SKM CLI 的干净 Apple Silicon Mac 上安装并启动；
-- 在没有 Go、Homebrew 和 SKM CLI 的干净 Intel Mac 上安装并启动；
-- 验证首次启动、Core 握手、Skills、Agents 和 Prompts 主要读写流程；
-- 验证中英文、VoiceOver、键盘、浅色、深色和窄窗口；
-- 配置并验证 GitHub Actions Secrets；
-- 创建正式 Tag 后检查 GitHub Release、DMG、ZIP 与校验和。
+- [x] 确认正式版本号、Build 号和 Bundle ID；
+- [x] 在无 Go、Homebrew 和 SKM CLI 的 Apple Silicon 与 Intel Mac 上完成安装、启动和主要读写流程验收；
+- [x] 完成中英文、VoiceOver、键盘、浅色、深色和窄窗口验收；
+- [x] 配置并验证 GitHub Actions Secrets；
+- [ ] 修复 Sparkle `Autoupdate` 签名后使用新版本 Tag 重新发布，再检查 GitHub Release、DMG、ZIP、appcast 与校验和。
 
 ## 9. Apple 官方参考
 

@@ -1,12 +1,12 @@
 # SKM macOS 原生版开发进度
 
-> 更新日期：2026-09-23
+> 更新日期：2026-09-29
 >
-> 当前工程版本：`0.6.0 (Build 3)`
+> 当前工程版本：`0.6.1 (Build 3)`
 >
 > Bundle ID：`com.zzzzzyijie.skm`（已确认）
 >
-> 当前结论：Phase 0 至 Phase 3 的工程实现已完成；Phase 1/2 已统一补强，本地正式签名、公证闭环已验收。Prompt 变量定义继续兼容，但原生 App 不再提供“填写变量”入口。剩余事项是 Sparkle 发布密钥、GitHub/Apple 凭据和外部机器上的正式发布动作。
+> 当前结论：Phase 0 至 Phase 3 的工程实现已完成，macOS 人工验收已完成。Developer ID、Apple 公证和 Sparkle 凭据已配置到 GitHub Actions；`v0.6.0` Tag 已触发发布，但因 Sparkle `Autoupdate` 签名遗漏导致公证失败，尚未生成 GitHub Release。
 
 相关文档：
 
@@ -31,7 +31,7 @@
 - [x] SwiftUI 原生 macOS 工程、Xcode workspace、Tuist 工程描述和共享 Scheme。
 - [x] App 使用内置 `skm-core`，通过私有 stdio JSON-RPC 通信，不监听网络端口。
 - [x] 构建阶段分别生成 `arm64`、`x86_64` Core，并合并为 Universal 2。
-- [x] App、Core 和发布参数执行版本一致性检查，当前版本统一为 `0.6.0`，构建号为 `3`。
+- [x] App、Core 和发布参数执行版本一致性检查，当前版本统一为 `0.6.1`，构建号为 `3`。
 - [x] App、测试 Target、发布脚本均使用最终 Bundle ID 命名空间；主 App 固定为 `com.zzzzzyijie.skm`。
 - [x] Xcode 构建脚本可从 Apple Silicon Homebrew、Intel Homebrew 或 `SKM_GO_EXECUTABLE` 找到 Go。
 - [x] 最终用户运行 App 不依赖 Go、Homebrew 或已安装的 SKM CLI。
@@ -105,12 +105,12 @@
 - [x] Release 工作流会在 Apple Silicon 与 Intel 干净 runner 验证签名、公证票据、Gatekeeper、架构、无 Go Core 与 App 启动。
 - [x] Tag 发布后自动生成并发布 CLI Formula 与原生 App Cask。
 
-## 3. 部分完成，仍需补强
+## 3. 人工验收
 
-以下项目已经有基础实现，但还没有达到完整验收标准：
+以下项目已完成人工验收：
 
-- [ ] 已有 VoiceOver 标签和键盘快捷键；仍需使用 Accessibility Inspector 人工检查焦点顺序、Full Keyboard Access、系统字体缩放和高对比度。
-- [ ] 界面使用系统颜色并支持浅色/深色；仍需完成减少动态效果、不同窗口宽度和高对比度快照验收。
+- [x] 已使用 Accessibility Inspector 完成 VoiceOver 焦点顺序、Full Keyboard Access、系统字体缩放和高对比度检查。
+- [x] 已完成减少动态效果、浅色/深色、不同窗口宽度、窄窗口和高对比度验收。
 
 ## 4. 待完成
 
@@ -119,12 +119,14 @@
 - [x] 最终 Bundle ID 已确认并固定为 `com.zzzzzyijie.skm`；本机 Apple Developer Team 已完成真实签名验收。
 - [x] 使用真实 `Developer ID Application` 证书完成 Universal 2 验收构建。
 - [x] 使用 App Store Connect Team API Key 完成 App 和 DMG 公证、staple 与 Gatekeeper 验证。
-- [ ] 在干净的 Apple Silicon Mac 和 Intel Mac 上验证安装、启动、Core 握手和主要读写流程。
+- [x] 已在干净的 Apple Silicon Mac 和 Intel Mac 上验证安装、启动、Core 握手和主要读写流程。
 - [x] 完成 Skills、Agents、Prompts、Projects、个人 Git 同步的隔离端到端 XCUITest。
 - [x] 完成 App/Core 与共享 Store 并发修改的冲突、草稿保留和恢复测试。
-- [ ] 完成正式发布前的 VoiceOver、键盘、浅色、深色和窄窗口人工验收。
-- [ ] 把 Developer ID `.p12` 与 App Store Connect Team API Key 配置为 GitHub Actions Secrets，并验证 Tag 工作流。
-- [ ] 创建 `v0.6.0` Tag 和正式 Release；当前尚未发布。
+- [x] 完成正式发布前的 VoiceOver、键盘、浅色、深色和窄窗口人工验收。
+- [x] Developer ID `.p12`、App Store Connect Team API Key 和 Sparkle EdDSA 密钥已配置为 GitHub Actions Secrets，Tag 工作流已成功完成凭据检查与导入。
+- [x] 已创建 `v0.6.0` Tag 并触发 Release 工作流。
+- [x] 已修复 Sparkle `Autoupdate` Developer ID 签名与时间戳，并增加公证失败日志。
+- [ ] 使用 `v0.6.1` 重新发布并确认 GitHub Release 产物。
 
 ### 4.2 Phase 2：项目与同步
 
@@ -236,10 +238,10 @@
 | --- | --- | --- |
 | 最终 Bundle ID | App 身份和签名 | 已确认：`com.zzzzzyijie.skm` |
 | Apple Developer Team | Developer ID 签名 | 本机已配置并验证 |
-| Developer ID Application `.p12` 与密码 | CI 正式签名 | 本机钥匙串已验证；待配置为 GitHub Secrets，不提交到仓库 |
-| App Store Connect API `.p8`、Key ID、Issuer ID | 自动公证 | 本机已验证；待配置为 GitHub Secrets，不提交到仓库 |
-| Sparkle EdDSA 公钥与私钥 | App 内更新验签与 appcast 签名 | 待生成；公钥配置为 Secret，私钥文件/Secret 永不提交 |
-| 正式发布账号与仓库权限 | 创建 Tag、Release 和上传产物 | 发布时确认 |
+| Developer ID Application `.p12` 与密码 | CI 正式签名 | 已配置 GitHub Secrets，`v0.6.0` 工作流已验证导入 |
+| App Store Connect API `.p8`、Key ID、Issuer ID | 自动公证 | 已配置 GitHub Secrets，`v0.6.0` 工作流已成功提交公证 |
+| Sparkle EdDSA 公钥与私钥 | App 内更新验签与 appcast 签名 | 已生成并配置 GitHub Secrets，私钥不提交到仓库 |
+| 正式发布账号与仓库权限 | 创建 Tag、Release 和上传产物 | `v0.6.0` Tag 已创建；待修复公证签名后重新发布 |
 
 不要把证书、私钥或密码直接写入文档或提交到 Git。优先在本机钥匙串和 GitHub Actions Secrets 中配置。
 
@@ -263,6 +265,6 @@
 - 本次验收过程与 Submission ID 记录在
   [macOS 原生 App 签名、公证与发布流程](Mac原生App签名公证与发布流程.md)。
 
-正式 Release 尚未创建；当前完成的是本地真实凭据发布闭环验证，不等同于发布 `v0.6.0`。
+已创建 `v0.6.0` Tag，但本次 GitHub Actions 发布在 App 公证阶段失败，尚未生成正式 Release。Apple 公证日志确认 Sparkle `Autoupdate` 缺少有效 Developer ID 签名和安全时间戳。
 
-2026-09-23 范围确认：正式候选版本统一为 `v0.6.0`，当前 `feature_ui` 纳入 `main`；macOS 原生 App 不再提供 Prompt“填写变量”入口。GitHub/Apple 凭据、Sparkle 密钥、Intel 与人工无障碍验收留待后续，本次范围调整未执行回归测试。
+2026-09-29 进展：macOS 人工无障碍、外观、窄窗口和双架构干净机验收已完成；GitHub/Apple/Sparkle 凭据已通过 Release 工作流的配置检查。当前唯一 macOS 发布阻塞是修复 Sparkle `Autoupdate` 签名后重新触发正式发布。

@@ -1,6 +1,6 @@
 # SKM macOS 原生版技术设计
 
-> 状态：0.6.0 Phase 1 至 Phase 3 工程实现已完成；Bundle ID 固定为 `com.zzzzzyijie.skm`，真实 Developer ID 签名、公证和 Gatekeeper 本地闭环已验收，Sparkle 发布密钥、干净机 Tag 工作流与正式 Release 待配置/触发
+> 状态：0.6.0 Phase 1 至 Phase 3 工程实现已完成；Bundle ID 固定为 `com.zzzzzyijie.skm`，Developer ID、Apple 公证、Sparkle 密钥和 GitHub Actions Secrets 已配置，macOS 人工验收已完成；`v0.6.0` Tag 已触发但 Release 因 Sparkle `Autoupdate` 公证问题尚未生成
 > 基线：SKM v0.5.0、持久化 schema v2
 > 目标：在不重写 Go 领域逻辑、不破坏 CLI 兼容性的前提下，提供真正的 macOS 原生应用。
 

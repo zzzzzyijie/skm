@@ -5,7 +5,7 @@
 Developer ID、Apple 公证、stapling 与 Gatekeeper 的完整实操见
 [macOS 原生 App 签名、公证与发布流程](../docs/Mac原生App签名公证与发布流程.md)。
 
-当前工程版本为 `0.6.0`，Phase 1 至 Phase 3 均已完成：
+当前工程版本为 `0.6.1`，Phase 1 至 Phase 3 均已完成：
 
 - 支持在设置中选择跟随系统、简体中文或英文，并即时切换界面语言；
 - SwiftUI 三栏主界面聚焦 Skills、Prompts、Projects，侧栏底部和 `⌘,` 可打开独立 Settings 窗口；
@@ -28,7 +28,7 @@ Developer ID、Apple 公证、stapling 与 Gatekeeper 的完整实操见
 
 Skills、Prompts 和 Projects 均支持 `⌘F` 聚焦搜索。搜索框内按 `Esc` 清空搜索，再按一次移出焦点；项目可按名称或路径查找。同步执行期间会禁用侧栏同步按钮，避免重复触发。设置的“通用”页可将外观切换为跟随系统、浅色或深色，语言和外观偏好会持久化并同步应用到主窗口与设置窗口。
 
-主界面、六个设置分类和全部编辑／导入弹窗共用原生表面、标题、圆角与间距。详情支持代码块复制；Prompt 可直接进入变量填写与渲染预览，修改变量后会使旧复制结果失效。编辑器使用 `⌘S` 保存，取消有改动的草稿时会先确认。快速查看使用 `⌘Y`，避免拦截正文中的空格。普通弹窗支持 Return 执行主操作、Esc 取消；搜索中的 Esc 优先清除关键词。
+主界面、六个设置分类和全部编辑／导入弹窗共用原生表面、标题、圆角与间距。详情支持代码块复制；Prompt 变量定义保持兼容，填写变量与渲染后复制由 CLI/Core 提供。编辑器使用 `⌘S` 保存，取消有改动的草稿时会先确认。快速查看使用 `⌘Y`，避免拦截正文中的空格。普通弹窗支持 Return 执行主操作、Esc 取消；搜索中的 Esc 优先清除关键词。
 
 视觉与交互检查范围见 [macOS UI 打磨记录](../docs/Mac原生版UI打磨.md)。
 
@@ -89,7 +89,7 @@ App 正式运行时不设置这些变量，Core 会使用与 CLI 相同的 `~/.s
 
 ```bash
 sh macos/Scripts/package-release.sh \
-  --version 0.6.0 \
+  --version 0.6.1 \
   --build 3 \
   --output dist/macos \
   --preview
