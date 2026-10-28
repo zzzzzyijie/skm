@@ -7,8 +7,8 @@
 
 ## 1. 设计方向
 
-原生版不复刻现有 Web UI 的卡片仪表盘。它保留绿色品牌识别、Skill/Prompt/Project 的信息模型，
-但改用 macOS 熟悉的三栏导航、工具栏、List、Table、Inspector、Sheet 和 Settings 窗口。
+原生版保留绿色品牌识别、Skill/Prompt/Project 的信息模型，
+采用 macOS 熟悉的三栏导航、工具栏、List、Table、Inspector、Sheet 和 Settings 窗口。
 
 核心原则：
 

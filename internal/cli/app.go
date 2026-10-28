@@ -83,7 +83,6 @@ func (a *App) RootCommand() *cobra.Command {
 		a.newPromptCommand(),
 		a.newProjectCommand(),
 		a.newSyncCommand(),
-		a.newUICommand(),
 		a.newCoreCommand(),
 		a.newCompletionCommand(root),
 		&cobra.Command{

@@ -1,5 +1,5 @@
 // Package application contains transport-independent SKM use cases used by
-// the native Core Bridge and available for incremental CLI/HTTP migration.
+// the native Core Bridge and available for incremental CLI migration.
 package application
 
 import (

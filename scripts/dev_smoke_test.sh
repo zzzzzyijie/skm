@@ -52,8 +52,8 @@ go_cache="${GOCACHE:-/tmp/skm-go-cache}"
 cleanup() {
   if [ "$keep" = true ]; then
     echo "Temporary test directory retained: $test_root"
-    echo "Run this UI manually:"
-    echo "  $binary --home $skm_home --user-home $user_home --project $project_root ui --port 9527 --no-browser"
+    echo "Inspect the isolated state:"
+    echo "  $binary --home $skm_home --user-home $user_home --project $project_root status"
     return
   fi
   rm -rf "$test_root"
@@ -99,6 +99,11 @@ step "Building current source"
   GOCACHE="$go_cache" go build -trimpath -o "$binary" ./cmd/skm
 )
 "$binary" version
+
+step "Checking the native Core Bridge"
+printf '%s\n' '{"jsonrpc":"2.0","id":"smoke","method":"system.handshake","params":{}}' \
+  | run_skm core --stdio \
+  | grep -F '"protocolVersion":1' >/dev/null
 
 step "Running isolated Library and Activation flow"
 run_skm init

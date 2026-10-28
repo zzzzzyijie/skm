@@ -1,7 +1,7 @@
 # skm (AI Skill Manager)
 
 `skm` 管理个人 AI Agent Skill Library，并将选中的 Skill 安全启用到 Claude Code、
-Codex 或具体项目。它将三个概念明确分开：
+Codex 或具体项目。项目由 Go CLI、Go Core 和 macOS 原生 App 组成，明确区分以下概念：
 
 ```text
 Library     用户拥有和管理哪些 Skill
@@ -113,20 +113,11 @@ xcodebuild -workspace macos/SKM.xcworkspace -scheme SKM test
 
 ## 快速开始
 
-### Web UI
+### macOS 原生 App
 
-启动内嵌的本地管理界面：
-
-```bash
-skm ui
-```
-
-默认监听 `http://localhost:9527` 并打开浏览器。可用 `--port` 更换端口，或用
-`--no-browser` 只启动服务。Web UI 与 CLI 使用同一份 Library、Project 注册和 Activation
-数据；Prompt 页面可填写名称、描述、标签和正文，校验后保存，并将正文直接复制到设备剪贴板；
-Projects 页面可完成本机项目登记、Skill 软链/复制、状态检查和解绑。设置中的“个人工作区”可连接
-一个私有 Git 仓库，通过 Logo 右侧同步入口在多台电脑间双向同步独立的本地 Skill 和 Prompt；
-同步前会预览上传、下载、删除和冲突，冲突可逐项选择本地或远程状态。
+打开 `SKM.app`，通过 Skills、Prompts 和 Projects 管理资料库与项目部署。
+设置窗口提供技能来源、Git 同步、Agent 管理和诊断；App 与 CLI 共用 `~/.skm`。
+个人 Git 同步可在多台电脑间同步独立的本地 Skill 和 Prompt，并在写入前预览差异、解决冲突。
 
 “添加 Skill 到库”提供三种明确的导入方式：本地导入支持 Skill 文件夹和仅包含一个
 Skill 的 `.zip`；仓库来源支持 Git URL 与 GitHub `owner/repo` 简写；安装命令支持直接
@@ -170,7 +161,7 @@ skm update local/code-review "$HOME/my-skills/code-review"
 `add` 只加入 Library，不自动启用。移除前必须先禁用；`remove` 会删除没有其他引用的
 物理快照，共享或被项目固定的快照会保留。历史孤立快照可先预览再清理：
 
-Web 管理界面可以直接编辑独立本地 Skill 的完整 `SKILL.md`。保存时创建新的不可变
+macOS 原生 App 可以直接编辑独立本地 Skill 的完整 `SKILL.md`。保存时创建新的不可变
 快照，并自动刷新用户级 Agent 部署；Git Source Skill 和仍在跟随项目的 Skill 保持只读。
 
 ```bash
@@ -320,8 +311,8 @@ Manifest、Lock 和 vendored Skill 内容。
 
 ## 标签
 
-标签是 Skill 与 Prompt 共用的个人资源。Web UI 可创建、重命名和删除未使用标签，并在添加或
-编辑 Skill、Prompt 时从已有标签中选择。CLI 的以下命令用于管理 Skill 的标签关联：
+Skill 与 Prompt 分别维护独立的标签注册表。macOS 原生 App 可创建、重命名和删除未使用标签，
+并在添加或编辑 Skill、Prompt 时从对应的已有标签中选择。CLI 的以下命令用于管理 Skill 的标签关联：
 
 ```bash
 skm tag list

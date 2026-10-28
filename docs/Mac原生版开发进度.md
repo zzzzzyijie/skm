@@ -160,7 +160,7 @@
 - [x] **【Skills】重构 Skill 详情页交互体验**：
   - 现状：原为"概览 / SKILL.md / 部署"三段 Segmented Control，割裂严重且 Markdown 为纯文本等宽字体；
   - 完成：合并为一体化滚动布局——顶部展示名称、健康 Badge、描述、标签与来源元数据，中部 Agent 激活采用水平卡片式切换（LazyVGrid + AgentToggleCard），正文区域使用 SwiftUI 原生 `AttributedString(markdown:)` 零依赖渲染 Markdown（支持标题层级、粗体/斜体/链接/代码/代码块），底部路径元数据卡片；工具栏新增"在 Finder 中显示"快捷按钮。
-- [x] **【添加 Skill】同步 Web 端的两步式扫描预览与勾选导入能力**：
+- [x] **【添加 Skill】两步式扫描预览与勾选导入能力**：
   - 现状：macOS 端原为旧版一步式直接导入，无法在导入前识别仓库内的多子技能；
   - 完成：Core Bridge 接入 `sources.preview` 能力，App 端升级为两步式导入向导（第 1 步输入仓库 URL/简写 -> 异步扫描多子技能与有效性 -> 第 2 步展示候选技能列表与错误 Badge -> 支持全选/反选与多选 -> 确认按需批量导入）。
 - [x] **【Skill 标签管理】集中式标签管理与维护入口**：
@@ -187,7 +187,7 @@
 - [x] **【项目导入 Skill】规范导入方式文案（软链接 / 复制）**：
   - 现状：弹窗中导入方式文案原为“保持同步/独立副本”，说明偏长；
   - 完成：统一规范模式选项为「软链接」与「复制」，明确软链接跟随个人 Library 自动同步、复制为脱离 SKM 的独立副本，并对齐 Agent 品牌图标展示。
-- [x] **【设置 - Agent 管理】引入真实 Agent 品牌图标（对齐 Web UI）**：
+- [x] **【设置 - Agent 管理】引入真实 Agent 品牌图标**：
   - 现状：原 Agent 列表与详情使用通用 SF Symbols，缺乏各工具识别度；
   - 完成：在 `Assets.xcassets` 引入 12 款真实 Agent 矢量品牌图标（Claude、Codex、Cursor、Copilot、Gemini、Windsurf、Kiro、Cline、OpenCode、Trae、Hermes、OpenClaw），并封装通用 `AgentIconView`，提供平滑圆角自适应展示与自定义 Agent 优雅降级。
 - [x] **【设置 - Agent 管理】精简移除「由 SKM 管理」冗余文案**：

@@ -30,7 +30,8 @@ Skills、Prompts 和 Projects 均支持 `⌘F` 聚焦搜索。搜索框内按 `E
 
 主界面、六个设置分类和全部编辑／导入弹窗共用原生表面、标题、圆角与间距。详情支持代码块复制；Prompt 变量定义保持兼容，填写变量与渲染后复制由 CLI/Core 提供。编辑器使用 `⌘S` 保存，取消有改动的草稿时会先确认。快速查看使用 `⌘Y`，避免拦截正文中的空格。普通弹窗支持 Return 执行主操作、Esc 取消；搜索中的 Esc 优先清除关键词。
 
-视觉与交互检查范围见 [macOS UI 打磨记录](../docs/Mac原生版UI打磨.md)。
+视觉与交互检查范围见 [macOS UI 打磨记录](../docs/Mac原生版UI打磨.md)，
+内置 Agent 图标来源见 [Agent icon sources](AGENT_ICONS.md)。
 
 仓库提交了可直接打开的 Xcode workspace：
 

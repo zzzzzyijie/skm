@@ -1,19 +1,19 @@
 ---
 name: skm-maintainer
-description: Maintain the skm Go project and its AI Skill Manager workflows. Use when implementing, reviewing, testing, or documenting changes in this repository, especially CLI, project deployment, Codex/Claude skill activation, YAML state, or web UI behavior.
+description: Maintain the skm Go project and its AI Skill Manager workflows. Use when implementing, reviewing, testing, or documenting changes in this repository, especially CLI, macOS Core Bridge, project deployment, Codex/Claude skill activation, or YAML state.
 ---
 
 # SKM Maintainer
 
-Use this skill for changes to the `skm` repository. Preserve the existing separation between Library, Activation, and Project state, and prefer the repository's current Go, YAML, CLI, and embedded web patterns.
+Use this skill for changes to the `skm` repository. Preserve the existing separation between Library, Activation, and Project state. The supported interfaces are the Go CLI and the native macOS App, which calls the bundled Go Core through private stdio JSON-RPC.
 
 ## Workflow
 
 1. Inspect the relevant package, tests, docs, and current git status before editing. Preserve unrelated user changes.
-2. Trace the behavior through its ownership boundary. Keep CLI parsing in `internal/cli`, persistence in `internal/store`, domain rules in `internal/domain` or `internal/planner`, skill validation in `internal/skill`, and HTTP behavior in `internal/server`.
+2. Trace the behavior through its ownership boundary. Keep CLI parsing in `internal/cli`, use-case orchestration in `internal/application`, native protocol handling in `internal/corebridge`, persistence in `internal/store`, domain rules in `internal/domain` or `internal/planner`, and skill validation in `internal/skill`. Keep macOS presentation in `macos/`; Swift must not duplicate Go storage or deployment rules.
 3. Make the smallest complete change. Keep project-portable state under `.skm/`; keep Codex-discoverable repository skills under `.agents/skills/`.
 4. Add or update focused tests for changed behavior. Use table-driven tests where the package already does so.
-5. Run `gofmt` on changed Go files, then run `go test ./...` and `go build ./...`. For web changes, also run the relevant smoke test if available.
+5. Run `gofmt` on changed Go files, then run `go test ./...` and `go build ./...`. For CLI or Core changes, also run `sh scripts/dev_smoke_test.sh`. For native App changes, use the build and test commands in `macos/README.md` with isolated test roots.
 6. Report changed files, verification commands, and any remaining limitation. Do not claim a test passed unless it was run.
 
 ## Skill Changes

@@ -1,6 +1,6 @@
 # Agent icon sources
 
-The built-in Agent icons are kept locally so Agent management works offline. Brand geometry and product names were checked against the following official sources on 2026-08-21.
+The macOS App stores built-in Agent icons in `SKMApp/Resources/Assets.xcassets/agent-<id>.imageset/` so Agent management works offline. Brand geometry and product names were checked against the following official sources on 2026-08-21.
 
 | Agent | Local asset | Official source |
 | --- | --- | --- |

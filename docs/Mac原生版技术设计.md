@@ -4,6 +4,8 @@
 > 基线：SKM v0.5.0、持久化 schema v2
 > 目标：在不重写 Go 领域逻辑、不破坏 CLI 兼容性的前提下，提供真正的 macOS 原生应用。
 
+> 架构更新（2026-10-28）：项目由 Go CLI/Core 与 macOS 原生 App 组成。
+
 实施状态和剩余任务以 [macOS 原生版开发进度](Mac原生版开发进度.md) 为准。
 
 ## 1. 结论
@@ -28,7 +30,6 @@ catalog / prompt / source / workspace / planner / store
 
 - 不在 Swift 中重写 Library、Activation、Project、同步和冲突规则。
 - 不让 App 依赖用户通过 Homebrew 或 curl 安装的 `skm`，App 始终调用同版本的捆绑 Core。
-- 不继续通过 `localhost` HTTP 服务连接原生界面。
 - 不在第一版使用 cgo、静态库或 XCFramework 直接嵌入 Go。
 - 不以 Mac App Store 为首发渠道；首发使用 Developer ID 签名、公证的 DMG。
 
@@ -39,7 +40,7 @@ catalog / prompt / source / workspace / planner / store
 
 ### 2.1 产品目标
 
-1. 原生覆盖当前 Web UI 的完整主流程：Skill、Prompt、Agent、用户级启用、项目本机部署、
+1. 原生提供完整的资源管理主流程：Skill、Prompt、Agent、用户级启用、项目本机部署、
    Git Source 和个人工作区同步。
 2. App 与 CLI 共享 `~/.skm`，任何一端创建的数据都能被另一端读取。
 3. 文件写入、部署、删除和同步继续由 Go Core 执行，保留现有安全保护。
@@ -68,10 +69,10 @@ catalog / prompt / source / workspace / planner / store
 | Store 使用全局文件锁 | App 与外部 CLI 并发时继续由 Core 串行化写操作 |
 | YAML 使用原子写入 | Swift 不直接读写或协调 YAML 文件 |
 | Git 凭据不写入 SKM | App 不提供 Token 明文保存字段 |
-| Web API 含有比 CLI 更丰富的视图模型 | 不能只把现有 CLI 命令逐条映射成按钮 |
+| 应用层提供原生界面所需的视图模型 | 不能只把现有 CLI 命令逐条映射成按钮 |
 
-当前 HTTP handler 同时承担协议解析和业务编排。原生开发前应先提取应用层用例，避免
-HTTP、CLI 和原生 Bridge 各自复制一遍“加锁 → 调用 Manager → Build Plan → Apply”的流程。
+原生 Bridge 通过 `internal/application` 调用用例，CLI 复用 Go 管理器与存储。
+业务编排继续留在 Go，避免在 Swift 中复制“加锁 → 调用 Manager → Build Plan → Apply”的流程。
 
 ## 4. 总体架构
 
@@ -86,7 +87,7 @@ flowchart LR
     end
 
     subgraph Go[Bundled Go Core]
-        RPC[internal/rpc]
+        RPC[internal/corebridge]
         UseCase[internal/application]
         Catalog[catalog / prompt / source / workspace]
         Planner[planner]
@@ -106,8 +107,8 @@ flowchart LR
     Watcher --> VM
     State -. changes .-> Watcher
 
-    CLI[现有 CLI] --> UseCase
-    Web[可选 Web UI] --> UseCase
+    CLI[Go CLI] --> Catalog
+    CLI --> Planner
 ```
 
 ### 4.1 SwiftUI App
@@ -132,8 +133,8 @@ Swift 侧不负责：
 
 ### 4.2 Go Core
 
-Go Core 是 App Bundle 内的辅助可执行文件，由主 App 启动并随 App 退出。建议在现有
-`skm` 二进制中增加隐藏命令：
+Go Core 是 App Bundle 内的辅助可执行文件，由主 App 启动并随 App 退出，通过现有
+`skm` 二进制中的隐藏命令提供服务：
 
 ```bash
 skm core --stdio
@@ -142,8 +143,8 @@ skm core --stdio
 App Bundle 内可以把同一产物命名为 `skm-core`，但构建来源和版本注入与 CLI 保持一致。
 原生 App 必须通过 Bundle 路径启动该文件，不能通过 `PATH` 查找。
 
-当前版本变量分别位于 CLI 和 Server 包。实现 Bridge 前应先新增无反向依赖的
-`internal/buildinfo`，由 CLI、HTTP Server 和 Core 握手共同读取，避免三个入口显示不同版本。
+CLI 与 Core 握手共用 `internal/buildinfo`。CLI 保留旧的版本注入兼容入口，
+macOS 构建将 App 版本注入 Core，保证捆绑版本一致。
 
 Core 负责：
 
@@ -156,12 +157,11 @@ Core 负责：
 
 ### 4.3 应用层提取
 
-新增 `internal/application`，承载跨包用例编排。建议的依赖方向：
+`internal/application` 承载原生 Core 的跨包用例编排。当前依赖方向：
 
 ```text
-cli       ─┐
-server    ─┼─> application ─> catalog/source/workspace/prompt/planner/store
-rpc/core  ─┘
+corebridge ─> application ─> catalog/source/workspace/prompt/planner/store
+cli        ───────────────> catalog/source/prompt/planner/store
 ```
 
 首批服务接口：
@@ -178,8 +178,8 @@ func (s *Service) PreviewWorkspace(ctx context.Context) (workspace.Preview, erro
 func (s *Service) SyncWorkspace(ctx context.Context, input SyncInput, progress ProgressSink) (workspace.Result, error)
 ```
 
-`application` 可以返回面向调用方的稳定 View DTO，但不能包含 HTTP 状态码、Swift 类型或
-界面文案。HTTP handler 和 CLI 逐步迁移到这一层；不要求在创建 Xcode 工程前一次性重构全部命令。
+`application` 可以返回面向调用方的稳定 View DTO，保持用例与传输协议、Swift 类型及界面文案独立。
+CLI 的既有管理器调用保留，后续按用例逐步收敛。
 
 ## 5. Core Bridge 协议
 
@@ -562,7 +562,7 @@ CLI Formula 与 App Cask 必须避免安装同一路径或互相覆盖。App 使
 - JSON-RPC 请求/响应 golden fixture；
 - 协议版本和 capability 测试；
 - Core 崩溃、半包、超限消息和 stderr 噪声测试；
-- CLI、HTTP、Bridge 对相同用例产生一致结果的契约测试；
+- CLI 与 Core Bridge 对相同用例产生一致结果的契约测试；
 - 继续运行 `go test ./...`、`go test -race ./...`、`go vet ./...`。
 
 ### 11.2 Swift
@@ -602,19 +602,19 @@ SKM_PROJECT=<temporary>/project
 
 | 风险 | 应对 |
 | --- | --- |
-| HTTP handler 中业务编排过多 | 先提取 MVP 所需用例，不做一次性全仓重构 |
+| CLI 与 Core 业务规则漂移 | 复用 Go 管理器与存储，用应用层和 CLI 测试验证行为 |
 | CLI 与 App 并发修改 | 继续使用 Store 文件锁，外部变化触发刷新 |
 | Core 与 App 协议漂移 | 握手、capabilities、golden fixture、同 Tag 捆绑 |
 | GUI App 的 Git 环境与终端不同 | 展示实际 Git 路径和认证错误，不保存凭据，提供诊断 |
 | Sandbox 无法覆盖 Agent/项目路径 | 首发 Developer ID 非沙盒；未来单独评估 App Store 版本 |
-| 原生功能落后于 CLI | 以当前 Web parity 为 MVP，CLI-only 能力列入 Phase 3 |
+| 原生功能落后于 CLI | 以资源管理主流程为 MVP，CLI-only 能力列入 Phase 3 |
 | 长同步阻塞界面 | Core 后台执行、进度通知、Swift async/await |
 | 原生发布链路复杂 | CI 中固定签名、公证、DMG、Cask 和干净机验收 |
 
 ## 14. 推荐的第一批开发任务
 
 1. 定义 `internal/application` 的 Skills、Agents、Activation DTO 与错误码。
-2. 用现有 server 测试固定这些 DTO 的行为，再让 HTTP handler 调用应用层。
+2. 用应用层与 Core Bridge 测试固定这些 DTO 的行为。
 3. 实现 `skm core --stdio` 的握手和只读方法。
 4. 创建 `macos/SKM.xcodeproj`，完成 Core 启停、三栏空壳和只读 Skill 列表。
 5. 打通隔离 `SKM_HOME` 的首个 XCUITest。
