@@ -125,6 +125,7 @@ final class AppModel {
     var updateStatus: String?
     var plan = PlanModel(digest: "", operations: [])
     var selectedSkillID: String?
+    let skillBrowser = SkillBrowserState()
     var selectedPromptID: String?
     let promptBrowser = PromptBrowserState()
 
@@ -398,6 +399,17 @@ final class AppModel {
             let _: StatusResponse = try await self.core.call("agents.custom.delete", params: IDParams(id: id))
             self.selectedAgentID = nil
         }
+    }
+
+    var visibleSkills: [SkillSummary] { skillBrowser.results(in: skills) }
+
+    func reconcileSkillSelection() {
+        if case .tag(let tag) = skillBrowser.filter {
+            let tags = mergedTagPool(customTags: skillCustomTags, tagGroups: skills.map(\.tags), selectedTags: [])
+            if !tags.contains(where: { tagNamesEqual($0, tag) }) { skillBrowser.filter = .all }
+        }
+        let visible = visibleSkills
+        if !visible.contains(where: { $0.id == selectedSkillID }) { selectedSkillID = visible.first?.id }
     }
 
     var visiblePrompts: [PromptSummary] { promptBrowser.results(in: prompts) }
@@ -923,7 +935,6 @@ final class AppModel {
 
     /// 从 Core 重新拉取所有全量状态，并尽可能维持各业务分区的选中项
     private func reload() async throws {
-        let previousSkillID = selectedSkillID
         let previousProjectID = selectedProjectID
         let previousAgentID = selectedAgentID
         let previousSourceID = selectedSourceID
@@ -948,7 +959,7 @@ final class AppModel {
         doctorChecks = loadedDoctor
         hasExistingData = !loadedSkills.isEmpty || !loadedPrompts.isEmpty || !loadedProjects.isEmpty ||
             !loadedSources.isEmpty || loadedWorkspace.configured
-        selectedSkillID = loadedSkills.contains(where: { $0.id == previousSkillID }) ? previousSkillID : loadedSkills.first?.id
+        reconcileSkillSelection()
         reconcilePromptSelection()
         selectedProjectID = loadedProjects.contains(where: { $0.id == previousProjectID }) ? previousProjectID : loadedProjects.first?.id
         selectedAgentID = loadedAgents.contains(where: { $0.id == previousAgentID }) ? previousAgentID : loadedAgents.first?.id

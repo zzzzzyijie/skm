@@ -1,33 +1,20 @@
 import AppKit
 import SwiftUI
 
-/// SkillsListView - 技能列表视图
-/// 支持基于名称/描述/标签的本地化模糊搜索、按标签展开/收起的分组列表、
-/// 空数据向导以及无障碍屏幕阅读适配。
+/// Shows the current sidebar category once, intersected with search.
 struct SkillsListView: View {
     @Bindable var model: AppModel
-    @State private var search = ""
     @State private var showsAdd = false
     @State private var addMode = 0
-    @State private var isAllGroupExpanded = true
-    @State private var expandedTags: Set<String> = []
     @State private var showsTagManager = false
 
-    private var filtered: [SkillSummary] {
-        return model.skills.filter {
-            search.isEmpty ||
-                $0.name.localizedStandardContains(search) ||
-                $0.description.localizedStandardContains(search) ||
-                $0.tags.contains(where: { $0.localizedStandardContains(search) })
-        }
-    }
-
     var body: some View {
-        let visibleSkills = filtered
-        let tagGroups = itemsGroupedByTag(visibleSkills, tags: \.tags)
+        @Bindable var browser = model.skillBrowser
+        let visibleSkills = model.visibleSkills
 
         VStack(spacing: 0) {
-            CollectionSearchField(title: "搜索 Skill", text: $search)
+            header
+            CollectionSearchField(title: "搜索名称、描述、标签", text: $browser.query, horizontalInset: 20)
                 .accessibilityIdentifier("skills-search-field")
             Group {
                 if model.skills.isEmpty && !model.isLoading {
@@ -42,106 +29,52 @@ struct SkillsListView: View {
                         }
                         .buttonStyle(.borderedProminent)
                     }
-                } else if visibleSkills.isEmpty && !search.isEmpty {
-                    ContentUnavailableView.search(text: search)
-                } else {
-                    List(selection: $model.selectedSkillID) {
-                        if !visibleSkills.isEmpty {
-                            TagGroupHeader(
-                                title: AppLocalization.string("全部"),
-                                systemImage: "square.stack.3d.up",
-                                count: visibleSkills.count,
-                                isExpanded: isAllGroupExpanded
-                            ) {
-                                isAllGroupExpanded.toggle()
-                            }
-                            .accessibilityIdentifier("skills-group-all")
-
-                            if isAllGroupExpanded {
-                                ForEach(visibleSkills) { skill in
-                                    SkillSummaryRow(skill: skill)
-                                        .libraryListRow(isSelected: model.selectedSkillID == skill.id)
-                                        .accessibilityIdentifier("skill-row-\(skill.id)")
-                                        .tag(skill.id)
-                                        .contextMenu {
-                                            Button("添加 Skill…") {
-                                                addMode = 0
-                                                showsAdd = true
-                                            }
-                                            Button("导入外部 Skill…") {
-                                                addMode = 1
-                                                showsAdd = true
-                                            }
-                                            Divider()
-                                            Button("管理 Skill 标签…") {
-                                                showsTagManager = true
-                                            }
-                                        }
-                                }
-                            }
-
-                            ForEach(tagGroups, id: \.tag) { group in
-                                TagGroupHeader(
-                                    title: group.tag,
-                                    count: group.items.count,
-                                    isExpanded: expandedTags.contains(group.tag)
-                                ) {
-                                    toggleTag(group.tag)
-                                }
-                                .accessibilityIdentifier("skills-group-\(group.tag)")
-
-                                if expandedTags.contains(group.tag) {
-                                    ForEach(group.items) { skill in
-                                        SkillSummaryRow(skill: skill)
-                                            .libraryListRow(isSelected: model.selectedSkillID == skill.id)
-                                            .accessibilityIdentifier("skill-row-\(skill.id)")
-                                            .tag(skill.id)
-                                            .contextMenu {
-                                                Button("添加 Skill…") {
-                                                    addMode = 0
-                                                    showsAdd = true
-                                                }
-                                                Button("导入外部 Skill…") {
-                                                    addMode = 1
-                                                    showsAdd = true
-                                                }
-                                                Divider()
-                                                Button("管理 Skill 标签…") {
-                                                    showsTagManager = true
-                                                }
-                                            }
-                                    }
-                                }
-                            }
+                } else if visibleSkills.isEmpty && !model.isLoading {
+                    ContentUnavailableView {
+                        Label("没有匹配的 Skill", systemImage: "magnifyingglass")
+                    } description: {
+                        Text("试试其他关键词或分类。")
+                    } actions: {
+                        Button("查看全部 Skill") {
+                            browser.query = ""
+                            browser.filter = .all
                         }
                     }
-                    .listStyle(.plain)
-                    .contentMargins(.horizontal, 0, for: .scrollContent)
-                    .scrollContentBackground(.hidden)
-                    .environment(\.defaultMinListRowHeight, 28)
+                } else {
+                    ScrollViewReader { proxy in
+                        List(selection: $model.selectedSkillID) {
+                            ForEach(visibleSkills) { skill in
+                                SkillSummaryRow(skill: skill)
+                                    .libraryListRow(isSelected: model.selectedSkillID == skill.id,
+                                                    horizontalPadding: 12)
+                                    .accessibilityIdentifier("skill-row-\(skill.id)")
+                                    .tag(skill.id).id(skill.id)
+                                    .contextMenu { managementActions }
+                            }
+                        }
+                        .listStyle(.plain)
+                        .contentMargins(.horizontal, 0, for: .scrollContent)
+                        .scrollContentBackground(.hidden)
+                        .onChange(of: model.selectedSkillID) { _, id in
+                            if let id { proxy.scrollTo(id) }
+                        }
+                    }
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            CollectionFooter(count: visibleSkills.count, symbol: "square.stack.3d.up")
-        }
-        .safeAreaInset(edge: .top, spacing: 0) {
-            CollectionHeader(title: "Skills") {
-                Group {
-                    Button("标签管理", systemImage: "tag") {
-                        showsTagManager = true
-                    }
-                    .help("集中管理 Skill 标签")
-                    .accessibilityIdentifier("skills-manage-tags-button")
-
-                    Button("添加 Skill", systemImage: "plus") {
-                        addMode = 0
-                        showsAdd = true
-                    }
-                    .help("添加或导入 Skill")
+            HStack {
+                if browser.query.isEmpty {
+                    Text("共 \(visibleSkills.count) 项")
+                } else {
+                    Text("找到 \(visibleSkills.count) 项 · 当前类共 \(model.skills.filter { browser.filter.includes($0) }.count) 项")
                 }
-                .topToolbarActionStyle()
+                Spacer()
             }
+            .font(.caption).foregroundStyle(.secondary)
+            .padding(.horizontal, 20).padding(.vertical, 12)
         }
+        .onChange(of: visibleSkills, initial: true) { _, _ in model.reconcileSkillSelection() }
+        .onChange(of: model.skillCustomTags) { _, _ in model.reconcileSkillSelection() }
         .sheet(isPresented: $showsAdd) { AddSkillSheet(model: model, initialMode: addMode) }
         .sheet(isPresented: $showsTagManager) { TagManagementSheet(model: model, target: .skills) }
         .onChange(of: model.pendingCommand?.id) { _, _ in
@@ -154,12 +87,36 @@ struct SkillsListView: View {
         }
     }
 
-    private func toggleTag(_ tag: String) {
-        if expandedTags.contains(tag) {
-            expandedTags.remove(tag)
-        } else {
-            expandedTags.insert(tag)
+    private var header: some View {
+        HStack(spacing: 8) {
+            Text(model.skillBrowser.filter.title).font(.headline).lineLimit(1)
+                .help(model.skillBrowser.filter.title)
+            Spacer(minLength: 4)
+            Button("添加 Skill", systemImage: "plus") {
+                addMode = 0
+                showsAdd = true
+            }
+            .help("添加或导入 Skill")
+            Menu("列表选项", systemImage: "ellipsis") { managementActions }
+                .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
         }
+        .labelStyle(.iconOnly).buttonStyle(.borderless)
+        .padding(.horizontal, 20)
+        .frame(height: SKMDesign.libraryToolbarHeight)
+    }
+
+    @ViewBuilder private var managementActions: some View {
+        Button("添加 Skill…") {
+            addMode = 0
+            showsAdd = true
+        }
+        Button("导入外部 Skill…") {
+            addMode = 1
+            showsAdd = true
+        }
+        Divider()
+        Button("管理 Skill 标签…") { showsTagManager = true }
+            .accessibilityIdentifier("skills-manage-tags-button")
     }
 }
 

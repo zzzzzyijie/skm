@@ -7,7 +7,7 @@ struct RootView: View {
     @Bindable var model: AppModel
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var sidebarSelection: AppSection
-    @State private var promptsExpanded = false
+    @State private var expandedSections: Set<AppSection> = []
 
     init(model: AppModel) {
         self.model = model
@@ -100,12 +100,17 @@ struct RootView: View {
                         systemImage: section == .skills ? "tag" : section == .prompts ? "bubble" : "folder",
                         isSelected: sidebarSelection == section,
                         count: collectionCount(section),
-                        disclosureExpanded: section == .prompts ? promptsExpanded : nil,
+                        disclosureExpanded: section == .projects ? nil : expandedSections.contains(section),
                         action: { selectSidebarSection(section) }
                     )
                     .accessibilityIdentifier("navigation-\(section.rawValue.lowercased())")
 
-                    if section == .prompts && promptsExpanded {
+                    if section == .skills && expandedSections.contains(section) {
+                        SkillFilterSidebar(model: model)
+                            .padding(.leading, 18)
+                            .padding(.bottom, 8)
+                    }
+                    if section == .prompts && expandedSections.contains(section) {
                         PromptFilterSidebar(model: model)
                             .padding(.leading, 18)
                             .padding(.bottom, 8)
@@ -113,12 +118,12 @@ struct RootView: View {
                 }
             }
             .padding(.horizontal, 8)
-            .animation(reduceMotion ? nil : .easeInOut(duration: 0.16), value: promptsExpanded)
+            .animation(reduceMotion ? nil : .easeInOut(duration: 0.16), value: expandedSections)
         }
         .padding(.top, 44)
         .onChange(of: model.section) { _, section in
             sidebarSelection = section
-            if section == .prompts { promptsExpanded = true }
+            if section != .projects { expandedSections.insert(section) }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             VStack(spacing: 0) {
@@ -130,8 +135,12 @@ struct RootView: View {
     }
 
     private func selectSidebarSection(_ section: AppSection) {
-        if section == .prompts {
-            promptsExpanded = sidebarSelection == .prompts ? !promptsExpanded : true
+        if section != .projects {
+            if sidebarSelection == section && expandedSections.contains(section) {
+                expandedSections.remove(section)
+            } else {
+                expandedSections.insert(section)
+            }
         }
         guard sidebarSelection != section else { return }
 

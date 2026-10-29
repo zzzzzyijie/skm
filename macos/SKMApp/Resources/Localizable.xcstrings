@@ -1,6 +1,39 @@
 {
   "sourceLanguage" : "zh-Hans",
   "strings" : {
+    "全部 Skill" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All Skills"
+          }
+        }
+      }
+    },
+    "没有匹配的 Skill" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No Matching Skills"
+          }
+        }
+      }
+    },
+    "查看全部 Skill" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "View All Skills"
+          }
+        }
+      }
+    },
     "、" : {
       "extractionState" : "stale",
       "localizations" : {
