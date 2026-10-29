@@ -178,9 +178,11 @@ final class SKMUITests: XCTestCase {
         paste("Review this isolated fixture.", into: editor)
         app.buttons["保存"].click()
         XCTAssertTrue(app.staticTexts["ui-smoke-prompt"].waitForExistence(timeout: 20))
-        XCTAssertTrue(app.buttons["快速查看"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["编辑"].exists)
-        XCTAssertTrue(app.buttons["导出"].exists)
+        XCTAssertTrue(app.buttons["prompt-edit-button"].waitForExistence(timeout: 5))
+        app.descendants(matching: .any)["prompt-more-menu"].click()
+        XCTAssertTrue(app.menuItems["快速查看"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.menuItems["导出 Markdown…"].exists)
+        app.typeKey(.escape, modifierFlags: [])
     }
 
     @MainActor
@@ -330,10 +332,89 @@ final class SKMUITests: XCTestCase {
         save.click()
         XCTAssertTrue(app.staticTexts["draft-protection"].waitForExistence(timeout: 20))
         capture(app, name: "prompt-detail")
-        let copy = app.buttons["复制"].firstMatch
+        let copy = app.buttons["prompt-copy-button"]
         XCTAssertTrue(copy.waitForExistence(timeout: 5))
         copy.click()
-        XCTAssertTrue(app.staticTexts["已复制"].waitForExistence(timeout: 2))
+        XCTAssertEqual(NSPasteboard.general.string(forType: .string), "# Review\n\nA reusable review prompt.\n")
+        XCTAssertEqual(copy.label, "已复制")
+    }
+
+    @MainActor
+    func testPromptClassificationAndEditorInBothLanguages() {
+        for language in ["zh-Hans", "en"] {
+            let app = application(language: language)
+            defer { app.terminate() }
+            app.launchEnvironment["SKM_HOME"] = temporaryRoot.appendingPathComponent("state-\(language)").path
+            app.launchEnvironment["SKM_TEST_APPEARANCE"] = language == "en" ? "DarkAqua" : "Aqua"
+            app.launch()
+            XCTAssertTrue(app.descendants(matching: .any)["navigation-prompts"].waitForExistence(timeout: 10))
+            app.descendants(matching: .any)["navigation-prompts"].click()
+            let saveTitle = language == "en" ? "Save" : "保存"
+            let cancelTitle = language == "en" ? "Cancel" : "取消"
+            for (name, tagged) in [("review", true), ("notes", false)] {
+                app.typeKey("n", modifierFlags: .command)
+                let nameField = app.textFields["prompt-name-field"]
+                XCTAssertTrue(nameField.waitForExistence(timeout: 5))
+                paste(name, into: nameField)
+                paste("Review code and summarize actionable findings.", into: app.textFields["prompt-description-field"])
+                paste("## Review\n\n- Correctness\n- Readability\n\n> Preserve context.\n", into: app.textViews["prompt-body-editor"])
+                if tagged {
+                    app.buttons["prompt-add-tag-button"].click()
+                    let search = app.textFields["prompt-tag-search"]
+                    XCTAssertTrue(search.waitForExistence(timeout: 3))
+                    paste("dev", into: search)
+                    app.buttons["prompt-create-tag-button"].click()
+                    app.buttons[language == "en" ? "Done" : "完成"].click()
+                }
+                app.buttons[saveTitle].click()
+                XCTAssertTrue(app.buttons["prompt-edit-button"].waitForExistence(timeout: 15))
+                if !tagged {
+                    // Creation applies Core defaults; explicitly clearing tags is an update.
+                    app.buttons["prompt-edit-button"].click()
+                    let removeTag = app.buttons["prompt-remove-tag-general"]
+                    XCTAssertTrue(removeTag.waitForExistence(timeout: 5))
+                    removeTag.click()
+                    app.buttons[saveTitle].click()
+                    XCTAssertTrue(app.buttons["prompt-edit-button"].waitForExistence(timeout: 15))
+                }
+            }
+            app.buttons["prompts-filter-tag-dev"].click()
+            XCTAssertTrue(app.descendants(matching: .any)["prompt-row-local/review"].exists)
+            XCTAssertFalse(app.descendants(matching: .any)["prompt-row-local/notes"].exists)
+            capture(app, name: "prompts-classification-\(language)")
+
+            app.buttons["prompt-edit-button"].click()
+            XCTAssertTrue(app.staticTexts["prompt-name-readonly"].waitForExistence(timeout: 5))
+            XCTAssertFalse(app.textFields["prompt-name-field"].exists)
+            XCTAssertFalse(app.buttons[saveTitle].isEnabled)
+            capture(app, name: "prompts-editor-\(language)")
+            app.buttons[cancelTitle].click()
+
+            // A draft-created tag must not appear in the library after cancelling.
+            app.typeKey("n", modifierFlags: .command)
+            XCTAssertTrue(app.textFields["prompt-name-field"].waitForExistence(timeout: 5))
+            app.buttons["prompt-add-tag-button"].click()
+            let tagSearch = app.textFields["prompt-tag-search"]
+            XCTAssertTrue(tagSearch.waitForExistence(timeout: 3))
+            paste("discarded", into: tagSearch)
+            app.buttons["prompt-create-tag-button"].click()
+            app.buttons[language == "en" ? "Done" : "完成"].click()
+            app.buttons[cancelTitle].click()
+            let discard = app.buttons[language == "en" ? "Discard Changes" : "放弃更改"]
+            XCTAssertTrue(discard.waitForExistence(timeout: 3))
+            discard.click()
+            XCTAssertFalse(app.buttons["prompts-filter-tag-discarded"].exists)
+
+            app.typeKey("f", modifierFlags: .command)
+            paste("no-match", into: app.textFields["prompt-search-field"])
+            XCTAssertTrue(app.buttons[language == "en" ? "View All Prompts" : "查看全部 Prompt"].waitForExistence(timeout: 3))
+            XCTAssertFalse(app.buttons["prompt-copy-button"].exists)
+            app.typeKey(.escape, modifierFlags: [])
+            app.buttons["prompts-filter-untagged"].click()
+            XCTAssertTrue(app.descendants(matching: .any)["prompt-row-local/notes"].exists)
+            XCTAssertFalse(app.descendants(matching: .any)["prompt-row-local/review"].exists)
+            app.terminate()
+        }
     }
 
     @MainActor

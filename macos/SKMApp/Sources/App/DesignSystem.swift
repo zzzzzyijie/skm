@@ -235,8 +235,8 @@ struct LibraryActionButtonStyle: ButtonStyle {
 }
 
 extension View {
-    func libraryListRow(isSelected: Bool) -> some View {
-        padding(.horizontal, 10)
+    func libraryListRow(isSelected: Bool, horizontalPadding: CGFloat = 10) -> some View {
+        padding(.horizontal, horizontalPadding)
             .foregroundStyle(.primary)
             .listRowInsets(EdgeInsets())
             .listRowSeparator(.hidden)

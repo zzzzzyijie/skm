@@ -126,6 +126,8 @@ final class AppModel {
     var plan = PlanModel(digest: "", operations: [])
     var selectedSkillID: String?
     var selectedPromptID: String?
+    let promptBrowser = PromptBrowserState()
+
     var selectedProjectID: String?
     var selectedAgentID: String?
     var selectedSourceID: String?
@@ -398,6 +400,27 @@ final class AppModel {
         }
     }
 
+    var visiblePrompts: [PromptSummary] { promptBrowser.results(in: prompts) }
+
+    func reconcilePromptSelection() {
+        if case .tag(let tag) = promptBrowser.filter {
+            let tags = mergedTagPool(customTags: promptCustomTags, tagGroups: prompts.map(\.tags), selectedTags: [])
+            if !tags.contains(where: { tagNamesEqual($0, tag) }) { promptBrowser.filter = .all }
+        }
+        let visible = visiblePrompts
+        if !visible.contains(where: { $0.id == selectedPromptID }) { selectedPromptID = visible.first?.id }
+    }
+
+    private func revealPrompt(_ id: String) {
+        if !visiblePrompts.contains(where: { $0.id == id }) {
+            promptBrowser.filter = .all
+            promptBrowser.query = ""
+            announce(AppLocalization.string("已清除筛选并显示保存的 Prompt"))
+        }
+        selectedPromptID = id
+        promptBrowser.revealToken = UUID()
+    }
+
     /// 新建或更新 Prompt 模板
     @discardableResult
     func savePrompt(
@@ -409,18 +432,25 @@ final class AppModel {
         variables: [PromptVariable],
         baseHash: String?
     ) async -> Bool {
-        await mutateResult(success: id == nil ? AppLocalization.string("Prompt 已创建") : AppLocalization.string("Prompt 已保存"), handlesConflict: true) {
+        var savedID: String?
+        let succeeded = await mutateResult(success: id == nil ? AppLocalization.string("Prompt 已创建") : AppLocalization.string("Prompt 已保存"), handlesConflict: true) {
             let params = PromptWriteParams(id: id, content: nil, name: name, description: description, tags: tags, body: body, variables: variables, source: "local", baseHash: baseHash)
-            let _: PromptSummary = try await self.core.call(id == nil ? "prompts.create" : "prompts.update", params: params)
+            let saved: PromptSummary = try await self.core.call(id == nil ? "prompts.create" : "prompts.update", params: params)
+            savedID = saved.id
         }
+        if succeeded, let savedID { revealPrompt(savedID) }
+        return succeeded
     }
 
-    /// 导入外部 Markdown 文本为 Prompt
+    /// Import through Core, then reveal the returned identity after reloading.
     func importPrompt(content: String) async {
-        await mutate(success: AppLocalization.string("Prompt 已导入")) {
+        var savedID: String?
+        let succeeded = await mutateResult(success: AppLocalization.string("Prompt 已导入")) {
             let params = PromptWriteParams(id: nil, content: content, name: "", description: "", tags: [], body: "", variables: [], source: "local", baseHash: nil)
-            let _: PromptSummary = try await self.core.call("prompts.create", params: params)
+            let saved: PromptSummary = try await self.core.call("prompts.create", params: params)
+            savedID = saved.id
         }
+        if succeeded, let savedID { revealPrompt(savedID) }
     }
 
     /// 参数化实时渲染 Prompt 模板
@@ -894,7 +924,6 @@ final class AppModel {
     /// 从 Core 重新拉取所有全量状态，并尽可能维持各业务分区的选中项
     private func reload() async throws {
         let previousSkillID = selectedSkillID
-        let previousPromptID = selectedPromptID
         let previousProjectID = selectedProjectID
         let previousAgentID = selectedAgentID
         let previousSourceID = selectedSourceID
@@ -920,7 +949,7 @@ final class AppModel {
         hasExistingData = !loadedSkills.isEmpty || !loadedPrompts.isEmpty || !loadedProjects.isEmpty ||
             !loadedSources.isEmpty || loadedWorkspace.configured
         selectedSkillID = loadedSkills.contains(where: { $0.id == previousSkillID }) ? previousSkillID : loadedSkills.first?.id
-        selectedPromptID = loadedPrompts.contains(where: { $0.id == previousPromptID }) ? previousPromptID : loadedPrompts.first?.id
+        reconcilePromptSelection()
         selectedProjectID = loadedProjects.contains(where: { $0.id == previousProjectID }) ? previousProjectID : loadedProjects.first?.id
         selectedAgentID = loadedAgents.contains(where: { $0.id == previousAgentID }) ? previousAgentID : loadedAgents.first?.id
         selectedSourceID = loadedSources.contains(where: { $0.id == previousSourceID }) ? previousSourceID : loadedSources.first?.id

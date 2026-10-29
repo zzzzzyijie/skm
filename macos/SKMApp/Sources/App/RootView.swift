@@ -7,6 +7,7 @@ struct RootView: View {
     @Bindable var model: AppModel
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var sidebarSelection: AppSection
+    @State private var promptsExpanded = false
 
     init(model: AppModel) {
         self.model = model
@@ -53,11 +54,11 @@ struct RootView: View {
                 .frame(minWidth: 180, idealWidth: SKMDesign.librarySidebarWidth, maxWidth: SKMDesign.librarySidebarWidth)
             Rectangle().fill(SKMDesign.libraryBorder).frame(width: 1)
             content
-                .frame(minWidth: 280, idealWidth: SKMDesign.libraryListWidth, maxWidth: SKMDesign.libraryListWidth)
+                .frame(minWidth: 280, idealWidth: model.section == .prompts ? PromptDesign.listWidth : SKMDesign.libraryListWidth, maxWidth: model.section == .prompts ? PromptDesign.listWidth : SKMDesign.libraryListWidth)
                 .background(SKMDesign.detailCanvas)
             Rectangle().fill(SKMDesign.libraryBorder).frame(width: 1)
             detail
-                .frame(minWidth: 480, maxWidth: .infinity, maxHeight: .infinity)
+                .frame(minWidth: model.section == .prompts ? 440 : 480, maxWidth: .infinity, maxHeight: .infinity)
                 .background(SKMDesign.detailCanvas)
         }
         .ignoresSafeArea(.container, edges: .top)
@@ -91,25 +92,33 @@ struct RootView: View {
     }
 
     private var sidebar: some View {
-        VStack(spacing: 4) {
-            ForEach(AppSection.allCases) { section in
-                SidebarNavigationButton(
-                    title: section.title,
-                    systemImage: section == .skills ? "tag" : section == .prompts ? "bubble" : "folder",
-                    isSelected: sidebarSelection == section,
-                    count: collectionCount(section),
-                    action: { selectSidebarSection(section) }
-                )
-                .accessibilityIdentifier("navigation-\(section.rawValue.lowercased())")
+        ScrollView {
+            VStack(spacing: 4) {
+                ForEach(AppSection.allCases) { section in
+                    SidebarNavigationButton(
+                        title: section.title,
+                        systemImage: section == .skills ? "tag" : section == .prompts ? "bubble" : "folder",
+                        isSelected: sidebarSelection == section,
+                        count: collectionCount(section),
+                        disclosureExpanded: section == .prompts ? promptsExpanded : nil,
+                        action: { selectSidebarSection(section) }
+                    )
+                    .accessibilityIdentifier("navigation-\(section.rawValue.lowercased())")
+
+                    if section == .prompts && promptsExpanded {
+                        PromptFilterSidebar(model: model)
+                            .padding(.leading, 18)
+                            .padding(.bottom, 8)
+                    }
+                }
             }
-            Spacer(minLength: 0)
+            .padding(.horizontal, 8)
+            .animation(reduceMotion ? nil : .easeInOut(duration: 0.16), value: promptsExpanded)
         }
-        .padding(.leading, 8)
-        .padding(.trailing, 40)
         .padding(.top, 44)
         .onChange(of: model.section) { _, section in
-            guard sidebarSelection != section else { return }
             sidebarSelection = section
+            if section == .prompts { promptsExpanded = true }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             VStack(spacing: 0) {
@@ -121,6 +130,9 @@ struct RootView: View {
     }
 
     private func selectSidebarSection(_ section: AppSection) {
+        if section == .prompts {
+            promptsExpanded = sidebarSelection == .prompts ? !promptsExpanded : true
+        }
         guard sidebarSelection != section else { return }
 
         // Paint the lightweight sidebar selection before rebuilding both content columns.
@@ -165,6 +177,7 @@ struct CollectionSearchField: View {
     @Binding var text: String
     var tint: Color = .accentColor
     var controlHeight: CGFloat = 28
+    var horizontalInset: CGFloat = 16
     @FocusState private var isFocused: Bool
 
     var body: some View {
@@ -208,7 +221,7 @@ struct CollectionSearchField: View {
             RoundedRectangle(cornerRadius: 8)
                 .strokeBorder(isFocused ? tint : .clear, lineWidth: 1)
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, horizontalInset)
         .padding(.top, 8)
         .padding(.bottom, 8)
         .background(SKMDesign.detailCanvas)

@@ -84,6 +84,20 @@
     "⌘F" : {
 
     },
+    "⌘S" : {
+
+    },
+    "1–64 位小写字母、数字和连字符，首尾须为字母或数字。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use 1–64 lowercase letters, numbers, or hyphens. Start and end with a letter or number."
+          }
+        }
+      }
+    },
     "1/2 步：输入仓库" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -353,6 +367,17 @@
     },
     "my-agent" : {
 
+    },
+    "Prompt 分类" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prompt Library"
+          }
+        }
+      }
     },
     "Prompt 已保存" : {
       "extractionState" : "stale",
@@ -1114,6 +1139,17 @@
         }
       }
     },
+    "保存提示词，随时查找、阅读和复制。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save prompts to find, read, and copy whenever you need them."
+          }
+        }
+      }
+    },
     "保存时会校验 baseHash，防止覆盖来自 CLI 的并发修改。" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1289,6 +1325,17 @@
         }
       }
     },
+    "全部 Prompt" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All Prompts"
+          }
+        }
+      }
+    },
     "共 %@ 项" : {
 
     },
@@ -1348,6 +1395,7 @@
       }
     },
     "内容" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1467,12 +1515,46 @@
         }
       }
     },
+    "列表选项" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "List Options"
+          }
+        }
+      }
+    },
     "创建可复用、带变量定义的提示词。" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Create reusable prompts with variable definitions."
+          }
+        }
+      }
+    },
+    "创建后名称固定" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The name is fixed after creation"
+          }
+        }
+      }
+    },
+    "创建标签“%@”" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Create Tag “%@”"
           }
         }
       }
@@ -1825,11 +1907,45 @@
       }
     },
     "名称" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Name"
+          }
+        }
+      }
+    },
+    "名称 *" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Name *"
+          }
+        }
+      }
+    },
+    "名称升序" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Name, A to Z"
+          }
+        }
+      }
+    },
+    "名称降序" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Name, Z to A"
           }
         }
       }
@@ -2021,6 +2137,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Remove the project original after copying"
+          }
+        }
+      }
+    },
+    "复制正文" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy Content"
           }
         }
       }
@@ -2219,6 +2346,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Export"
+          }
+        }
+      }
+    },
+    "导出 Markdown…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Export Markdown…"
           }
         }
       }
@@ -2469,6 +2607,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Detected, not enabled"
+          }
+        }
+      }
+    },
+    "已清除筛选并显示保存的 Prompt" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Filters cleared to reveal the saved Prompt"
           }
         }
       }
@@ -2776,6 +2925,27 @@
         }
       }
     },
+    "找到 %@ 项 · 当前类共 %@ 项" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "找到 %1$@ 项 · 当前类共 %2$@ 项"
+          }
+        }
+      }
+    },
+    "找到 %lld 项 · 当前类共 %lld 项" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld results · %2$lld in this category"
+          }
+        }
+      }
+    },
     "技能来源" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -2831,12 +3001,46 @@
         }
       }
     },
+    "排序" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sort"
+          }
+        }
+      }
+    },
     "描述" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Description"
+          }
+        }
+      }
+    },
+    "描述 *" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Description *"
+          }
+        }
+      }
+    },
+    "描述不能超过 1024 字节。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The description must not exceed 1024 bytes."
           }
         }
       }
@@ -2863,6 +3067,17 @@
         }
       }
     },
+    "搜索名称、描述、标签" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Search names, descriptions, tags"
+          }
+        }
+      }
+    },
     "搜索名称、描述或标签" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -2870,6 +3085,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Search names, descriptions, or tags"
+          }
+        }
+      }
+    },
+    "搜索或新建标签" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Find or Create a Tag"
           }
         }
       }
@@ -3060,6 +3286,17 @@
         }
       }
     },
+    "无法读取 Prompt" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unable to Read Prompt"
+          }
+        }
+      }
+    },
     "显示名称（可选）" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -3132,6 +3369,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "More"
+          }
+        }
+      }
+    },
+    "更多操作" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "More Actions"
           }
         }
       }
@@ -3209,6 +3457,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Effective Path"
+          }
+        }
+      }
+    },
+    "未保存的更改" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unsaved Changes"
+          }
+        }
+      }
+    },
+    "未分类" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Untagged"
           }
         }
       }
@@ -3307,6 +3577,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Not Selected"
+          }
+        }
+      }
+    },
+    "未选择标签时使用资料库默认标签。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "When no tags are selected, the library defaults are applied."
           }
         }
       }
@@ -3432,6 +3713,17 @@
         }
       }
     },
+    "查找标签" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Find Tags"
+          }
+        }
+      }
+    },
     "查看修改历史快照、Diff 与回滚" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3439,6 +3731,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "View previous versions, compare changes, and restore"
+          }
+        }
+      }
+    },
+    "查看全部 Prompt" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "View All Prompts"
           }
         }
       }
@@ -3529,6 +3832,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Manage Tags"
+          }
+        }
+      }
+    },
+    "标签限 1–32 个字母、数字或内部连字符。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use 1–32 letters, numbers, or internal hyphens for a tag."
           }
         }
       }
@@ -3789,6 +4103,7 @@
       }
     },
     "正在读取…" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3844,6 +4159,39 @@
         }
       }
     },
+    "正文" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Content"
+          }
+        }
+      }
+    },
+    "正文 *" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Content *"
+          }
+        }
+      }
+    },
+    "正文显示方式" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Content View"
+          }
+        }
+      }
+    },
     "此 Skill 没有正文内容。" : {
 
     },
@@ -3854,6 +4202,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "No Git Sources"
+          }
+        }
+      }
+    },
+    "没有匹配的 Prompt" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No Matching Prompts"
           }
         }
       }
@@ -4252,6 +4611,17 @@
         }
       }
     },
+    "源文" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Source"
+          }
+        }
+      }
+    },
     "源目录当前不可用，正在读取安全快照" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -4503,6 +4873,17 @@
         }
       }
     },
+    "移除 Prompt？" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove Prompt?"
+          }
+        }
+      }
+    },
     "移除 Skill" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -4564,6 +4945,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Remove Tag"
+          }
+        }
+      }
+    },
+    "移除标签 %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove tag %@"
           }
         }
       }
@@ -4723,7 +5115,6 @@
       }
     },
     "编辑" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4919,6 +5310,17 @@
         }
       }
     },
+    "试试其他关键词或分类。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Try another keyword or category."
+          }
+        }
+      }
+    },
     "该标签已存在，可直接在上方选择。" : {
       "localizations" : {
         "en" : {
@@ -4994,6 +5396,39 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Enter a name, description, and content before saving."
+          }
+        }
+      }
+    },
+    "请填写描述。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enter a description."
+          }
+        }
+      }
+    },
+    "请填写正文，支持 Markdown。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enter content. Markdown is supported."
+          }
+        }
+      }
+    },
+    "请检查名称格式。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Check the name format."
           }
         }
       }
@@ -5209,6 +5644,17 @@
     },
     "还没有已管理的 Agent，请先在设置中启用。" : {
 
+    },
+    "这个名称已存在。" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This name already exists."
+          }
+        }
+      }
     },
     "这些 Agent 可以使用我的 Skill" : {
       "extractionState" : "manual",
@@ -5813,6 +6259,9 @@
           }
         }
       }
+    },
+    "预览" : {
+
     },
     "预览个人 Git 同步…" : {
       "extractionState" : "stale",

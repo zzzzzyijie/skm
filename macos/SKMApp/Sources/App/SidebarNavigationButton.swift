@@ -6,6 +6,7 @@ struct SidebarNavigationButton: View {
     let systemImage: String
     let isSelected: Bool
     var count: Int?
+    var disclosureExpanded: Bool?
     let action: () -> Void
 
     @Environment(\.colorScheme) private var colorScheme
@@ -53,9 +54,10 @@ struct SidebarNavigationButton: View {
         .buttonStyle(.plain)
         .focused($isFocused)
         .onHover { isHovered = $0 }
-        // Native source lists select on mouse-down; SwiftUI buttons otherwise wait for mouse-up.
+        // Native source lists select on mouse-down. Disclosure uses only the Button action
+        // so a single click cannot toggle once on mouse-down and again on mouse-up.
         .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
+            disclosureExpanded == nil ? DragGesture(minimumDistance: 0)
                 .onChanged { _ in
                     guard !hasTriggeredPointerDown else { return }
                     hasTriggeredPointerDown = true
@@ -63,10 +65,12 @@ struct SidebarNavigationButton: View {
                 }
                 .onEnded { _ in
                     hasTriggeredPointerDown = false
-                }
+                } : nil
         )
         .accessibilityLabel(title)
-        .accessibilityValue(count.map(String.init) ?? "")
+        .accessibilityValue(disclosureExpanded.map {
+            AppLocalization.string($0 ? "已展开" : "已收起")
+        } ?? count.map(String.init) ?? "")
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 

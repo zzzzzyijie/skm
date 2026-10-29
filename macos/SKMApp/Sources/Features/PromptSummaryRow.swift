@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Prompts 标签分组中复用的单个提示词摘要行。
+/// 当前筛选结果中的提示词摘要。
 struct PromptSummaryRow: View {
     let prompt: PromptSummary
 
@@ -9,22 +9,15 @@ struct PromptSummaryRow: View {
             Text(prompt.name)
                 .font(.system(size: 14, weight: .semibold))
                 .lineLimit(1)
-                .truncationMode(.middle)
+                .truncationMode(.tail)
+                .help(prompt.name)
 
             Text(prompt.description.isEmpty ? AppLocalization.string("无描述") : prompt.description)
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
-                .lineLimit(2)
-
-            if !prompt.tags.isEmpty {
-                Label(prompt.tags.joined(separator: " · "), systemImage: "tag")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
+                .lineLimit(2, reservesSpace: true)
         }
-        .padding(.top, 13)
-        .padding(.bottom, 16)
+        .padding(.vertical, 12)
         .frame(maxWidth: .infinity, alignment: .leading)
         .overlay(alignment: .bottom) {
             Rectangle().fill(SKMDesign.libraryBorder.opacity(0.45)).frame(height: 1)

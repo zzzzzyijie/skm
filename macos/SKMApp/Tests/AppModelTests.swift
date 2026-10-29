@@ -4,6 +4,120 @@ import XCTest
 
 @MainActor
 final class AppModelTests: XCTestCase {
+    func testPromptFiltersIntersectSearchAndKeepSelectionVisible() {
+        let model = AppModel(core: StubCore(), preferences: isolatedPreferences(), monitorsFiles: false)
+        let first = prompt("review-2", tags: ["Dev", "review"])
+        let second = prompt("review-10", tags: ["Dev"])
+        let untagged = prompt("notes", tags: [])
+        model.prompts = [second, untagged, first]
+        model.selectedPromptID = untagged.id
+        model.promptBrowser.filter = .tag("dev")
+        model.reconcilePromptSelection()
+        XCTAssertEqual(model.visiblePrompts.map(\.name), ["review-2", "review-10"])
+        XCTAssertEqual(model.selectedPromptID, first.id)
+        model.promptBrowser.query = "review-10"
+        model.reconcilePromptSelection()
+        XCTAssertEqual(model.selectedPromptID, second.id)
+        model.promptBrowser.query = "missing"
+        model.reconcilePromptSelection()
+        XCTAssertNil(model.selectedPromptID)
+        model.promptBrowser.query = ""
+        model.promptBrowser.filter = .untagged
+        model.reconcilePromptSelection()
+        XCTAssertEqual(model.visiblePrompts.map(\.id), [untagged.id])
+        model.promptBrowser.filter = .tag("deleted")
+        model.reconcilePromptSelection()
+        XCTAssertEqual(model.promptBrowser.filter, .all)
+    }
+
+    func testPromptCustomEmptyCategorySurvivesReconciliation() {
+        let model = AppModel(core: StubCore(), preferences: isolatedPreferences(), monitorsFiles: false)
+        model.registerCustomTag("Empty", for: .prompts)
+        model.promptBrowser.filter = .tag("Empty")
+        model.reconcilePromptSelection()
+        XCTAssertEqual(model.promptBrowser.filter, .tag("Empty"))
+        XCTAssertNil(model.selectedPromptID)
+    }
+
+    func testCreatingAndImportingPromptRevealReturnedIdentityAfterReload() async throws {
+        let old = prompt("old", tags: ["existing"])
+        let created = prompt("new", tags: [])
+        let encode = JSONEncoder()
+        let core = StubCore(responses: [
+            "prompts.list": String(decoding: try encode.encode([old, created]), as: UTF8.self),
+            "prompts.create": String(decoding: try encode.encode(created), as: UTF8.self),
+        ])
+        let model = AppModel(core: core, preferences: isolatedPreferences(), monitorsFiles: false)
+        model.prompts = [old]
+        model.selectedPromptID = old.id
+        model.promptBrowser.filter = .tag("existing")
+        model.promptBrowser.query = "old"
+        let saved = await model.savePrompt(id: nil, name: "new", description: "New", body: "  Raw\n", tags: [], variables: [], baseHash: nil)
+        XCTAssertTrue(saved)
+        XCTAssertEqual(model.selectedPromptID, created.id)
+        XCTAssertEqual(model.promptBrowser.filter, .all)
+        XCTAssertEqual(model.promptBrowser.query, "")
+        model.selectedPromptID = old.id
+        model.promptBrowser.query = "old"
+        await model.importPrompt(content: "fixture")
+        XCTAssertEqual(model.selectedPromptID, created.id)
+        XCTAssertEqual(model.visiblePrompts.count, 2)
+    }
+
+    func testFailedPromptSavePreservesSearchAndSelection() async {
+        let model = AppModel(core: StubCore(), preferences: isolatedPreferences(), monitorsFiles: false)
+        let item = prompt("old", tags: ["dev"])
+        model.prompts = [item]
+        model.selectedPromptID = item.id
+        model.promptBrowser.query = "old"
+        let saved = await model.savePrompt(id: nil, name: "new", description: "New", body: "Body", tags: [], variables: [], baseHash: nil)
+        XCTAssertFalse(saved)
+        XCTAssertEqual(model.selectedPromptID, item.id)
+        XCTAssertEqual(model.promptBrowser.query, "old")
+    }
+
+    func testPromptDraftValidationAndCopyNameBoundaries() {
+        var draft = PromptDraft(details: nil, initialTags: ["dev"])
+        XCTAssertEqual(draft.tags, ["dev"])
+        draft.description = "Description"
+        draft.body = " Body\n"
+        for name in ["x", "code-review", String(repeating: "a", count: 64)] {
+            draft.name = name
+            XCTAssertTrue(draft.isValid, name)
+        }
+        for name in ["", "-a", "a-", "A", "a_b", "a\n", String(repeating: "a", count: 65)] {
+            draft.name = name
+            XCTAssertFalse(draft.isValid, name)
+        }
+        draft.name = String(repeating: "a", count: 64)
+        let firstCopy = draft.copyName(existing: [])
+        let secondCopy = draft.copyName(existing: [prompt(firstCopy, tags: [])])
+        XCTAssertNotEqual(firstCopy, secondCopy)
+        XCTAssertLessThanOrEqual(secondCopy.count, 64)
+        draft.description = String(repeating: "中", count: 342)
+        XCTAssertFalse(draft.validDescription)
+        XCTAssertTrue(PromptDraft.validTagName("开发-ＵＩ"))
+        for tag in ["", "two words", "a-", String(repeating: "中", count: 33)] {
+            XCTAssertFalse(PromptDraft.validTagName(tag), tag)
+        }
+    }
+
+    func testMarkdownPreservesCodeAndRendersListsAndQuotes() {
+        let blocks = MarkdownBlock.parse("## Review\n\n- First\n  2. Nested\n> Keep context\n> Second line\n\n````swift\n- literal\n```\n````\nAfter")
+        XCTAssertEqual(blocks, [
+            .heading(2, "Review"),
+            .listItem(marker: "•", text: "First", depth: 0),
+            .listItem(marker: "2.", text: "Nested", depth: 1),
+            .quote("Keep context\nSecond line"),
+            .code("- literal\n```"),
+            .paragraph("After"),
+        ])
+    }
+
+    private func prompt(_ name: String, tags: [String]) -> PromptSummary {
+        PromptSummary(id: "local/\(name)", name: name, description: "Description", tags: tags, source: "local", hash: name, path: "/tmp/\(name)", variables: [])
+    }
+
     func testFirstLaunchRecognizesEmptyLibrary() async {
         let preferences = isolatedPreferences()
         let model = AppModel(
