@@ -396,7 +396,7 @@ final class SKMUITests: XCTestCase {
             app.buttons["prompt-create-tag-button"].click()
             app.buttons[language == "en" ? "Done" : "完成"].click()
             app.buttons[cancelTitle].click()
-            let discard = app.buttons[language == "en" ? "Discard Changes" : "放弃更改"]
+            let discard = app.windows.buttons[language == "en" ? "Discard Changes" : "放弃更改"].firstMatch
             XCTAssertTrue(discard.waitForExistence(timeout: 3))
             discard.click()
             XCTAssertFalse(app.buttons["prompts-filter-tag-discarded"].exists)
