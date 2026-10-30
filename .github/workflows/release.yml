@@ -28,7 +28,17 @@ jobs:
             -scheme SKM \
             -configuration Debug \
             -derivedDataPath "$RUNNER_TEMP/skm-tests" \
+            -resultBundlePath "$RUNNER_TEMP/skm-tests.xcresult" \
             test
+
+      - name: Preserve failed macOS test results
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: macos-test-results
+          path: ${{ runner.temp }}/skm-tests.xcresult
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Verify macOS release secrets
         env:

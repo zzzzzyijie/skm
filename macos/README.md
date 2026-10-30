@@ -5,7 +5,7 @@
 Developer ID、Apple 公证、stapling 与 Gatekeeper 的完整实操见
 [macOS 原生 App 签名、公证与发布流程](../docs/Mac原生App签名公证与发布流程.md)。
 
-当前工程版本为 `0.6.1`，Phase 1 至 Phase 3 均已完成：
+当前工程版本为 `0.6.2`，Phase 1 至 Phase 3 均已完成：
 
 - 支持在设置中选择跟随系统、简体中文或英文，并即时切换界面语言；
 - SwiftUI 三栏主界面聚焦 Skills、Prompts、Projects，侧栏底部和 `⌘,` 可打开独立 Settings 窗口；
@@ -102,7 +102,7 @@ App 正式运行时不设置这些变量，Core 会使用与 CLI 相同的 `~/.s
 
 ```bash
 sh macos/Scripts/package-release.sh \
-  --version 0.6.1 \
+  --version 0.6.2 \
   --build 3 \
   --output dist/macos \
   --preview

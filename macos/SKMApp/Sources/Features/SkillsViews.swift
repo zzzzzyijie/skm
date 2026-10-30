@@ -100,6 +100,7 @@ struct SkillsListView: View {
             Menu("列表选项", systemImage: "ellipsis") { managementActions }
                 .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
                 .libraryToolbarIcon()
+                .accessibilityIdentifier("skills-list-options")
         }
         .labelStyle(.iconOnly).buttonStyle(.borderless)
         .padding(.horizontal, SKMDesign.libraryListInset)

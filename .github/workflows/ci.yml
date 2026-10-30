@@ -53,12 +53,22 @@ jobs:
             -scheme SKM \
             -configuration Debug \
             -derivedDataPath "$RUNNER_TEMP/skm-tests" \
+            -resultBundlePath "$RUNNER_TEMP/skm-tests.xcresult" \
             test
+
+      - name: Preserve failed macOS test results
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: macos-test-results
+          path: ${{ runner.temp }}/skm-tests.xcresult
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Build ad-hoc signed release preview
         run: |
           sh macos/Scripts/package-release.sh \
-            --version 0.6.0 \
+            --version 0.6.2 \
             --build "$GITHUB_RUN_NUMBER" \
             --output "$RUNNER_TEMP/skm-release-preview" \
             --preview

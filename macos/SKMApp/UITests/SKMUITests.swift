@@ -186,7 +186,7 @@ final class SKMUITests: XCTestCase {
     }
 
     @MainActor
-    func testChineseTagGroupsRenderAsSeparateListRows() throws {
+    func testChineseSkillSidebarFiltersWithoutDuplicatingRows() throws {
         let tagSuffix = String(UUID().uuidString.prefix(8)).lowercased()
         let shortTag = "开发-\(tagSuffix)"
         let longTag = "这是一个用于验证窄窗口截断表现的超长标签名称-\(tagSuffix)"
@@ -222,22 +222,26 @@ final class SKMUITests: XCTestCase {
         app.buttons["add-skill-tags-add-button"].click()
         app.buttons["导入"].click()
 
-        let allHeader = app.descendants(matching: .any)["skills-group-all"]
+        app.descendants(matching: .any)["navigation-skills"].click()
+        let allHeader = app.buttons["skills-filter-all"]
         let skillRow = app.descendants(matching: .any)["skill-row-local/tag-layout-skill"].firstMatch
-        let longTagHeader = app.descendants(matching: .any)["skills-group-\(longTag)"]
+        let longTagHeader = app.buttons["skills-filter-tag-\(longTag)"]
 
         XCTAssertTrue(allHeader.waitForExistence(timeout: 8))
         XCTAssertTrue(skillRow.waitForExistence(timeout: 8))
         XCTAssertTrue(longTagHeader.waitForExistence(timeout: 8))
-        XCTAssertLessThanOrEqual(allHeader.frame.maxY, skillRow.frame.minY)
-        XCTAssertLessThanOrEqual(skillRow.frame.maxY, longTagHeader.frame.minY)
-
-        allHeader.click()
-        XCTAssertFalse(skillRow.waitForExistence(timeout: 1))
-
+        XCTAssertLessThanOrEqual(longTagHeader.frame.maxX, skillRow.frame.minX)
         longTagHeader.click()
         XCTAssertTrue(skillRow.waitForExistence(timeout: 3))
-        XCTAssertLessThanOrEqual(longTagHeader.frame.maxY, skillRow.frame.minY)
+        XCTAssertEqual(app.descendants(matching: .any).matching(identifier: "skill-row-local/tag-layout-skill").count, 1)
+
+        app.descendants(matching: .any)["navigation-skills"].click()
+        XCTAssertFalse(allHeader.exists)
+        XCTAssertTrue(skillRow.exists)
+        app.descendants(matching: .any)["navigation-skills"].click()
+        XCTAssertTrue(allHeader.waitForExistence(timeout: 3))
+        allHeader.click()
+        XCTAssertTrue(skillRow.exists)
     }
 
     @MainActor
@@ -421,7 +425,8 @@ final class SKMUITests: XCTestCase {
             XCTAssertTrue(app.sheets.firstMatch.waitForExistence(timeout: 3))
             capture(app, name: "\(appearance)-add-skill")
             app.typeKey(.escape, modifierFlags: [])
-            app.descendants(matching: .any)["skills-manage-tags-button"].click()
+            app.descendants(matching: .any)["skills-list-options"].click()
+            app.menuItems[appearance == "Aqua" ? "管理 Skill 标签…" : "Manage Skill Tags…"].click()
             XCTAssertTrue(app.sheets.firstMatch.waitForExistence(timeout: 3))
             capture(app, name: "\(appearance)-tags")
             app.windows.buttons[appearance == "Aqua" ? "完成" : "Done"].firstMatch.click()

@@ -12,8 +12,8 @@ let project = Project(
     settings: .settings(base: [
         "MACOSX_DEPLOYMENT_TARGET": "14.0",
         "SWIFT_VERSION": "6.0",
-        "CURRENT_PROJECT_VERSION": "3",
-        "MARKETING_VERSION": "0.6.1",
+        "CURRENT_PROJECT_VERSION": "4",
+        "MARKETING_VERSION": "0.6.2",
         "SKM_SPARKLE_FEED_URL": "https://github.com/zzzzzyijie/skm/releases/latest/download/appcast.xml",
         "SKM_SPARKLE_PUBLIC_KEY": "",
         "ENABLE_USER_SCRIPT_SANDBOXING": "NO",
