@@ -1,89 +1,40 @@
 import AppKit
 import SwiftUI
 
-/// ProjectsListView - 项目列表视图
-/// 管理在本机登记的开发项目仓库，实时展示各项目的 Skill 总数与部署生效数，
-/// 支持右键在 Finder 中快速定位或安全注销项目登记。
-struct ProjectsListView: View {
+/// Hosts project details and commands; project selection lives in the sidebar.
+struct ProjectsView: View {
     @Bindable var model: AppModel
     @State private var showsAddProject = false
     @State private var projectToRemove: ProjectModel?
-    @State private var search = ""
-
-    private var filteredProjects: [ProjectModel] {
-        model.projects.filter {
-            search.isEmpty || $0.id.localizedStandardContains(search) || $0.path.localizedStandardContains(search)
-        }
-    }
 
     var body: some View {
-        VStack(spacing: 0) {
-            CollectionSearchField(title: "搜索项目", text: $search)
-                .accessibilityIdentifier("projects-search-field")
-            Group {
-                if model.projects.isEmpty {
-                    ContentUnavailableView {
-                        Label("没有已注册项目", systemImage: "folder")
-                    } description: {
-                        Text("添加一个本机项目，扫描各 Agent 的 Skills，或把我的 Skill 导入项目。")
-                    } actions: {
-                        Button("添加项目…") { showsAddProject = true }
-                            .buttonStyle(.borderedProminent)
-                    }
-                } else if filteredProjects.isEmpty {
-                    ContentUnavailableView.search(text: search)
-                } else {
-                    List(filteredProjects) { project in
-                        let isSelected = model.selectedProjectID == project.id
-
-                        Button {
-                            model.selectedProjectID = project.id
-                        } label: {
-                            HStack(alignment: .center, spacing: 10) {
-                                Image(systemName: "folder")
-                                    .font(.body)
-                                    .foregroundStyle(isSelected ? SKMDesign.libraryGreen : Color.orange)
-                                    .frame(width: 16)
-                                    .accessibilityHidden(true)
-                                Text(project.id)
-                                    .font(.system(size: 14, weight: .semibold))
-                                    .foregroundStyle(isSelected ? Color(red: 0.10, green: 0.49, blue: 0.16) : Color.primary)
-                                    .lineLimit(1)
-                            }
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.horizontal, 10)
-                            .frame(height: 48)
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .listRowInsets(EdgeInsets())
-                        .listRowSeparator(.hidden)
-                        .listRowBackground(isSelected ? SKMDesign.libraryGreen.opacity(0.11) : Color.clear)
-                        .help(project.path)
-                        .accessibilityElement(children: .combine)
-                        .accessibilityAddTraits(isSelected ? .isSelected : [])
-                        .contextMenu {
-                            Button("在 Finder 中显示") { NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: project.path) }
-                            Divider()
-                            Button("注销项目", role: .destructive) { projectToRemove = project }
+        Group {
+            if model.projects.isEmpty {
+                Group {
+                    if model.isLoading {
+                        ProgressView("正在读取…")
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else {
+                        ContentUnavailableView {
+                            Label("没有已注册项目", systemImage: "folder")
+                        } description: {
+                            Text("添加一个本机项目，扫描各 Agent 的 Skills，或把我的 Skill 导入项目。")
+                        } actions: {
+                            Button("添加项目…") { showsAddProject = true }
+                                .buttonStyle(.borderedProminent)
                         }
                     }
-                    .listStyle(.plain)
-                    .contentMargins(.horizontal, 0, for: .scrollContent)
-                    .scrollContentBackground(.hidden)
                 }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            CollectionFooter(count: filteredProjects.count, symbol: "folder")
-        }
-        .safeAreaInset(edge: .top, spacing: 0) {
-            CollectionHeader(title: "Projects") {
-                Button("添加项目", systemImage: "plus") {
-                    showsAddProject = true
+                .safeAreaInset(edge: .top, spacing: 0) {
+                    CollectionHeader(title: "Projects") {
+                        Button("添加项目", systemImage: "plus") { showsAddProject = true }
+                            .help("登记本机项目目录")
+                            .accessibilityIdentifier("add-project-button")
+                            .libraryToolbarIcon()
+                    }
                 }
-                .help("登记本机项目目录")
-                .accessibilityIdentifier("add-project-button")
-                .topToolbarActionStyle()
+            } else {
+                ProjectDetailView(model: model)
             }
         }
         .sheet(isPresented: $showsAddProject) { AddProjectSheet(model: model) }
@@ -98,7 +49,7 @@ struct ProjectsListView: View {
         } message: {
             Text("只移除登记信息，不删除项目文件；仍有受管部署时会安全阻止。")
         }
-        .onChange(of: model.pendingCommand?.id) { _, _ in
+        .onChange(of: model.pendingCommand?.id, initial: true) { _, _ in
             guard let command = model.pendingCommand, command.section == .projects else { return }
             if command.kind == .create || command.kind == .importItem { showsAddProject = true }
             if command.kind == .deleteSelection, let id = model.selectedProjectID {
@@ -234,7 +185,21 @@ struct ProjectDetailView: View {
                         }
                         .help("在 Finder 中查看此项目目录")
                     }
-                    .topToolbarActionStyle()
+                    .libraryToolbarIcon()
+                }
+                Button("添加项目", systemImage: "plus") { model.request(.create) }
+                    .help("登记本机项目目录")
+                    .accessibilityIdentifier("add-project-button")
+                    .libraryToolbarIcon()
+                if model.selectedProjectID != nil {
+                    Menu("更多操作", systemImage: "ellipsis") {
+                        Button("注销项目", systemImage: "trash", role: .destructive) {
+                            model.request(.deleteSelection)
+                        }
+                        .disabled(model.isLoading)
+                    }
+                    .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
+                    .libraryToolbarIcon()
                 }
             }
         }
@@ -248,7 +213,7 @@ struct ProjectDetailView: View {
     private func header(_ project: ProjectModel, details: ProjectDetails?) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(project.id)
-                .font(.system(size: 30, weight: .semibold))
+                .font(SKMDesign.libraryTitleFont)
                 .textSelection(.enabled)
 
             Label(project.path, systemImage: "folder")
@@ -543,7 +508,7 @@ struct MetricCard: View {
                 .font(.system(size: 13))
                 .foregroundStyle(.secondary)
             Text(value)
-                .font(.system(size: 30, weight: .semibold))
+                .font(SKMDesign.libraryTitleFont)
                 .monospacedDigit()
         }
         .frame(maxWidth: .infinity, alignment: .leading)

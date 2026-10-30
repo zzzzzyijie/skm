@@ -91,8 +91,8 @@ func (m LinkMode) Effective() LinkMode {
 type Config struct {
 	Version    int               `yaml:"version" json:"version"`
 	Defaults   Defaults          `yaml:"defaults" json:"defaults"`
-	Tags       []string          `yaml:"tags,omitempty" json:"tags,omitempty"`
-	PromptTags []string          `yaml:"promptTags,omitempty" json:"promptTags,omitempty"`
+	Tags       []string          `yaml:"tags" json:"tags"`
+	PromptTags []string          `yaml:"promptTags" json:"promptTags"`
 	Agents     []AgentDefinition `yaml:"agents,omitempty" json:"agents,omitempty"`
 }
 
@@ -104,6 +104,7 @@ type AgentDefinition struct {
 }
 
 type Defaults struct {
+	// Retained for legacy configuration round-trips; new imports do not use tag defaults.
 	Tags       []string `yaml:"tags" json:"tags"`
 	PromptTags []string `yaml:"promptTags" json:"promptTags"`
 	Agents     []Agent  `yaml:"agents" json:"agents"`
@@ -366,11 +367,11 @@ type Plan struct {
 func DefaultConfig() Config {
 	return Config{
 		Version:    SchemaVersion,
-		Tags:       []string{"general"},
-		PromptTags: []string{"general"},
+		Tags:       []string{},
+		PromptTags: []string{},
 		Defaults: Defaults{
-			Tags:       []string{"general"},
-			PromptTags: []string{"general"},
+			Tags:       []string{},
+			PromptTags: []string{},
 			Agents:     []Agent{AgentClaude, AgentCodex},
 			LinkMode:   ModeAuto,
 		},

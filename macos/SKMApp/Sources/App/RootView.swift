@@ -47,19 +47,25 @@ struct RootView: View {
         }
     }
 
-    /// 三栏主界面布局：侧边栏（Sidebar） -> 内容列表栏（Content） -> 详情面板（Detail）
+    /// Libraries use three columns; projects navigate directly from sidebar to details.
     private var mainContent: some View {
         HStack(spacing: 0) {
             sidebar
                 .frame(minWidth: 180, idealWidth: SKMDesign.librarySidebarWidth, maxWidth: SKMDesign.librarySidebarWidth)
             Rectangle().fill(SKMDesign.libraryBorder).frame(width: 1)
-            content
-                .frame(minWidth: 280, idealWidth: model.section == .prompts ? PromptDesign.listWidth : SKMDesign.libraryListWidth, maxWidth: model.section == .prompts ? PromptDesign.listWidth : SKMDesign.libraryListWidth)
-                .background(SKMDesign.detailCanvas)
-            Rectangle().fill(SKMDesign.libraryBorder).frame(width: 1)
-            detail
-                .frame(minWidth: model.section == .prompts ? 440 : 480, maxWidth: .infinity, maxHeight: .infinity)
-                .background(SKMDesign.detailCanvas)
+            if model.section == .projects {
+                ProjectsView(model: model)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(SKMDesign.detailCanvas)
+            } else {
+                content
+                    .frame(minWidth: 280, idealWidth: SKMDesign.libraryListWidth, maxWidth: SKMDesign.libraryListWidth)
+                    .background(SKMDesign.detailCanvas)
+                Rectangle().fill(SKMDesign.libraryBorder).frame(width: 1)
+                detail
+                    .frame(minWidth: 440, maxWidth: .infinity, maxHeight: .infinity)
+                    .background(SKMDesign.detailCanvas)
+            }
         }
         .ignoresSafeArea(.container, edges: .top)
     }
@@ -100,19 +106,24 @@ struct RootView: View {
                         systemImage: section == .skills ? "tag" : section == .prompts ? "bubble" : "folder",
                         isSelected: sidebarSelection == section,
                         count: collectionCount(section),
-                        disclosureExpanded: section == .projects ? nil : expandedSections.contains(section),
+                        disclosureExpanded: expandedSections.contains(section),
                         action: { selectSidebarSection(section) }
                     )
                     .accessibilityIdentifier("navigation-\(section.rawValue.lowercased())")
 
                     if section == .skills && expandedSections.contains(section) {
                         SkillFilterSidebar(model: model)
-                            .padding(.leading, 18)
+                            .padding(.leading, SKMDesign.sidebarChildIndent)
                             .padding(.bottom, 8)
                     }
                     if section == .prompts && expandedSections.contains(section) {
                         PromptFilterSidebar(model: model)
-                            .padding(.leading, 18)
+                            .padding(.leading, SKMDesign.sidebarChildIndent)
+                            .padding(.bottom, 8)
+                    }
+                    if section == .projects && expandedSections.contains(section) {
+                        ProjectSidebar(model: model)
+                            .padding(.leading, SKMDesign.sidebarChildIndent)
                             .padding(.bottom, 8)
                     }
                 }
@@ -123,24 +134,20 @@ struct RootView: View {
         .padding(.top, 44)
         .onChange(of: model.section) { _, section in
             sidebarSelection = section
-            if section != .projects { expandedSections.insert(section) }
+            expandedSections.insert(section)
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            VStack(spacing: 0) {
-                Divider()
-                SidebarBottomToolbar(model: model)
-            }
+            SidebarBottomToolbar(model: model)
+                .overlay(alignment: .top) { Divider() }
         }
         .background(SKMDesign.librarySidebar)
     }
 
     private func selectSidebarSection(_ section: AppSection) {
-        if section != .projects {
-            if sidebarSelection == section && expandedSections.contains(section) {
-                expandedSections.remove(section)
-            } else {
-                expandedSections.insert(section)
-            }
+        if sidebarSelection == section && expandedSections.contains(section) {
+            expandedSections.remove(section)
+        } else {
+            expandedSections.insert(section)
         }
         guard sidebarSelection != section else { return }
 
@@ -166,7 +173,7 @@ struct RootView: View {
         switch model.section {
         case .skills: SkillsListView(model: model)
         case .prompts: PromptsListView(model: model)
-        case .projects: ProjectsListView(model: model)
+        case .projects: EmptyView() // Projects owns its full-width content above.
         }
     }
 
@@ -175,7 +182,7 @@ struct RootView: View {
         switch model.section {
         case .skills: SkillDetailView(model: model)
         case .prompts: PromptDetailView(model: model)
-        case .projects: ProjectDetailView(model: model)
+        case .projects: EmptyView()
         }
     }
 }
@@ -185,8 +192,8 @@ struct CollectionSearchField: View {
     let title: LocalizedStringKey
     @Binding var text: String
     var tint: Color = .accentColor
-    var controlHeight: CGFloat = 28
-    var horizontalInset: CGFloat = 16
+    var controlHeight: CGFloat = 30
+    var horizontalInset: CGFloat = SKMDesign.libraryListInset
     @FocusState private var isFocused: Bool
 
     var body: some View {
@@ -227,8 +234,8 @@ struct CollectionSearchField: View {
         .frame(height: controlHeight)
         .background(SKMDesign.librarySelection, in: RoundedRectangle(cornerRadius: 6))
         .overlay {
-            RoundedRectangle(cornerRadius: 8)
-                .strokeBorder(isFocused ? tint : .clear, lineWidth: 1)
+            RoundedRectangle(cornerRadius: 6)
+                .strokeBorder(isFocused ? tint.opacity(0.75) : .clear, lineWidth: 1)
         }
         .padding(.horizontal, horizontalInset)
         .padding(.top, 8)
@@ -499,7 +506,7 @@ private struct SidebarBottomToolbar: View {
                 .accessibilityHidden(true)
         }
         .padding(.horizontal, 8)
-        .frame(height: 40)
+        .frame(height: SKMDesign.libraryFooterHeight)
     }
 
     private var syncHelpText: String {

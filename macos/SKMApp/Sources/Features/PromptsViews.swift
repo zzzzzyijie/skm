@@ -69,8 +69,7 @@ struct PromptsListView: View {
                 }
                 Spacer()
             }
-            .font(.caption).foregroundStyle(.secondary)
-            .padding(.horizontal, PromptDesign.listInset).padding(.vertical, 12)
+            .libraryFooterStyle()
         }
         .onChange(of: visible, initial: true) { _, _ in model.reconcilePromptSelection() }
         .sheet(isPresented: $showsNewPrompt) {
@@ -98,6 +97,7 @@ struct PromptsListView: View {
             Spacer(minLength: 4)
             Button("新建 Prompt", systemImage: "plus") { showsNewPrompt = true }
                 .help("新建 Prompt").accessibilityIdentifier("prompts-create-button")
+                .libraryToolbarIcon()
             Menu("列表选项", systemImage: "ellipsis") {
                 Button("导入 Prompt…", systemImage: "square.and.arrow.down", action: importPrompt)
                 Button("管理 Prompt 标签…", systemImage: "tag") { showsTagManager = true }
@@ -108,10 +108,12 @@ struct PromptsListView: View {
                 }
             }
             .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
+            .libraryToolbarIcon()
         }
         .labelStyle(.iconOnly).buttonStyle(.borderless)
         .padding(.horizontal, PromptDesign.listInset)
         .frame(height: SKMDesign.libraryToolbarHeight)
+        .overlay(alignment: .bottom) { Divider() }
     }
 
     @ViewBuilder private func rowMenu(_ prompt: PromptSummary) -> some View {

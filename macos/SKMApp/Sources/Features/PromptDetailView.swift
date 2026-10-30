@@ -22,17 +22,12 @@ struct PromptDetailView: View {
             if let prompt = selected {
                 VStack(spacing: 0) {
                     toolbar(prompt)
-                    GeometryReader { geometry in
-                        ScrollView {
-                            VStack(alignment: .leading, spacing: PromptDesign.sectionSpacing) {
-                                header(prompt)
-                                content
-                            }
-                            .padding(.horizontal, geometry.size.width < 560 ? 24 : PromptDesign.readingInset)
-                            .padding(.top, 32).padding(.bottom, 40)
-                            .frame(maxWidth: PromptDesign.readingWidth, alignment: .leading)
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: PromptDesign.sectionSpacing) {
+                            header(prompt)
+                            content
                         }
+                        .libraryReadingLayout()
                     }
                 }
                 .task(id: "\(prompt.id):\(prompt.hash):\(retry)") { await load(prompt) }
@@ -62,6 +57,7 @@ struct PromptDetailView: View {
         HStack(spacing: 10) {
             Spacer(minLength: 0)
             Button("编辑", systemImage: "square.and.pencil") { editorDetails = loaded }
+                .frame(minHeight: SKMDesign.toolbarActionSize)
                 .disabled(loaded == nil || model.isLoading)
                 .accessibilityIdentifier("prompt-edit-button")
             Button(copied ? "已复制" : "复制正文", systemImage: copied ? "checkmark" : "doc.on.doc") {
@@ -84,19 +80,20 @@ struct PromptDetailView: View {
                 Button("删除", systemImage: "trash", role: .destructive) { confirmsDelete = true }
                     .disabled(model.isLoading)
             }
-            .menuStyle(.borderlessButton).menuIndicator(.hidden).labelStyle(.iconOnly).fixedSize()
+            .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
+            .libraryToolbarIcon()
             .accessibilityIdentifier("prompt-more-menu")
         }
         .controlSize(.regular).buttonStyle(.borderless)
-        .padding(.horizontal, 20).frame(height: SKMDesign.libraryToolbarHeight)
+        .padding(.horizontal, SKMDesign.libraryListInset).frame(height: SKMDesign.libraryToolbarHeight)
         .overlay(alignment: .bottom) { Divider() }
     }
 
     private func header(_ prompt: PromptSummary) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(prompt.name).font(.system(size: 28, weight: .semibold))
+            Text(prompt.name).font(SKMDesign.libraryTitleFont)
                 .textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
-            Text(prompt.description).font(.system(size: 14)).foregroundStyle(.secondary)
+            Text(prompt.description).font(SKMDesign.libraryDescriptionFont).foregroundStyle(.secondary)
                 .textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
             TagWrapLayout(spacing: 8) {
                 Text(prompt.source == "local" || prompt.source.isEmpty ? AppLocalization.string("本地") : prompt.source)

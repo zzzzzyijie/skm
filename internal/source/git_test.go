@@ -81,6 +81,13 @@ func TestGitSourceSelectsSkillsByNameAndPersistsPaths(t *testing.T) {
 	if len(imported) != 1 || imported[0].ID != "market/two" {
 		t.Fatalf("imported Skills = %#v", imported)
 	}
+	if bound.Tags == nil || len(bound.Tags) != 0 || imported[0].Tags == nil || len(imported[0].Tags) != 0 {
+		t.Fatalf("untagged source/import = %#v / %#v", bound.Tags, imported[0].Tags)
+	}
+	_, refreshed, err := manager.Update([]string{"market"})
+	if err != nil || len(refreshed) != 1 || len(refreshed[0].Tags) != 0 {
+		t.Fatalf("untagged source update: %#v / %v", refreshed, err)
+	}
 	if !reflect.DeepEqual(bound.Paths, []string{"catalog/design/two"}) {
 		t.Fatalf("bound paths = %#v", bound.Paths)
 	}

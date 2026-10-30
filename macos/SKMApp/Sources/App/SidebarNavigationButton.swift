@@ -27,6 +27,7 @@ struct SidebarNavigationButton: View {
 
                 Text(title)
                     .font(.body)
+                    .fontWeight(isSelected ? .semibold : .medium)
                     .foregroundStyle(isSelected ? .primary : .secondary)
                     .lineLimit(1)
 
@@ -34,13 +35,13 @@ struct SidebarNavigationButton: View {
 
                 if let count {
                     Text(count, format: .number)
-                        .font(.callout.monospacedDigit())
+                        .font(.system(size: 12).monospacedDigit())
                         .foregroundStyle(.secondary)
-                        .frame(minWidth: 24, alignment: .trailing)
+                        .frame(minWidth: SKMDesign.sidebarCountWidth, alignment: .trailing)
                 }
             }
             .padding(.horizontal, SKMDesign.sidebarRowHorizontalPadding)
-            .frame(maxWidth: .infinity, minHeight: 32, alignment: .leading)
+            .frame(maxWidth: .infinity, minHeight: SKMDesign.sidebarRowHeight, alignment: .leading)
             .contentShape(Rectangle())
             .background {
                 RoundedRectangle(cornerRadius: 6)

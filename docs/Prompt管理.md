@@ -75,7 +75,7 @@ skm prompt remove local/code-review
 `prompt render` 有缺失的必填变量时会失败。macOS 原生 App 新建弹窗只需填写名称、描述、标签和正文；
 可以在 Prompt 编辑器中直接创建并选择标签，未输入标签名时创建按钮保持禁用。Prompt 与
 Skill 各自维护独立的标签注册表、用量统计和增删改操作，同名标签也互不影响。新建 Prompt
-没有显式选择标签时使用 Prompt 自己的默认 `general` 标签，不会读取 Skill 的默认标签。
+没有显式选择标签且文档未携带标签时保持空标签，在 macOS 中归入“未分类”；明确提交空标签会覆盖文档中的标签。新增不再读取旧配置中的默认标签。
 旧版共享标签配置会按现有 Skill 与 Prompt 的实际引用自动拆分并持久化；仅被 Prompt 使用的
 标签不会继续出现在 Skill 标签管理中。
 Go Core 负责生成 `PROMPT.md` frontmatter；“复制 Prompt”会把正文直接写入设备剪贴板。

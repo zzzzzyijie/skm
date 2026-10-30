@@ -10,6 +10,9 @@ enum SKMDesign {
     static let sidebarRowHorizontalPadding: CGFloat = 14
     static let sidebarRowHeight: CGFloat = 34
     static let sidebarIconWidth: CGFloat = 20
+    static let sidebarChildIndent: CGFloat = 18
+    static let sidebarChildRowHeight: CGFloat = 32
+    static let sidebarCountWidth: CGFloat = 24
     static let settingsSidebarWidth: CGFloat = 210
     static let agentCardMinimumWidth: CGFloat = 210
     static let toolbarActionSize: CGFloat = 28
@@ -23,9 +26,17 @@ enum SKMDesign {
 
     // Main library window proportions, measured from the macOS reference screens.
     static let librarySidebarWidth: CGFloat = 218
-    static let libraryListWidth: CGFloat = 372
+    static let libraryListWidth: CGFloat = 320
+    static let libraryListInset: CGFloat = 20
+    // Native macOS List cells contribute another 8 pt outside the row content.
+    static let libraryListRowPadding: CGFloat = libraryListInset - 8
     static let libraryToolbarHeight: CGFloat = 52
-    static let librarySectionSpacing: CGFloat = 30
+    static let libraryFooterHeight: CGFloat = 40
+    static let libraryReadingInset: CGFloat = 32
+    static let libraryReadingWidth: CGFloat = 864
+    static let librarySectionSpacing: CGFloat = 28
+    static let libraryTitleFont = Font.system(size: 28, weight: .semibold)
+    static let libraryDescriptionFont = Font.system(size: 14)
     static let tagManagerWidth: CGFloat = 620
     static let tagManagerHeight: CGFloat = 560
     static let tagManagerRowHeight: CGFloat = 46
@@ -33,6 +44,7 @@ enum SKMDesign {
     static let tagManagerPromptTint = adaptiveColor(light: 0x8B5CF6, dark: 0xB59AFF)
     static let libraryGreen = Color(red: 0.16, green: 0.68, blue: 0.39)
     static let librarySelection = adaptiveColor(light: 0xF3F3F5, dark: 0x303033)
+    static let libraryRowSelection = Color.accentColor.opacity(0.10)
     static let librarySidebar = adaptiveColor(light: 0xF5F5F5, dark: 0x242426)
     static let libraryBorder = adaptiveColor(light: 0xDEDFE5, dark: 0x424247)
     static let sheetHorizontalPadding: CGFloat = 22
@@ -184,14 +196,14 @@ struct CollectionHeader<Actions: View>: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            Text(title).font(.system(size: 18, weight: .semibold))
+            Text(title).font(.headline).lineLimit(1)
             Spacer(minLength: 8)
             actions
         }
-        .padding(.leading, 20)
-        .padding(.trailing, 16)
+        .padding(.horizontal, SKMDesign.libraryListInset)
         .frame(height: SKMDesign.libraryToolbarHeight)
         .background(SKMDesign.detailCanvas)
+        .overlay(alignment: .bottom) { Divider() }
     }
 }
 
@@ -211,10 +223,10 @@ struct DetailToolbar<Actions: View>: View {
                     .frame(width: 28)
             }
         }
-        .padding(.horizontal, 18)
+        .padding(.horizontal, SKMDesign.libraryListInset)
         .frame(height: SKMDesign.libraryToolbarHeight)
         .background(SKMDesign.detailCanvas)
-        .overlay(alignment: .bottom) { Rectangle().fill(SKMDesign.libraryBorder).frame(height: 1) }
+        .overlay(alignment: .bottom) { Divider() }
     }
 }
 
@@ -235,21 +247,44 @@ struct LibraryActionButtonStyle: ButtonStyle {
 }
 
 extension View {
+    func libraryToolbarIcon() -> some View {
+        labelStyle(.iconOnly)
+            .buttonStyle(.borderless)
+            .font(.system(size: 14, weight: .regular))
+            .foregroundStyle(.secondary)
+            .controlSize(.regular)
+            .frame(width: SKMDesign.toolbarActionSize, height: SKMDesign.toolbarActionSize)
+            .contentShape(Rectangle())
+    }
+
+    func libraryFooterStyle() -> some View {
+        font(.caption).foregroundStyle(.secondary)
+            .padding(.horizontal, SKMDesign.libraryListInset)
+            .frame(height: SKMDesign.libraryFooterHeight)
+            .overlay(alignment: .top) { Divider() }
+    }
+
+    func sidebarSearchStyle() -> some View {
+        textFieldStyle(.roundedBorder)
+            .font(.callout).controlSize(.regular)
+            .padding(.horizontal, SKMDesign.sidebarRowHorizontalPadding)
+            .padding(.vertical, 4)
+    }
+
     func libraryListRow(isSelected: Bool, horizontalPadding: CGFloat = 10) -> some View {
         padding(.horizontal, horizontalPadding)
             .foregroundStyle(.primary)
             .listRowInsets(EdgeInsets())
             .listRowSeparator(.hidden)
-            .listRowBackground(isSelected ? SKMDesign.librarySelection : Color.clear)
+            .listRowBackground(isSelected ? SKMDesign.libraryRowSelection : Color.clear)
             .background(LibrarySelectionAppearance())
     }
 
     func libraryReadingLayout() -> some View {
-        padding(.top, 34)
-            .padding(.horizontal, 42)
-            .padding(.trailing, 18)
+        padding(.top, 32)
+            .padding(.horizontal, SKMDesign.libraryReadingInset)
             .padding(.bottom, 40)
-            .frame(maxWidth: 1000, alignment: .leading)
+            .frame(maxWidth: SKMDesign.libraryReadingWidth, alignment: .leading)
             .frame(maxWidth: .infinity, alignment: .leading)
     }
 
@@ -263,28 +298,21 @@ extension View {
     }
 
     func librarySourceBadge() -> some View {
-        font(.system(size: 12))
-            .foregroundStyle(Color.accentColor)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .background(Color.accentColor.opacity(0.09), in: RoundedRectangle(cornerRadius: 6))
-            .overlay {
-                RoundedRectangle(cornerRadius: 6)
-                    .strokeBorder(Color.accentColor.opacity(0.18), lineWidth: 0.5)
-                    .allowsHitTesting(false)
-            }
+        font(.callout)
+            .foregroundStyle(.secondary)
+            .padding(.vertical, 3)
     }
 
     func libraryTagPill() -> some View {
         font(.system(size: 12))
-            .foregroundStyle(Color.orange)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .background(Color.orange.opacity(0.11), in: Capsule())
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(SKMDesign.librarySelection, in: RoundedRectangle(cornerRadius: 5))
     }
 }
 
-/// Skill 与 Prompt 详情页共用的元数据展示，以形状和图标区分来源与标签。
+/// Compact metadata that wraps within the reading column.
 struct LibraryMetadataStrip: View {
     let source: String
     let tags: [String]
@@ -306,15 +334,9 @@ struct LibraryMetadataStrip: View {
     }
 
     var body: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: 18) {
-                sourceBadge
-                tagBadges
-            }
-            VStack(alignment: .leading, spacing: 10) {
-                sourceBadge
-                tagBadges
-            }
+        TagWrapLayout(spacing: 8) {
+            sourceBadge
+            tagBadges
         }
     }
 
@@ -322,7 +344,7 @@ struct LibraryMetadataStrip: View {
     private var sourceBadge: some View {
         let badge = Label(sourceName, systemImage: sourceSymbol)
             .librarySourceBadge()
-            .fixedSize()
+            .lineLimit(1).truncationMode(.middle)
             .accessibilityLabel("\(AppLocalization.string("来源")) \(sourceName)")
 
         if let sourceHelp, !sourceHelp.isEmpty {
@@ -337,13 +359,13 @@ struct LibraryMetadataStrip: View {
         ForEach(tags, id: \.self) { tag in
             Label(tag, systemImage: "tag.fill")
                 .libraryTagPill()
-                .fixedSize()
+                .lineLimit(1).truncationMode(.tail).help(tag)
                 .accessibilityLabel("\(AppLocalization.string("标签")) \(tag)")
         }
     }
 }
 
-/// Keep native list selection and keyboard navigation, with the reference's neutral highlight.
+/// Keep native list selection and keyboard navigation while using the shared row highlight.
 private struct LibrarySelectionAppearance: NSViewRepresentable {
     func makeNSView(context: Context) -> SelectionView { SelectionView() }
     func updateNSView(_ nsView: SelectionView, context: Context) { nsView.updateSelectionAppearance() }

@@ -345,14 +345,18 @@ func TestCLIProjectRequireCanBeSatisfiedByUserActivation(t *testing.T) {
 	}
 }
 
-func TestCLIUsesGeneralTagByDefault(t *testing.T) {
+func TestCLIAddsWithoutDefaultTags(t *testing.T) {
 	root, _, project, skmHome := cliPaths(t)
 	skillPath := filepath.Join(root, "default-skill")
 	writeCLISkill(t, skillPath, "default-skill")
 	runCLI(t, "--home", skmHome, "--project", project, "add", skillPath)
 	out := runCLI(t, "--home", skmHome, "--project", project, "list", "--tag", "general")
+	if bytes.Contains(out, []byte("local/default-skill")) {
+		t.Fatalf("untagged Skill appeared under general:\n%s", out)
+	}
+	out = runCLI(t, "--home", skmHome, "--project", project, "list")
 	if !bytes.Contains(out, []byte("local/default-skill")) {
-		t.Fatalf("default tag query did not return Skill:\n%s", out)
+		t.Fatalf("untagged Skill missing:\n%s", out)
 	}
 }
 

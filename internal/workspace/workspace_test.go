@@ -42,59 +42,68 @@ func newTestWorkspaceManager(storage *store.Store) *Manager {
 }
 
 func TestWorkspaceSyncsSourceBindingsAcrossDevices(t *testing.T) {
-	if _, err := exec.LookPath("git"); err != nil {
-		t.Skip("git is not installed")
-	}
-	upstream := upstreamSkillRepo(t, "review")
-	remote := filepath.Join(t.TempDir(), "workspace.git")
-	runGit(t, "", "init", "--bare", "-b", "main", remote)
+	for name, sourceTags := range map[string][]string{"tagged": {"shared"}, "untagged": {}} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := exec.LookPath("git"); err != nil {
+				t.Skip("git is not installed")
+			}
+			upstream := upstreamSkillRepo(t, "review")
+			remote := filepath.Join(t.TempDir(), "workspace.git")
+			runGit(t, "", "init", "--bare", "-b", "main", remote)
 
-	deviceA := workspaceStore(t)
-	if _, _, err := gitSource.NewGitManager(deviceA, catalog.New(deviceA)).AddSelected(domain.Source{Name: "team", URL: upstream, Tags: []string{"shared"}}, nil); err != nil {
-		t.Fatal(err)
-	}
-	managerA := newTestWorkspaceManager(deviceA)
-	if _, err := managerA.Configure(domain.WorkspaceConfig{URL: remote}); err != nil {
-		t.Fatal(err)
-	}
-	preview, err := managerA.Preview()
-	if err != nil {
-		t.Fatal(err)
-	}
-	var sourceUploads int
-	for _, change := range preview.Changes {
-		if change.Kind == "source" && change.Action == "upload" {
-			sourceUploads++
-		}
-	}
-	if sourceUploads != 1 {
-		t.Fatalf("source upload preview = %#v", preview.Changes)
-	}
-	if _, err := managerA.Apply(); err != nil {
-		t.Fatal(err)
-	}
+			deviceA := workspaceStore(t)
+			if _, _, err := gitSource.NewGitManager(deviceA, catalog.New(deviceA)).AddSelected(domain.Source{Name: "team", URL: upstream, Tags: sourceTags}, nil); err != nil {
+				t.Fatal(err)
+			}
+			managerA := newTestWorkspaceManager(deviceA)
+			if _, err := managerA.Configure(domain.WorkspaceConfig{URL: remote}); err != nil {
+				t.Fatal(err)
+			}
+			preview, err := managerA.Preview()
+			if err != nil {
+				t.Fatal(err)
+			}
+			var sourceUploads int
+			for _, change := range preview.Changes {
+				if change.Kind == "source" && change.Action == "upload" {
+					sourceUploads++
+				}
+			}
+			if sourceUploads != 1 {
+				t.Fatalf("source upload preview = %#v", preview.Changes)
+			}
+			if _, err := managerA.Apply(); err != nil {
+				t.Fatal(err)
+			}
 
-	deviceB := workspaceStore(t)
-	managerB := newTestWorkspaceManager(deviceB)
-	if _, err := managerB.Configure(domain.WorkspaceConfig{URL: remote}); err != nil {
-		t.Fatal(err)
-	}
-	result, err := managerB.Apply()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(result.SourceWarnings) != 0 {
-		t.Fatalf("device B source warnings = %#v", result.SourceWarnings)
-	}
-	sources, err := deviceB.LoadSources()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(sources.Sources) != 1 || sources.Sources[0].Name != "team" || sources.Sources[0].URL != upstream {
-		t.Fatalf("device B sources = %#v", sources.Sources)
-	}
-	if _, err := catalog.New(deviceB).ResolveLibrary("team/review"); err != nil {
-		t.Fatalf("device B restored source Skill: %v", err)
+			deviceB := workspaceStore(t)
+			managerB := newTestWorkspaceManager(deviceB)
+			if _, err := managerB.Configure(domain.WorkspaceConfig{URL: remote}); err != nil {
+				t.Fatal(err)
+			}
+			result, err := managerB.Apply()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(result.SourceWarnings) != 0 {
+				t.Fatalf("device B source warnings = %#v", result.SourceWarnings)
+			}
+			sources, err := deviceB.LoadSources()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(sources.Sources) != 1 || sources.Sources[0].Name != "team" || sources.Sources[0].URL != upstream {
+				t.Fatalf("device B sources = %#v", sources.Sources)
+			}
+			restored, err := catalog.New(deviceB).ResolveLibrary("team/review")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(restored.Tags) != len(sourceTags) || len(sources.Sources[0].Tags) != len(sourceTags) {
+				t.Fatalf("source/Skill tags changed during sync: %#v / %#v", sources.Sources[0].Tags, restored.Tags)
+			}
+
+		})
 	}
 }
 

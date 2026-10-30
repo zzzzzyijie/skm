@@ -16,7 +16,7 @@ func TestEnsureAndYAMLRoundTrips(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(config.Tags, []string{"general"}) || !reflect.DeepEqual(config.Defaults.Tags, []string{"general"}) || !reflect.DeepEqual(config.PromptTags, []string{"general"}) || !reflect.DeepEqual(config.Defaults.PromptTags, []string{"general"}) {
+	if len(config.Tags) != 0 || len(config.Defaults.Tags) != 0 || len(config.PromptTags) != 0 || len(config.Defaults.PromptTags) != 0 {
 		t.Fatalf("default config = %#v", config)
 	}
 	if err := storage.SaveCatalog(domain.Catalog{Skills: []domain.Skill{{ID: "local/one", Name: "one", Location: domain.LocationLibrary}}}); err != nil {
@@ -83,7 +83,7 @@ func TestLoadLegacyConfigBackfillsIndependentPromptTags(t *testing.T) {
 	if !reflect.DeepEqual(config.Tags, []string{"general", "shared", "skill-only", "unused"}) {
 		t.Fatalf("Skill tags = %#v", config.Tags)
 	}
-	if !reflect.DeepEqual(config.PromptTags, []string{"general", "prompt-only", "shared"}) || !reflect.DeepEqual(config.Defaults.PromptTags, []string{"general"}) {
+	if !reflect.DeepEqual(config.PromptTags, []string{"prompt-only", "shared"}) || len(config.Defaults.PromptTags) != 0 {
 		t.Fatalf("Prompt tag migration = %#v / %#v", config.PromptTags, config.Defaults.PromptTags)
 	}
 }
@@ -226,4 +226,17 @@ func testStore(t *testing.T) *Store {
 		t.Fatal(err)
 	}
 	return storage
+}
+
+func TestEmptyTagRegistriesAreNotTreatedAsLegacy(t *testing.T) {
+	storage := testStore(t)
+	for i := 0; i < 2; i++ {
+		if err := storage.Ensure(); err != nil {
+			t.Fatal(err)
+		}
+		legacy, err := configUsesLegacyTagRegistry(filepath.Join(storage.Paths.Home, "config.yaml"))
+		if err != nil || legacy {
+			t.Fatalf("empty registries treated as legacy: %v / %v", legacy, err)
+		}
+	}
 }

@@ -1,6 +1,28 @@
 {
   "sourceLanguage" : "zh-Hans",
   "strings" : {
+    "暂无项目" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No Projects Yet"
+          }
+        }
+      }
+    },
+    "没有匹配的项目" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No Matching Projects"
+          }
+        }
+      }
+    },
     "全部 Skill" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3614,13 +3636,13 @@
         }
       }
     },
-    "未选择标签时使用资料库默认标签。" : {
+    "未设置标签时归入未分类。" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "When no tags are selected, the library defaults are applied."
+            "value" : "Without tags, this Prompt appears in Uncategorized."
           }
         }
       }

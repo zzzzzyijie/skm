@@ -114,7 +114,7 @@ struct PromptEditorSheet: View {
             }
             PromptTagPicker(model: model, tags: $draft.tags)
             if details == nil && draft.tags.isEmpty {
-                Text("未选择标签时使用资料库默认标签。")
+                Text("未设置标签时归入未分类。")
                     .font(.caption).foregroundStyle(.secondary)
             }
         }

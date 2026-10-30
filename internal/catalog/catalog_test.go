@@ -27,15 +27,27 @@ func TestResolveRequiresFullIDForSameName(t *testing.T) {
 	}
 }
 
-func TestAddLocalAppliesDefaultAndExplicitTags(t *testing.T) {
+func TestAddLocalPreservesEmptyAndExplicitTags(t *testing.T) {
 	storage := newStore(t)
+	config, err := storage.LoadConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+	config.Defaults.Tags = []string{"general"}
+	if err := storage.SaveConfig(config); err != nil {
+		t.Fatal(err)
+	}
 	manager := New(storage)
 	added, err := manager.AddLocal(makeSkill(t, "default-skill"), "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if added.Location != domain.LocationLibrary || !reflect.DeepEqual(added.Tags, []string{"general"}) {
+	if added.Location != domain.LocationLibrary || added.Tags == nil || len(added.Tags) != 0 {
 		t.Fatalf("default Skill = %#v", added)
+	}
+	vendored, err := manager.Vendor(added, []domain.Agent{domain.AgentCodex}, domain.ModeCopy, nil)
+	if err != nil || vendored.Tags == nil || len(vendored.Tags) != 0 {
+		t.Fatalf("untagged project copy: %#v / %v", vendored, err)
 	}
 	added, err = manager.AddLocal(makeSkill(t, "explicit-skill"), "", []string{"testing"})
 	if err != nil {

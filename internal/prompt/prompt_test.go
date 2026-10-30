@@ -143,21 +143,40 @@ func TestManagerUpdateCanRemoveLastTag(t *testing.T) {
 	}
 }
 
-func TestManagerUsesPromptDefaultTag(t *testing.T) {
-	root := t.TempDir()
-	storage, err := store.New(store.Paths{Home: filepath.Join(root, ".skm"), UserHome: root, ProjectRoot: filepath.Join(root, "project")})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := storage.Ensure(); err != nil {
-		t.Fatal(err)
-	}
-	content := "---\nname: untagged\ndescription: Uses the Prompt default tag\n---\nBody\n"
-	value, err := New(storage).Create(content, "local", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !reflect.DeepEqual(value.Tags, []string{"general"}) {
-		t.Fatalf("tags = %#v, want Prompt defaults", value.Tags)
+func TestManagerCreatesWithoutDefaultTags(t *testing.T) {
+	for _, test := range []struct {
+		name, documentTags string
+		tags, want         []string
+	}{
+		{name: "omitted", want: []string{}},
+		{name: "cleared", documentTags: "tags: [review]\n", tags: []string{}, want: []string{}},
+		{name: "imported", documentTags: "tags: [review]\n", want: []string{"review"}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			root := t.TempDir()
+			storage, err := store.New(store.Paths{Home: filepath.Join(root, ".skm"), UserHome: root, ProjectRoot: filepath.Join(root, "project")})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := storage.Ensure(); err != nil {
+				t.Fatal(err)
+			}
+			config, err := storage.LoadConfig()
+			if err != nil {
+				t.Fatal(err)
+			}
+			config.Defaults.PromptTags = []string{"general"}
+			if err := storage.SaveConfig(config); err != nil {
+				t.Fatal(err)
+			}
+			content := "---\nname: untagged\ndescription: No automatic tags\n" + test.documentTags + "---\nBody\n"
+			value, err := New(storage).Create(content, "local", test.tags)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(value.Tags, test.want) {
+				t.Fatalf("tags = %#v, want %#v", value.Tags, test.want)
+			}
+		})
 	}
 }

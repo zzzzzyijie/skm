@@ -48,11 +48,7 @@ func (m *Manager) Snapshot(document skill.Document, sourceName, revision string,
 	if !validSource.MatchString(sourceName) {
 		return domain.Skill{}, fmt.Errorf("invalid source name %q", sourceName)
 	}
-	config, err := m.Store.LoadConfig()
-	if err != nil {
-		return domain.Skill{}, err
-	}
-	normalizedTags, err := tags.Normalize(tagValues, config.Defaults.Tags)
+	normalizedTags, err := tags.NormalizeExplicit(tagValues)
 	if err != nil {
 		return domain.Skill{}, err
 	}
@@ -287,11 +283,7 @@ func (m *Manager) ImportProject(document skill.Document, projectRoot string, age
 		if snapshotErr != nil {
 			return domain.Skill{}, snapshotErr
 		}
-		config, loadErr := m.Store.LoadConfig()
-		if loadErr != nil {
-			return domain.Skill{}, loadErr
-		}
-		normalizedTags, normalizeErr := tags.Normalize(tagValues, config.Defaults.Tags)
+		normalizedTags, normalizeErr := tags.NormalizeExplicit(tagValues)
 		if normalizeErr != nil {
 			return domain.Skill{}, normalizeErr
 		}
@@ -361,7 +353,12 @@ func (m *Manager) Vendor(value domain.Skill, agents []domain.Agent, mode domain.
 	if value.Location != domain.LocationLibrary {
 		return domain.Skill{}, fmt.Errorf("only Library Skills can be vendored")
 	}
-	normalizedTags, err := tags.Normalize(tagValues, value.Tags)
+	// Project copies retain Library tags when no override is supplied, including an empty list.
+	values := tagValues
+	if len(values) == 0 {
+		values = value.Tags
+	}
+	normalizedTags, err := tags.NormalizeExplicit(values)
 	if err != nil {
 		return domain.Skill{}, err
 	}

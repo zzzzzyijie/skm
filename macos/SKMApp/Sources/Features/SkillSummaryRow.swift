@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Skills 标签分组中复用的单个技能摘要行。
+/// 当前分类结果中的技能摘要。
 struct SkillSummaryRow: View {
     let skill: SkillSummary
 
@@ -10,7 +10,8 @@ struct SkillSummaryRow: View {
                 Text(skill.name)
                     .font(.system(size: 14, weight: .semibold))
                     .lineLimit(1)
-                    .truncationMode(.middle)
+                    .truncationMode(.tail)
+                    .help(skill.name)
                     .layoutPriority(1)
 
                 Spacer(minLength: 8)
@@ -22,7 +23,7 @@ struct SkillSummaryRow: View {
             Text(skill.description.isEmpty ? AppLocalization.string("无描述") : skill.description)
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
-                .lineLimit(2)
+                .lineLimit(2, reservesSpace: true)
 
             if !skill.tags.isEmpty {
                 Label(skill.tags.joined(separator: " · "), systemImage: "tag")
@@ -32,8 +33,7 @@ struct SkillSummaryRow: View {
                     .truncationMode(.tail)
             }
         }
-        .padding(.top, 13)
-        .padding(.bottom, 16)
+        .padding(.vertical, 12)
         .frame(maxWidth: .infinity, alignment: .leading)
         .overlay(alignment: .bottom) {
             Rectangle().fill(SKMDesign.libraryBorder.opacity(0.45)).frame(height: 1)

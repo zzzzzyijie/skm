@@ -324,7 +324,7 @@ skm list --tag development --tag review
 skm enable --tag development --tag review --agent claude
 ```
 
-多个 `--tag` 使用 AND 语义。未指定标签时使用默认的 `general`。
+多个 `--tag` 使用 AND 语义。未指定标签时保持空标签，在 macOS 中归入“未分类”；不再自动添加 `general`。
 
 ## 主要命令
 

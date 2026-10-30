@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		0C79DA33D91EAE8D0A4F3553 /* InspectorGroupBoxStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47C137E66A78A167670D4AFE /* InspectorGroupBoxStyle.swift */; };
 		1106670EBC61298B38943484 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D56DEEB6D28F2D9D5398609B /* Assets.xcassets */; };
+		181002AA984D2A1B42FE7EEC /* ProjectSidebar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9173B59031849CE4E6BA6A67 /* ProjectSidebar.swift */; };
 		1C0F2792556C4FB4B69120B1 /* SKMUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 925BF8832F4F69FCAB6ECE74 /* SKMUITests.swift */; };
 		1F56503D07C98F44A76DE615 /* AppLocalization.swift in Sources */ = {isa = PBXBuildFile; fileRef = C12DD918931794B758DAE072 /* AppLocalization.swift */; };
 		2258D66D519059522888E88B /* PromptActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 817D91483B9F050A65E2AAD1 /* PromptActions.swift */; };
@@ -164,6 +165,7 @@
 		878805978825602762366CFB /* AppAppearance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppAppearance.swift; sourceTree = "<group>"; };
 		8A3742F40E78420077C423A6 /* SkillsViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillsViews.swift; sourceTree = "<group>"; };
 		8E211D548729521AFFE5FB68 /* AppLocalizationStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLocalizationStore.swift; sourceTree = "<group>"; };
+		9173B59031849CE4E6BA6A67 /* ProjectSidebar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectSidebar.swift; sourceTree = "<group>"; };
 		925BF8832F4F69FCAB6ECE74 /* SKMUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SKMUITests.swift; sourceTree = "<group>"; };
 		9585417417B2663EA125A498 /* ProjectSkillImportSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectSkillImportSheet.swift; sourceTree = "<group>"; };
 		9AD20F122D4A8DEB8587E1AF /* ProjectAccessSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectAccessSettingsView.swift; sourceTree = "<group>"; };
@@ -299,6 +301,7 @@
 				D19DD7824641CA7CDCDAA162 /* MarkdownBodyView.swift */,
 				3A58F83E890D35697F62B82B /* Phase3Views.swift */,
 				9AD20F122D4A8DEB8587E1AF /* ProjectAccessSettingsView.swift */,
+				9173B59031849CE4E6BA6A67 /* ProjectSidebar.swift */,
 				9585417417B2663EA125A498 /* ProjectSkillImportSheet.swift */,
 				6BCD029EDC835D56BCC8D2FF /* ProjectsViews.swift */,
 				817D91483B9F050A65E2AAD1 /* PromptActions.swift */,
@@ -591,6 +594,7 @@
 				8DA3FD3F0276480F2AEFB622 /* MarkdownBodyView.swift in Sources */,
 				721F009D1D6F5C349F5E6D6E /* Phase3Views.swift in Sources */,
 				9E53801E2B3685C530A3707D /* ProjectAccessSettingsView.swift in Sources */,
+				181002AA984D2A1B42FE7EEC /* ProjectSidebar.swift in Sources */,
 				4D8B9384A3049702862DF2C4 /* ProjectSkillImportSheet.swift in Sources */,
 				D5BD2C26163524C81996F417 /* ProjectsViews.swift in Sources */,
 				2258D66D519059522888E88B /* PromptActions.swift in Sources */,

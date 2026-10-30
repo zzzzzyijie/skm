@@ -14,7 +14,7 @@ struct PromptFilterSidebar: View {
             filterRow(.untagged, symbol: "tray", identifier: "prompts-filter-untagged")
             if tags.count > 8 {
                 TextField("查找标签", text: $tagSearch)
-                    .textFieldStyle(.roundedBorder).padding(.horizontal, 14)
+                    .sidebarSearchStyle()
             }
             ForEach(tags.filter { tagSearch.isEmpty || $0.localizedStandardContains(tagSearch) }, id: \.self) { tag in
                 filterRow(.tag(tag), symbol: "tag", identifier: "prompts-filter-tag-\(tag)")
@@ -31,18 +31,20 @@ struct PromptFilterSidebar: View {
             model.reconcilePromptSelection()
         } label: {
             HStack(spacing: 9) {
-                Image(systemName: symbol).frame(width: 20).accessibilityHidden(true)
+                Image(systemName: symbol).frame(width: SKMDesign.sidebarIconWidth).foregroundStyle(.secondary).accessibilityHidden(true)
                 Text(filter.title).lineLimit(1).truncationMode(.tail)
                 Spacer(minLength: 4)
                 Text(model.prompts.filter { filter.includes($0) }.count, format: .number)
-                    .font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                    .font(.system(size: 12).monospacedDigit()).foregroundStyle(.secondary)
+                    .frame(minWidth: SKMDesign.sidebarCountWidth, alignment: .trailing)
             }
             .font(.callout)
-            .padding(.horizontal, 14).frame(minHeight: 32)
+            .padding(.horizontal, SKMDesign.sidebarRowHorizontalPadding)
+            .frame(minHeight: SKMDesign.sidebarChildRowHeight)
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
         }
-        .background(isSelected ? Color.accentColor.opacity(0.12) : .clear, in: RoundedRectangle(cornerRadius: 6))
+        .background(isSelected ? SKMDesign.libraryRowSelection : .clear, in: RoundedRectangle(cornerRadius: 6))
         .fontWeight(isSelected ? .semibold : .regular)
         .buttonStyle(SelectionCardButtonStyle(isStatic: true))
         .help(filter.title)

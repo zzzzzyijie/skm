@@ -14,7 +14,7 @@ struct SkillsListView: View {
 
         VStack(spacing: 0) {
             header
-            CollectionSearchField(title: "搜索名称、描述、标签", text: $browser.query, horizontalInset: 20)
+            CollectionSearchField(title: "搜索名称、描述、标签", text: $browser.query, horizontalInset: SKMDesign.libraryListInset)
                 .accessibilityIdentifier("skills-search-field")
             Group {
                 if model.skills.isEmpty && !model.isLoading {
@@ -46,7 +46,7 @@ struct SkillsListView: View {
                             ForEach(visibleSkills) { skill in
                                 SkillSummaryRow(skill: skill)
                                     .libraryListRow(isSelected: model.selectedSkillID == skill.id,
-                                                    horizontalPadding: 12)
+                                                    horizontalPadding: SKMDesign.libraryListRowPadding)
                                     .accessibilityIdentifier("skill-row-\(skill.id)")
                                     .tag(skill.id).id(skill.id)
                                     .contextMenu { managementActions }
@@ -70,8 +70,7 @@ struct SkillsListView: View {
                 }
                 Spacer()
             }
-            .font(.caption).foregroundStyle(.secondary)
-            .padding(.horizontal, 20).padding(.vertical, 12)
+            .libraryFooterStyle()
         }
         .onChange(of: visibleSkills, initial: true) { _, _ in model.reconcileSkillSelection() }
         .onChange(of: model.skillCustomTags) { _, _ in model.reconcileSkillSelection() }
@@ -97,12 +96,15 @@ struct SkillsListView: View {
                 showsAdd = true
             }
             .help("添加或导入 Skill")
+            .libraryToolbarIcon()
             Menu("列表选项", systemImage: "ellipsis") { managementActions }
                 .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
+                .libraryToolbarIcon()
         }
         .labelStyle(.iconOnly).buttonStyle(.borderless)
-        .padding(.horizontal, 20)
+        .padding(.horizontal, SKMDesign.libraryListInset)
         .frame(height: SKMDesign.libraryToolbarHeight)
+        .overlay(alignment: .bottom) { Divider() }
     }
 
     @ViewBuilder private var managementActions: some View {
@@ -159,7 +161,7 @@ struct SkillDetailView: View {
                             Button("在 Finder 中显示", systemImage: "folder") { revealInFinder(summary) }
                             Button("删除", systemImage: "trash", role: .destructive) { confirmsDelete = true }
                         }
-                        .topToolbarActionStyle()
+                        .libraryToolbarIcon()
                     }
                 }
                 .sheet(isPresented: $showsEditor, onDismiss: { Task { await loadDetails(id) } }) {
@@ -186,16 +188,16 @@ struct SkillDetailView: View {
     // MARK: - 顶部：标题、描述、标签、元数据
 
     private func headerSection(_ skill: SkillSummary) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline, spacing: 14) {
                 Text(skill.name)
-                    .font(.system(size: 30, weight: .semibold))
+                    .font(SKMDesign.libraryTitleFont)
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
 
             Text(skill.description.isEmpty ? AppLocalization.string("无描述") : skill.description)
-                .font(.system(size: 15))
+                .font(SKMDesign.libraryDescriptionFont)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
 
@@ -515,6 +517,11 @@ struct AddSkillSheet: View {
             Divider()
             TagSelector(model: model, scope: .skills, selectedTags: $tags, accessibilityIdentifier: "add-skill-tags")
 
+            if tags.isEmpty {
+                Text("未设置标签时归入未分类。")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+
             Label("本地内容会被验证并写入 SKM 的不可变对象库。", systemImage: "checkmark.shield")
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -532,6 +539,11 @@ struct AddSkillSheet: View {
 
             Divider()
             TagSelector(model: model, scope: .skills, selectedTags: $tags, accessibilityIdentifier: "add-skill-tags")
+
+            if tags.isEmpty {
+                Text("未设置标签时归入未分类。")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
 
             Label("凭据由系统 Git、SSH Agent 或 Credential Helper 管理，SKM 不保存 Token。", systemImage: "lock.shield")
                 .font(.caption)

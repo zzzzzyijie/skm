@@ -68,11 +68,8 @@ func (m *GitManager) AddSelected(value domain.Source, skillNames []string) (doma
 	if err := validateSource(&value); err != nil {
 		return domain.Source{}, nil, err
 	}
-	config, err := m.Store.LoadConfig()
-	if err != nil {
-		return domain.Source{}, nil, err
-	}
-	value.Tags, err = tags.Normalize(value.Tags, config.Defaults.Tags)
+	normalizedTags, err := tags.NormalizeExplicit(value.Tags)
+	value.Tags = normalizedTags
 	if err != nil {
 		return domain.Source{}, nil, err
 	}

@@ -232,11 +232,7 @@ func (m *Manager) normalizeTags(explicit, documentTags, fallback []string) ([]st
 	if values == nil {
 		values = fallback
 	}
-	config, err := m.Store.LoadConfig()
-	if err != nil {
-		return nil, err
-	}
-	return tags.Normalize(values, config.Defaults.PromptTags)
+	return tags.NormalizeExplicit(values)
 }
 
 func (m *Manager) normalizeUpdatedTags(explicit, documentTags, fallback []string) ([]string, error) {

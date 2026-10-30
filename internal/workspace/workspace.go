@@ -502,7 +502,7 @@ func loadRemoteSources(manifest domain.WorkspaceManifest) (map[string]contentIte
 		if err := source.ValidateURL(binding.URL); err != nil {
 			return nil, fmt.Errorf("workspace source %s: %w", binding.Name, err)
 		}
-		normalizedTags, err := tags.Normalize(binding.Tags, nil)
+		normalizedTags, err := tags.NormalizeExplicit(binding.Tags)
 		if err != nil {
 			return nil, err
 		}
@@ -933,7 +933,7 @@ func loadRemote(root string, manifest domain.WorkspaceManifest) (map[string]cont
 		if entry.Tags != nil {
 			entry.Tags, err = tags.NormalizeExplicit(entry.Tags)
 		} else if document.Tags != nil {
-			entry.Tags, err = tags.Normalize(entry.Tags, document.Tags)
+			entry.Tags, err = tags.NormalizeExplicit(document.Tags)
 		} else {
 			entry.Tags, err = tags.NormalizeExplicit(nil)
 		}

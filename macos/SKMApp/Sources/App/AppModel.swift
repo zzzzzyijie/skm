@@ -401,6 +401,12 @@ final class AppModel {
         }
     }
 
+    func reconcileProjectSelection() {
+        if !projects.contains(where: { $0.id == selectedProjectID }) {
+            selectedProjectID = projects.first?.id
+        }
+    }
+
     var visibleSkills: [SkillSummary] { skillBrowser.results(in: skills) }
 
     func reconcileSkillSelection() {
@@ -935,7 +941,6 @@ final class AppModel {
 
     /// 从 Core 重新拉取所有全量状态，并尽可能维持各业务分区的选中项
     private func reload() async throws {
-        let previousProjectID = selectedProjectID
         let previousAgentID = selectedAgentID
         let previousSourceID = selectedSourceID
 
@@ -961,7 +966,7 @@ final class AppModel {
             !loadedSources.isEmpty || loadedWorkspace.configured
         reconcileSkillSelection()
         reconcilePromptSelection()
-        selectedProjectID = loadedProjects.contains(where: { $0.id == previousProjectID }) ? previousProjectID : loadedProjects.first?.id
+        reconcileProjectSelection()
         selectedAgentID = loadedAgents.contains(where: { $0.id == previousAgentID }) ? previousAgentID : loadedAgents.first?.id
         selectedSourceID = loadedSources.contains(where: { $0.id == previousSourceID }) ? previousSourceID : loadedSources.first?.id
     }

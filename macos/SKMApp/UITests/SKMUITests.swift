@@ -368,15 +368,7 @@ final class SKMUITests: XCTestCase {
                 }
                 app.buttons[saveTitle].click()
                 XCTAssertTrue(app.buttons["prompt-edit-button"].waitForExistence(timeout: 15))
-                if !tagged {
-                    // Creation applies Core defaults; explicitly clearing tags is an update.
-                    app.buttons["prompt-edit-button"].click()
-                    let removeTag = app.buttons["prompt-remove-tag-general"]
-                    XCTAssertTrue(removeTag.waitForExistence(timeout: 5))
-                    removeTag.click()
-                    app.buttons[saveTitle].click()
-                    XCTAssertTrue(app.buttons["prompt-edit-button"].waitForExistence(timeout: 15))
-                }
+
             }
             app.buttons["prompts-filter-tag-dev"].click()
             XCTAssertTrue(app.descendants(matching: .any)["prompt-row-local/review"].exists)
