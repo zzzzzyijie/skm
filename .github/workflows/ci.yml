@@ -56,6 +56,13 @@ jobs:
             -resultBundlePath "$RUNNER_TEMP/skm-tests.xcresult" \
             test
 
+      - name: Report macOS test failures
+        if: failure()
+        run: |
+          if [ -d "$RUNNER_TEMP/skm-tests.xcresult" ]; then
+            xcrun xcresulttool get test-results summary --path "$RUNNER_TEMP/skm-tests.xcresult"
+          fi
+
       - name: Preserve failed macOS test results
         if: failure()
         uses: actions/upload-artifact@v7
